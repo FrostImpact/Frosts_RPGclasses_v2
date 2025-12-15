@@ -53,9 +53,10 @@ public class PlayerStats {
         
         // Apply clamping for MOVE_SPEED to prevent excessive values
         if (statType == StatType.MOVE_SPEED && total > MAX_MOVE_SPEED) {
+            // Debug logging for troubleshooting - only active when debug logging is enabled
             LOGGER.debug("MOVE_SPEED stat clamped from {} to {} (max allowed)", total, MAX_MOVE_SPEED);
             
-            // Log all MOVE_SPEED modifiers for debugging
+            // Log all MOVE_SPEED modifiers for debugging to identify source of excessive values
             if (LOGGER.isDebugEnabled()) {
                 LOGGER.debug("MOVE_SPEED modifiers:");
                 for (StatModifier modifier : modifiers) {
