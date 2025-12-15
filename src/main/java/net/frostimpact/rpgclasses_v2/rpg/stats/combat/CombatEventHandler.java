@@ -77,7 +77,7 @@ public class CombatEventHandler {
         int cooldown = (int) (CombatConfig.BASE_ATTACK_COOLDOWN / (1.0 + attackSpeedBonus / 100.0));
         attackCooldowns.put(playerUUID, cooldown);
         
-        // Update combo
+        // Update combo BEFORE damage is applied
         ComboTracker.ComboState combo = ComboTracker.getComboState(playerUUID);
         combo.incrementCombo();
         int comboHit = combo.getComboCount();
@@ -89,7 +89,7 @@ public class CombatEventHandler {
     }
     
     /**
-     * Apply damage multiplier for combo finisher
+     * Apply damage multiplier for combo finisher and DAMAGE stat
      */
     @SubscribeEvent
     public void onLivingDamage(LivingDamageEvent.Pre event) {
@@ -97,24 +97,27 @@ public class CombatEventHandler {
             ItemStack heldItem = player.getMainHandItem();
             
             if (heldItem.getItem() instanceof SwordItem) {
-                // Get combo count
+                // Get combo count (should be already incremented by AttackEntityEvent)
                 ComboTracker.ComboState combo = ComboTracker.getComboState(player.getUUID());
                 int comboHit = combo.getComboCount();
                 
-                // Get base damage with DAMAGE stat bonus
-                PlayerStats stats = player.getData(ModAttachments.PLAYER_STATS);
-                double damageBonus = stats.getStatValue(StatType.DAMAGE);
-                float baseDamage = event.getOriginalDamage();
-                
-                // Apply DAMAGE stat bonus
-                float finalDamage = baseDamage * (1.0f + (float)(damageBonus / 100.0));
-                
-                // Apply finisher multiplier on 4th hit
-                if (comboHit == 4) {
-                    finalDamage *= CombatConfig.COMBO_FINISHER_MULTIPLIER;
+                // Only apply if we have an active combo
+                if (comboHit > 0) {
+                    // Get base damage with DAMAGE stat bonus
+                    PlayerStats stats = player.getData(ModAttachments.PLAYER_STATS);
+                    double damageBonus = stats.getStatValue(StatType.DAMAGE);
+                    float baseDamage = event.getOriginalDamage();
+                    
+                    // Apply DAMAGE stat bonus
+                    float finalDamage = baseDamage * (1.0f + (float)(damageBonus / 100.0));
+                    
+                    // Apply finisher multiplier on 4th hit
+                    if (comboHit == 4) {
+                        finalDamage *= CombatConfig.COMBO_FINISHER_MULTIPLIER;
+                    }
+                    
+                    event.setNewDamage(finalDamage);
                 }
-                
-                event.setNewDamage(finalDamage);
             }
         }
     }
