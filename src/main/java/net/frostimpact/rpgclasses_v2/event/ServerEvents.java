@@ -85,7 +85,7 @@ public class ServerEvents {
             double newSpeed = baseSpeed * (1.0 + speedModifier / 100.0);
 
             System.out.println("[SERVER] NEW SPEED IS " + newSpeed);
-            System.out.println("[SERVER] SPEED MODIFIER IS" + speedModifier);
+            System.out.println("[SERVER] SPEED MODIFIER IS " + speedModifier);
             
             LOGGER.debug("Applying MOVE_SPEED to player {}: modifier={}%, baseSpeed={}, newSpeed={}", 
                 player.getName().getString(), speedModifier, baseSpeed, newSpeed);
