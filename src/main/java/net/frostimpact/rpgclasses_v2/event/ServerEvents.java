@@ -10,12 +10,15 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
 public class ServerEvents {
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServerEvents.class);
     private static final int MANA_REGEN_INTERVAL = 20; // Regen every second (20 ticks)
     private int tickCounter = 0;
     
@@ -68,6 +71,10 @@ public class ServerEvents {
         if (speedAttribute != null) {
             double baseSpeed = Attributes.MOVEMENT_SPEED.value().getDefaultValue();
             double newSpeed = baseSpeed * (1.0 + speedModifier / 100.0);
+            
+            LOGGER.debug("Applying MOVE_SPEED to player {}: modifier={}%, baseSpeed={}, newSpeed={}", 
+                player.getName().getString(), speedModifier, baseSpeed, newSpeed);
+            
             speedAttribute.setBaseValue(newSpeed);
         }
     }
