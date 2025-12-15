@@ -13,8 +13,14 @@ public class StatModifier {
             Codec.STRING.fieldOf("statType").forGetter(m -> m.statType.name()),
             Codec.DOUBLE.fieldOf("value").forGetter(m -> m.value),
             Codec.INT.fieldOf("duration").forGetter(m -> m.duration)
-        ).apply(instance, (source, statTypeName, value, duration) -> 
-            new StatModifier(source, StatType.valueOf(statTypeName), value, duration))
+        ).apply(instance, (source, statTypeName, value, duration) -> {
+            try {
+                return new StatModifier(source, StatType.valueOf(statTypeName), value, duration);
+            } catch (IllegalArgumentException e) {
+                // Fallback to a default stat if enum value is invalid (corrupted save data)
+                return new StatModifier(source, StatType.DAMAGE, 0.0, 0);
+            }
+        })
     );
 
     public static final StreamCodec<ByteBuf, StatModifier> STREAM_CODEC = StreamCodec.composite(
@@ -26,8 +32,14 @@ public class StatModifier {
         m -> m.value,
         ByteBufCodecs.INT,
         m -> m.duration,
-        (source, statTypeName, value, duration) -> 
-            new StatModifier(source, StatType.valueOf(statTypeName), value, duration)
+        (source, statTypeName, value, duration) -> {
+            try {
+                return new StatModifier(source, StatType.valueOf(statTypeName), value, duration);
+            } catch (IllegalArgumentException e) {
+                // Fallback to a default stat if enum value is invalid
+                return new StatModifier(source, StatType.DAMAGE, 0.0, 0);
+            }
+        }
     );
 
     private final String source;

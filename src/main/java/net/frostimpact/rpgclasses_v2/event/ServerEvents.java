@@ -11,9 +11,16 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.UUID;
+
 public class ServerEvents {
     private static final int MANA_REGEN_INTERVAL = 20; // Regen every second (20 ticks)
     private int tickCounter = 0;
+    
+    // Track last known move speed stat for each player to avoid recalculating every tick
+    private final Map<UUID, Double> lastMoveSpeedStats = new HashMap<>();
 
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Pre event) {
@@ -46,15 +53,20 @@ public class ServerEvents {
                 }
             }
 
-            // Apply movement speed modifier
-            applyMovementSpeed(player, stats.getStatValue(StatType.MOVE_SPEED));
+            // Apply movement speed modifier only if it changed
+            double currentSpeedStat = stats.getStatValue(StatType.MOVE_SPEED);
+            Double lastSpeedStat = lastMoveSpeedStats.get(player.getUUID());
+            if (lastSpeedStat == null || !lastSpeedStat.equals(currentSpeedStat)) {
+                applyMovementSpeed(player, currentSpeedStat);
+                lastMoveSpeedStats.put(player.getUUID(), currentSpeedStat);
+            }
         });
     }
 
     private void applyMovementSpeed(ServerPlayer player, double speedModifier) {
         AttributeInstance speedAttribute = player.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speedAttribute != null) {
-            double baseSpeed = 0.1; // Default Minecraft player speed
+            double baseSpeed = Attributes.MOVEMENT_SPEED.value().getDefaultValue();
             double newSpeed = baseSpeed * (1.0 + speedModifier / 100.0);
             speedAttribute.setBaseValue(newSpeed);
         }

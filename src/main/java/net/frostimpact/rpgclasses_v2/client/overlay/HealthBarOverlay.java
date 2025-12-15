@@ -13,8 +13,6 @@ public class HealthBarOverlay implements LayeredDraw.Layer {
     private static final int BAR_HEIGHT = 7;
     private static final int BORDER_WIDTH = 1;
 
-    private long lastPulseTime = 0;
-
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         Minecraft mc = Minecraft.getInstance();
@@ -57,7 +55,7 @@ public class HealthBarOverlay implements LayeredDraw.Layer {
         // Low health pulsing effect
         if (healthPercent < 0.25f) {
             long currentTime = System.currentTimeMillis();
-            float pulse = (float) Math.sin((currentTime - lastPulseTime) / 200.0) * 0.5f + 0.5f;
+            float pulse = (float) Math.sin(currentTime / 200.0) * 0.5f + 0.5f;
             int pulseAlpha = (int) (pulse * 128) << 24;
             guiGraphics.fill(x, y, x + BAR_WIDTH, y + BAR_HEIGHT, pulseAlpha | 0xFF0000);
         }

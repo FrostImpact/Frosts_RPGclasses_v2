@@ -12,6 +12,7 @@ public class ManaBarOverlay implements LayeredDraw.Layer {
     private static final int BAR_WIDTH = 100;
     private static final int BAR_HEIGHT = 7;
     private static final int BORDER_WIDTH = 1;
+    private static final int SHIMMER_WIDTH = 2;
 
     private long shimmerOffset = 0;
 
@@ -46,7 +47,7 @@ public class ManaBarOverlay implements LayeredDraw.Layer {
         shimmerOffset = (shimmerOffset + 1) % (BAR_WIDTH * 2);
         int shimmerX = x + (int) (shimmerOffset - BAR_WIDTH);
         if (shimmerX >= x && shimmerX < x + fillWidth) {
-            guiGraphics.fill(shimmerX, y + BORDER_WIDTH, shimmerX + 2, y + BAR_HEIGHT - BORDER_WIDTH, 0x80FFFFFF);
+            guiGraphics.fill(shimmerX, y + BORDER_WIDTH, shimmerX + SHIMMER_WIDTH, y + BAR_HEIGHT - BORDER_WIDTH, 0x80FFFFFF);
         }
 
         // Low mana pulsing effect
