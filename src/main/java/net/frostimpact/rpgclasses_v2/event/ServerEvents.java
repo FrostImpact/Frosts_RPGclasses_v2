@@ -58,19 +58,30 @@ public class ServerEvents {
 
             // Apply movement speed modifier only if it changed
             double currentSpeedStat = stats.getStatValue(StatType.MOVE_SPEED);
+
             Double lastSpeedStat = lastMoveSpeedStats.get(player.getUUID());
             if (lastSpeedStat == null || !lastSpeedStat.equals(currentSpeedStat)) {
                 applyMovementSpeed(player, currentSpeedStat);
                 lastMoveSpeedStats.put(player.getUUID(), currentSpeedStat);
             }
         });
+
+
     }
+
+
 
     private void applyMovementSpeed(ServerPlayer player, double speedModifier) {
         AttributeInstance speedAttribute = player.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speedAttribute != null) {
-            double baseSpeed = Attributes.MOVEMENT_SPEED.value().getDefaultValue();
+            double baseSpeed = 0.1;
+
+            System.out.println("[SERVER] BASE SPEED IS " + baseSpeed);
+
             double newSpeed = baseSpeed * (1.0 + speedModifier / 100.0);
+
+            System.out.println("[SERVER] NEW SPEED IS " + newSpeed);
+            System.out.println("[SERVER] SPEED MODIFIER IS" + speedModifier);
             
             LOGGER.debug("Applying MOVE_SPEED to player {}: modifier={}%, baseSpeed={}, newSpeed={}", 
                 player.getName().getString(), speedModifier, baseSpeed, newSpeed);
@@ -78,4 +89,6 @@ public class ServerEvents {
             speedAttribute.setBaseValue(newSpeed);
         }
     }
+
+
 }

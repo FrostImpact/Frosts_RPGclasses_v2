@@ -39,6 +39,8 @@ public class PlayerStats {
         modifiers.removeIf(m -> m.getSource().equals(source) && m.getStatType() == statType);
     }
 
+
+
     public void removeAllFromSource(String source) {
         modifiers.removeIf(m -> m.getSource().equals(source));
     }
@@ -50,6 +52,8 @@ public class PlayerStats {
                 total += modifier.getValue();
             }
         }
+
+
         
         // Apply clamping for MOVE_SPEED to prevent excessive values
         if (statType == StatType.MOVE_SPEED && total > MAX_MOVE_SPEED) {
@@ -71,6 +75,7 @@ public class PlayerStats {
         }
         
         return total;
+
     }
 
     public void tick() {
@@ -78,6 +83,7 @@ public class PlayerStats {
             modifier.tick();
         }
         modifiers.removeIf(StatModifier::isExpired);
+
     }
 
     public List<StatModifier> getModifiers() {
