@@ -5,6 +5,7 @@ import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMana;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncStats;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
+import net.frostimpact.rpgclasses_v2.rpg.stats.combat.CombatEventHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -64,6 +65,9 @@ public class ServerEvents {
                 applyMovementSpeed(player, currentSpeedStat);
                 lastMoveSpeedStats.put(player.getUUID(), currentSpeedStat);
             }
+            
+            // Tick combat system (attack cooldowns and combo tracker)
+            CombatEventHandler.tick(player);
         });
 
 

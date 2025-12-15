@@ -5,6 +5,9 @@ import net.frostimpact.rpgclasses_v2.client.overlay.ManaBarOverlay;
 import net.frostimpact.rpgclasses_v2.event.ServerEvents;
 import net.frostimpact.rpgclasses_v2.networking.ModMessages;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
+import net.frostimpact.rpgclasses_v2.rpg.stats.StatsDropdownOverlay;
+import net.frostimpact.rpgclasses_v2.rpg.stats.combat.CombatEventHandler;
+import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.ModWeapons;
 import net.minecraft.client.gui.LayeredDraw;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -23,6 +26,9 @@ public class RpgClassesMod {
 
         // Register networking
         ModMessages.register(modEventBus);
+        
+        // Register weapons
+        ModWeapons.register(modEventBus);
 
         // Register client-side overlays only on client
         if (FMLEnvironment.dist == Dist.CLIENT) {
@@ -31,6 +37,9 @@ public class RpgClassesMod {
 
         // Register server events
         NeoForge.EVENT_BUS.register(new ServerEvents());
+        
+        // Register combat event handler
+        NeoForge.EVENT_BUS.register(new CombatEventHandler());
     }
 
     private void registerOverlays(net.neoforged.neoforge.client.event.RegisterGuiLayersEvent event) {
@@ -41,5 +50,9 @@ public class RpgClassesMod {
         event.registerAbove(VanillaGuiLayers.FOOD_LEVEL,
             net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, "mana_bar"),
             new ManaBarOverlay());
+        
+        event.registerAbove(VanillaGuiLayers.HOTBAR,
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, "stats_dropdown"),
+            new StatsDropdownOverlay());
     }
 }
