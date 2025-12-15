@@ -20,8 +20,6 @@ public class StatsDropdownOverlay implements LayeredDraw.Layer {
     private static final int LINE_HEIGHT = 12;
     
     private static boolean isExpanded = false;
-    private static int lastMouseX = 0;
-    private static int lastMouseY = 0;
     
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
