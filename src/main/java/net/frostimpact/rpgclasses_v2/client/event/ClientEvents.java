@@ -2,12 +2,14 @@ package net.frostimpact.rpgclasses_v2.client.event;
 
 import net.frostimpact.rpgclasses_v2.RpgClassesMod;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatsDropdownOverlay;
+import net.frostimpact.rpgclasses_v2.rpg.stats.combat.SlashRenderer;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.InputEvent;
+import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -15,6 +17,8 @@ import org.lwjgl.glfw.GLFW;
  */
 @EventBusSubscriber(modid = RpgClassesMod.MOD_ID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
 public class ClientEvents {
+
+
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onMouseClick(InputEvent.MouseButton.Pre event) {
