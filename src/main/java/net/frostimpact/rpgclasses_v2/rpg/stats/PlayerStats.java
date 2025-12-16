@@ -39,16 +39,16 @@ public class PlayerStats {
         modifiers.removeIf(m -> m.getSource().equals(source) && m.getStatType() == statType);
     }
 
-
-
     public void removeAllFromSource(String source) {
         modifiers.removeIf(m -> m.getSource().equals(source));
     }
 
     public double getStatValue(StatType statType) {
         double total = 0.0;
+        System.out.println("[STATS] Calculating " + statType + ":");
         for (StatModifier modifier : modifiers) {
             if (modifier.getStatType() == statType) {
+                System.out.println("  - Source: " + modifier.getSource() + ", Value: " + modifier.getValue());
                 total += modifier.getValue();
             }
         }

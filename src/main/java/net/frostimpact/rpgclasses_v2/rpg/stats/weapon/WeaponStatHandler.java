@@ -26,10 +26,10 @@ public class WeaponStatHandler {
     public static void tick(ServerPlayer player) {
         ItemStack currentWeapon = player.getMainHandItem();
         ItemStack previousWeapon = equippedWeapons.get(player.getUUID());
-        
+
         // Check if weapon changed
         boolean weaponChanged = false;
-        
+
         if (previousWeapon == null && !currentWeapon.isEmpty()) {
             // Player picked up a weapon
             weaponChanged = true;
@@ -37,12 +37,12 @@ public class WeaponStatHandler {
             // Player dropped weapon
             weaponChanged = true;
         } else if (previousWeapon != null && !currentWeapon.isEmpty()) {
-            // Check if it's a different item
-            if (!ItemStack.isSameItemSameComponents(previousWeapon, currentWeapon)) {
+            // Check if it's a different ITEM TYPE (ignore NBT/components changes)
+            if (previousWeapon.getItem() != currentWeapon.getItem()) {
                 weaponChanged = true;
             }
         }
-        
+
         if (weaponChanged) {
             updateWeaponStats(player, previousWeapon, currentWeapon);
         }
@@ -53,48 +53,43 @@ public class WeaponStatHandler {
      */
     private static void updateWeaponStats(ServerPlayer player, ItemStack oldWeapon, ItemStack newWeapon) {
         PlayerStats stats = player.getData(ModAttachments.PLAYER_STATS);
-        
+
         // Remove old weapon stats
-        if (oldWeapon != null && oldWeapon.getItem() instanceof MeleeWeaponItem oldMelee) {
-            WeaponStats oldStats = oldMelee.getWeaponStats();
-            stats.removeAllFromSource(MeleeWeaponItem.WEAPON_STAT_SOURCE);
-            System.out.println("[WEAPON STATS] Removed stats from: " + oldWeapon.getItem().toString());
-        }
-        
+        System.out.println("[WEAPON STATS] Before removal, total modifiers: " + stats.getModifiers().size());
+        stats.removeAllFromSource(MeleeWeaponItem.WEAPON_STAT_SOURCE);
+        System.out.println("[WEAPON STATS] After removal, total modifiers: " + stats.getModifiers().size());
+
         // Apply new weapon stats
         if (!newWeapon.isEmpty() && newWeapon.getItem() instanceof MeleeWeaponItem newMelee) {
             WeaponStats newStats = newMelee.getWeaponStats();
-            
+
+            System.out.println("[WEAPON STATS] Applying new stats for: " + newWeapon.getItem().toString());
+
             // Apply each stat bonus as a permanent modifier
             for (Map.Entry<StatType, Double> entry : newStats.getAllBonuses().entrySet()) {
                 StatType statType = entry.getKey();
                 double value = entry.getValue();
-                
-                // -1 duration means permanent (until weapon is unequipped)
+
                 StatModifier modifier = new StatModifier(
-                    MeleeWeaponItem.WEAPON_STAT_SOURCE,
-                    statType,
-                    value,
-                    -1 // Permanent
+                        MeleeWeaponItem.WEAPON_STAT_SOURCE,
+                        statType,
+                        value,
+                        -1
                 );
-                
+
                 stats.addModifier(modifier);
-            }
-            
-            System.out.println("[WEAPON STATS] Applied stats from: " + newWeapon.getItem().toString());
-            
-            // Log what stats were applied
-            for (Map.Entry<StatType, Double> entry : newStats.getAllBonuses().entrySet()) {
-                System.out.println("  - " + entry.getKey() + ": +" + entry.getValue() + "%");
+                System.out.println("[WEAPON STATS]   Added: " + statType + " = " + value);
             }
         }
-        
+
+        System.out.println("[WEAPON STATS] Final modifier count: " + stats.getModifiers().size());
+
         // Sync stats to client
         ModMessages.sendToPlayer(
-            new PacketSyncStats(stats.getModifiers()),
-            player
+                new PacketSyncStats(stats.getModifiers()),
+                player
         );
-        
+
         // Update tracked weapon
         if (newWeapon.isEmpty()) {
             equippedWeapons.remove(player.getUUID());

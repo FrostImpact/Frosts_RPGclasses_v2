@@ -36,6 +36,7 @@ public class ModMessages {
             PacketSyncStats.STREAM_CODEC,
             (packet, context) -> {
                 context.enqueueWork(() -> {
+
                     if (context.player() != null) {
                         var stats = context.player().getData(ModAttachments.PLAYER_STATS);
                         stats.setModifiers(packet.modifiers());
