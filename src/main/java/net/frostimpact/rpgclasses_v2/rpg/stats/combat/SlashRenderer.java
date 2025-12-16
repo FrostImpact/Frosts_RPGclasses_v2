@@ -18,7 +18,7 @@ public class SlashRenderer {
     private static final Vector3f LIGHT_GOLD = new Vector3f(1.0f, 0.90f, 0.45f);
 
     // Particle size
-    private static final float PARTICLE_SIZE = 0.45f;
+    private static final float PARTICLE_SIZE = 0.7f;
 
     // Arc configuration
     private static final int MAX_HEIGHT_LAYERS = 7;     // Maximum vertical layers at the end
@@ -182,7 +182,7 @@ public class SlashRenderer {
                 // Starts on RIGHT (positive X), ends on LEFT (negative X)
                 double heightRise = (1.0 - progress) * radius * 0.4; // Reverse rise
                 yield basePos
-                        .add(right.scale(arcSweep)) // Normal direction (right to left)
+                        .add(right.scale(-arcSweep)) // Normal direction (right to left)
                         . add(forward.scale(arcForward))
                         .add(up.scale(heightRise + verticalLayerOffset));
             }
