@@ -18,11 +18,11 @@ public class ModWeapons {
     // Register sword items with different tiers
     public static final DeferredHolder<Item, Item> IRON_RPG_SWORD = ITEMS.register("iron_rpg_sword",
         () -> new SwordItem(Tiers.IRON,WeaponStats.builder()
-                .damage(20.0)           // Change this number!
-                .attackSpeed(10.0)      // Change this number!
-                .moveSpeed(5.0)         // Change this number!
-                .defense(10.0)          // Add new stats!
-                .maxHealth(15.0)        // Any stat you want!
+                .damage(6.0)           // Change this number!
+                .attackSpeed(32.0)      // Change this number!
+                .moveSpeed(0.0)         // Change this number!
+                .defense(0)          // Add new stats!
+                .maxHealth(0)        // Any stat you want!
                 .build(), new Item.Properties()));
     
     public static final DeferredHolder<Item, Item> DIAMOND_RPG_SWORD = ITEMS.register("diamond_rpg_sword",
