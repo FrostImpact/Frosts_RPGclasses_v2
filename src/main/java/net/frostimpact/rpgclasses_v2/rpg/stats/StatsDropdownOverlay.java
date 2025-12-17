@@ -8,11 +8,14 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.world.entity.player.Player;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Stats dropdown menu overlay in top-right corner
  */
 public class StatsDropdownOverlay implements LayeredDraw.Layer {
+    private static final Logger LOGGER = LoggerFactory.getLogger(StatsDropdownOverlay.class);
     private static final int BUTTON_WIDTH = 60;
     private static final int BUTTON_HEIGHT = 15;
     private static final int MARGIN = 5;
@@ -150,6 +153,7 @@ public class StatsDropdownOverlay implements LayeredDraw.Layer {
      */
     public static void toggleDropdown() {
         isExpanded = !isExpanded;
+        LOGGER.debug("Stats dropdown toggled. Now {}", isExpanded ? "expanded" : "collapsed");
     }
     
     /**
