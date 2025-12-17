@@ -74,7 +74,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at swing edge
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha);
+            spawnParticle(level, pos, color, alpha * 1.1f); // Heavy weapon - more visible
         }
     }
 
@@ -107,7 +107,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at swing edge
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha);
+            spawnParticle(level, pos, color, alpha * 1.1f); // Heavy weapon - more visible
         }
     }
 
@@ -139,7 +139,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at the leading edge (downward swing direction)
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha);
+            spawnParticle(level, pos, color, alpha * 1.1f); // Heavy weapon - more visible
         }
     }
 
@@ -181,7 +181,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             // Gradient: white at outer edge (swing edge), transitioning to gold
             Vector3f color = getGradientColor(progress);
             
-            spawnParticle(level, pos, color, alpha);
+            spawnParticle(level, pos, color, alpha * 1.1f); // Heavy weapon - more visible
         }
     }
 }
