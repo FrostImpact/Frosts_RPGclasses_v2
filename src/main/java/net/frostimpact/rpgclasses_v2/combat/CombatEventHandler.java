@@ -1,12 +1,12 @@
-package net.frostimpact.rpgclasses_v2.rpg.stats.combat;
+package net.frostimpact.rpgclasses_v2.combat;
 
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.PlayerStats;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
-import net.frostimpact.rpgclasses_v2.rpg.stats.combat.slash.SlashAnimation;
-import net.frostimpact.rpgclasses_v2.rpg.stats.combat.slash.SlashRenderer;
-import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.MeleeWeaponItem;
-import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.WeaponType;
+import net.frostimpact.rpgclasses_v2.combat.slash.SlashAnimation;
+import net.frostimpact.rpgclasses_v2.combat.slash.SlashRenderer;
+import net.frostimpact.rpgclasses_v2.item.weapon.MeleeWeaponItem;
+import net.frostimpact.rpgclasses_v2.item.weapon.WeaponType;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;

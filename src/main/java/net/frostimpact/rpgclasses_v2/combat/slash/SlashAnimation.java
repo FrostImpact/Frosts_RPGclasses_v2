@@ -1,4 +1,4 @@
-package net.frostimpact.rpgclasses_v2.rpg.stats.combat.slash;
+package net.frostimpact.rpgclasses_v2.combat.slash;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
