@@ -87,58 +87,58 @@ public class StatsDropdownOverlay implements LayeredDraw.Layer {
             // Health
             float health = player.getHealth();
             float maxHealth = player.getMaxHealth();
-            double maxHealthBonus = stats.getStatValue(StatType.MAX_HEALTH);
-            String healthText = String.format("Health: %.1f/%.1f (+%.0f%%)", health, maxHealth, maxHealthBonus);
+            int maxHealthBonus = stats.getIntStatValue(StatType.MAX_HEALTH);
+            String healthText = String.format("Health: %.1f/%.1f (+%d)", health, maxHealth, maxHealthBonus);
             guiGraphics.drawString(mc.font, healthText, textStartX, currentY, 0xFFFF5555);
             currentY += LINE_HEIGHT;
             
             // Mana
             int mana = rpgData.getMana();
             int maxMana = rpgData.getMaxMana();
-            double maxManaBonus = stats.getStatValue(StatType.MAX_MANA);
-            String manaText = String.format("Mana: %d/%d (+%.0f%%)", mana, maxMana, maxManaBonus);
+            int maxManaBonus = stats.getIntStatValue(StatType.MAX_MANA);
+            String manaText = String.format("Mana: %d/%d (+%d)", mana, maxMana, maxManaBonus);
             guiGraphics.drawString(mc.font, manaText, textStartX, currentY, 0xFF55FFFF);
             currentY += LINE_HEIGHT;
             
             // Damage
-            double damageBonus = stats.getStatValue(StatType.DAMAGE);
-            String damageText = String.format("Damage: +%.1f%%", damageBonus);
+            int damageBonus = stats.getIntStatValue(StatType.DAMAGE);
+            String damageText = String.format("Damage: +%d", damageBonus);
             guiGraphics.drawString(mc.font, damageText, textStartX, currentY, 0xFFFFAA00);
             currentY += LINE_HEIGHT;
             
             // Defense
-            double defenseBonus = stats.getStatValue(StatType.DEFENSE);
-            String defenseText = String.format("Defense: +%.1f%%", defenseBonus);
+            int defenseBonus = stats.getIntStatValue(StatType.DEFENSE);
+            String defenseText = String.format("Defense: +%d", defenseBonus);
             guiGraphics.drawString(mc.font, defenseText, textStartX, currentY, 0xFF00AAFF);
             currentY += LINE_HEIGHT;
             
-            // Move Speed
-            double moveSpeedBonus = stats.getStatValue(StatType.MOVE_SPEED);
+            // Move Speed (percentage)
+            double moveSpeedBonus = stats.getPercentageStatValue(StatType.MOVE_SPEED);
             String moveSpeedText = String.format("Move Speed: +%.1f%%", moveSpeedBonus);
             guiGraphics.drawString(mc.font, moveSpeedText, textStartX, currentY, 0xFF55FF55);
             currentY += LINE_HEIGHT;
             
-            // Attack Speed
-            double attackSpeedBonus = stats.getStatValue(StatType.ATTACK_SPEED);
+            // Attack Speed (percentage)
+            double attackSpeedBonus = stats.getPercentageStatValue(StatType.ATTACK_SPEED);
             String attackSpeedText = String.format("Attack Speed: +%.1f%%", attackSpeedBonus);
             guiGraphics.drawString(mc.font, attackSpeedText, textStartX, currentY, 0xFFFF55FF);
             currentY += LINE_HEIGHT;
             
             // Cooldown Reduction
-            double cooldownReduction = stats.getStatValue(StatType.COOLDOWN_REDUCTION);
-            String cooldownText = String.format("Cooldown Reduction: +%.1f%%", cooldownReduction);
+            int cooldownReduction = stats.getIntStatValue(StatType.COOLDOWN_REDUCTION);
+            String cooldownText = String.format("Cooldown Reduction: +%d", cooldownReduction);
             guiGraphics.drawString(mc.font, cooldownText, textStartX, currentY, 0xFFAA55FF);
             currentY += LINE_HEIGHT;
             
             // Health Regen
-            double healthRegen = stats.getStatValue(StatType.HEALTH_REGEN);
-            String healthRegenText = String.format("Health Regen: +%.1f%%", healthRegen);
+            int healthRegen = stats.getIntStatValue(StatType.HEALTH_REGEN);
+            String healthRegenText = String.format("Health Regen: +%d", healthRegen);
             guiGraphics.drawString(mc.font, healthRegenText, textStartX, currentY, 0xFFFF8888);
             currentY += LINE_HEIGHT;
             
             // Mana Regen
-            double manaRegen = stats.getStatValue(StatType.MANA_REGEN);
-            String manaRegenText = String.format("Mana Regen: +%.1f%%", manaRegen);
+            int manaRegen = stats.getIntStatValue(StatType.MANA_REGEN);
+            String manaRegenText = String.format("Mana Regen: +%d", manaRegen);
             guiGraphics.drawString(mc.font, manaRegenText, textStartX, currentY, 0xFF88FFFF);
         }
         

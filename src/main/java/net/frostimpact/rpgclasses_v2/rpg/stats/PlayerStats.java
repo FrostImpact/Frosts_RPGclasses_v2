@@ -53,7 +53,6 @@ public class PlayerStats {
             }
         }
 
-
         
         // Apply clamping for MOVE_SPEED to prevent excessive values
         if (statType == StatType.MOVE_SPEED && total > MAX_MOVE_SPEED) {
@@ -76,6 +75,24 @@ public class PlayerStats {
         
         return total;
 
+    }
+    
+    /**
+     * Get integer stat value (for non-percentage stats like damage, health)
+     * @param statType The stat type to calculate
+     * @return The total integer value
+     */
+    public int getIntStatValue(StatType statType) {
+        return (int) getStatValue(statType);
+    }
+    
+    /**
+     * Get percentage stat value (for percentage stats like speed)
+     * @param statType The stat type to calculate
+     * @return The total percentage value
+     */
+    public double getPercentageStatValue(StatType statType) {
+        return getStatValue(statType);
     }
 
     public void tick() {
