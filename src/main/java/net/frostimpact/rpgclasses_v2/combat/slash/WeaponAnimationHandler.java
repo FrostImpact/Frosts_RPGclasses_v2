@@ -9,15 +9,18 @@ import org.joml.Vector3f;
  * Base class for weapon-specific animation handlers
  */
 public abstract class WeaponAnimationHandler {
-    // Gradient colors - white at the leading edge, transitioning to gold
+    // Gradient colors - white at the leading edge, transitioning to gold (lighter/paler versions)
     protected static final Vector3f WHITE = new Vector3f(1.0f, 1.0f, 1.0f);
-    protected static final Vector3f BRIGHT_YELLOW = new Vector3f(1.0f, 0.95f, 0.5f);
-    protected static final Vector3f GOLD = new Vector3f(1.0f, 0.85f, 0.35f);
-    protected static final Vector3f LIGHT_GOLD = new Vector3f(1.0f, 0.90f, 0.45f);
-    protected static final Vector3f DARK_GOLD = new Vector3f(0.9f, 0.75f, 0.25f);
+    protected static final Vector3f BRIGHT_YELLOW = new Vector3f(1.0f, 0.98f, 0.7f);
+    protected static final Vector3f GOLD = new Vector3f(1.0f, 0.92f, 0.6f);
+    protected static final Vector3f LIGHT_GOLD = new Vector3f(1.0f, 0.95f, 0.65f);
+    protected static final Vector3f DARK_GOLD = new Vector3f(0.95f, 0.85f, 0.5f);
 
     // Base particle size
     protected static final float PARTICLE_SIZE = 0.7f;
+    
+    // Gap between particles (multiplier for particle index to create spacing)
+    protected static final double PARTICLE_GAP = 1.02;
 
     /**
      * Get the number of combo attacks for this weapon
@@ -52,12 +55,32 @@ public abstract class WeaponAnimationHandler {
     }
 
     /**
-     * Helper to spawn a particle
+     * Helper to spawn a particle with default size
      */
     protected void spawnParticle(ServerLevel level, Vec3 pos, Vector3f color, float alpha) {
         float size = PARTICLE_SIZE * alpha;
         DustParticleOptions dustOptions = new DustParticleOptions(color, size);
         level.sendParticles(dustOptions, pos.x, pos.y, pos.z, 1, 0.0, 0.0, 0.0, 0.0);
+    }
+    
+    /**
+     * Helper to spawn a particle with custom size (for tapered slashes)
+     */
+    protected void spawnParticle(ServerLevel level, Vec3 pos, Vector3f color, float alpha, float customSize) {
+        float size = customSize * alpha;
+        DustParticleOptions dustOptions = new DustParticleOptions(color, size);
+        level.sendParticles(dustOptions, pos.x, pos.y, pos.z, 1, 0.0, 0.0, 0.0, 0.0);
+    }
+    
+    /**
+     * Calculate tapered width based on progress along the slash
+     * @param progress Progress along slash (0.0 to 1.0)
+     * @param startWidth Starting width in pixels
+     * @param endWidth Ending width in pixels
+     * @return Width at this progress point
+     */
+    protected float calculateTaperedWidth(double progress, float startWidth, float endWidth) {
+        return startWidth + (float)progress * (endWidth - startWidth);
     }
 
     /**

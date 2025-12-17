@@ -58,7 +58,10 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
-            double progress = (double) particleIndex / TOTAL_PARTICLES;
+            // Add gap between particles
+            double progress = (double) particleIndex / TOTAL_PARTICLES * PARTICLE_GAP;
+            if (progress > 1.0) break;
+            
             double angle = progress * Math.PI;
 
             double radius = BASE_RADIUS + (MAX_RADIUS - BASE_RADIUS) * Math.sin(angle);
@@ -74,7 +77,10 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at swing edge
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha);
+            
+            // Tapered width: gradually increases from 1 to 5 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 5.0f);
+            spawnParticle(level, pos, color, alpha, width);
         }
     }
 
@@ -91,7 +97,10 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
-            double progress = (double) particleIndex / TOTAL_PARTICLES;
+            // Add gap between particles
+            double progress = (double) particleIndex / TOTAL_PARTICLES * PARTICLE_GAP;
+            if (progress > 1.0) break;
+            
             double angle = progress * Math.PI;
 
             double radius = BASE_RADIUS + (MAX_RADIUS - BASE_RADIUS) * Math.sin(angle);
@@ -107,7 +116,10 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at swing edge
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha);
+            
+            // Tapered width: gradually increases from 1 to 5 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 5.0f);
+            spawnParticle(level, pos, color, alpha, width);
         }
     }
 
@@ -124,7 +136,10 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
-            double progress = (double) particleIndex / TOTAL_PARTICLES;
+            // Add gap between particles
+            double progress = (double) particleIndex / TOTAL_PARTICLES * PARTICLE_GAP;
+            if (progress > 1.0) break;
+            
             double angle = progress * Math.PI;
 
             double radius = BASE_RADIUS + (MAX_RADIUS - BASE_RADIUS) * Math.sin(angle);
@@ -138,7 +153,10 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at swing edge
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha);
+            
+            // Tapered width: gradually increases from 1 to 5 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 5.0f);
+            spawnParticle(level, pos, color, alpha, width);
         }
     }
 
@@ -155,7 +173,10 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
-            double progress = (double) particleIndex / TOTAL_PARTICLES;
+            // Add gap between particles
+            double progress = (double) particleIndex / TOTAL_PARTICLES * PARTICLE_GAP;
+            if (progress > 1.0) break;
+            
             double angle = progress * Math.PI;
 
             double radius = BASE_RADIUS + (MAX_RADIUS - BASE_RADIUS) * 0.85;
@@ -169,7 +190,10 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at swing edge (downward direction)
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha);
+            
+            // Tapered width: gradually increases from 1 to 5 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 5.0f);
+            spawnParticle(level, pos, color, alpha, width);
         }
     }
 }
