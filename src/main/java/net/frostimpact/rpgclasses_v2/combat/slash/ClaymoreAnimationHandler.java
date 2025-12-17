@@ -66,17 +66,23 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             double arcForward = Math.sin(angle) * radius * 0.7; // More wrap-around
             double heightRise = progress * radius * 0.35;
 
-            // Heavy weapon has more layers
-            for (int layer = 0; layer < 4; layer++) {
+            // Heavy weapon has more layers and width
+            for (int layer = 0; layer < 8; layer++) {
                 double layerOffset = layer * 0.25;
                 
-                Vec3 pos = center
-                        .add(right.scale(-arcSweep * 1.0)) // Wide arc
-                        .add(forward.scale(arcForward - layerOffset))
-                        .add(up.scale(heightRise));
+                // Add horizontal thickness for wider slash
+                for (int thickness = -3; thickness <= 3; thickness++) {
+                    double thicknessOffset = thickness * 0.12;
+                    
+                    Vec3 pos = center
+                            .add(right.scale(-arcSweep * 1.0 + thicknessOffset)) // Wide arc
+                            .add(forward.scale(arcForward - layerOffset))
+                            .add(up.scale(heightRise));
 
-                Vector3f color = selectColor(layer, 4, layer == 0);
-                spawnParticle(level, pos, color, alpha * 1.1f); // Slightly more visible
+                    // Gradient: white at swing edge
+                    Vector3f color = getGradientColor(progress);
+                    spawnParticle(level, pos, color, alpha * 1.1f); // Slightly more visible
+                }
             }
         }
     }
@@ -102,17 +108,23 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             double arcForward = Math.sin(angle) * radius * 0.7; // More wrap-around
             double heightRise = (1.0 - progress) * radius * 0.35;
 
-            // Heavy weapon has more layers
-            for (int layer = 0; layer < 4; layer++) {
+            // Heavy weapon has more layers and width
+            for (int layer = 0; layer < 8; layer++) {
                 double layerOffset = layer * 0.25;
                 
-                Vec3 pos = center
-                        .add(right.scale(arcSweep * 1.0)) // Wide arc
-                        .add(forward.scale(arcForward - layerOffset))
-                        .add(up.scale(heightRise));
+                // Add horizontal thickness for wider slash
+                for (int thickness = -3; thickness <= 3; thickness++) {
+                    double thicknessOffset = thickness * 0.12;
+                    
+                    Vec3 pos = center
+                            .add(right.scale(arcSweep * 1.0 + thicknessOffset)) // Wide arc
+                            .add(forward.scale(arcForward - layerOffset))
+                            .add(up.scale(heightRise));
 
-                Vector3f color = selectColor(layer, 4, layer == 0);
-                spawnParticle(level, pos, color, alpha * 1.1f);
+                    // Gradient: white at swing edge
+                    Vector3f color = getGradientColor(progress);
+                    spawnParticle(level, pos, color, alpha * 1.1f);
+                }
             }
         }
     }
@@ -137,80 +149,87 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             double verticalDrop = Math.cos(angle) * radius * 0.9;
             double forwardReach = Math.sin(angle) * radius * 0.9;
 
-            // Create powerful downward slash with side layers
-            for (int layer = 0; layer < 4; layer++) {
-                double sideSpread = (layer - 1.5) * 0.2;
+            // Create powerful downward slash with more layers and thickness
+            for (int layer = 0; layer < 8; layer++) {
+                double layerDepth = layer * 0.2;
                 
-                Vec3 pos = center
-                        .add(right.scale(sideSpread))
-                        .add(forward.scale(forwardReach))
-                        .add(up.scale(-verticalDrop));
+                // Add horizontal thickness
+                for (int sideLayer = -3; sideLayer <= 3; sideLayer++) {
+                    double sideSpread = sideLayer * 0.15;
+                    
+                    Vec3 pos = center
+                            .add(right.scale(sideSpread))
+                            .add(forward.scale(forwardReach - layerDepth))
+                            .add(up.scale(-verticalDrop));
 
-                Vector3f color = selectColor(layer, 4, layer == 0 || layer == 3);
-                spawnParticle(level, pos, color, alpha * 1.1f);
+                    // Gradient: white at the leading edge (downward swing direction)
+                    Vector3f color = getGradientColor(progress);
+                    spawnParticle(level, pos, color, alpha * 1.1f);
+                }
             }
         }
     }
 
     /**
-     * Combo 4: Improved 360-degree spin AOE with better visual impact
+     * Combo 4: Completely reworked 360-degree spin slash
+     * Creates a wide, sweeping horizontal slash that rotates around the player
      */
     private void spawnImprovedSpinAOE(ServerLevel level, Vec3 basePos, Vec3 forward, Vec3 right, Vec3 up,
                                      int startParticle, int particleCount, float animProgress) {
-        Vec3 center = basePos.add(0, 1.0, 0); // Waist level
+        Vec3 center = basePos.add(0, 1.2, 0); // Waist/chest level
         float easedProgress = getEasedProgress(animProgress);
         float alpha = calculateAlpha(animProgress);
 
+        // Configuration for the spin slash
+        final int DEPTH_LAYERS = 8; // Number of radial depth layers
+        
         for (int i = 0; i < particleCount; i++) {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
             double progress = (double) particleIndex / TOTAL_PARTICLES;
 
-            // Full 360 with dynamic expansion
-            double angle = progress * Math.PI * 2;
+            // Full 360 degree rotation
+            double rotationAngle = progress * Math.PI * 2;
             
-            // Dynamic radius that expands outward (smaller but more impactful)
-            double expansionFactor = Math.min(1.0, easedProgress * 1.5);
-            double baseRadius = 2.8 * expansionFactor; // Reduced from 3.5
-            double radiusWave = Math.sin(progress * Math.PI * 6) * 0.25;
-            double radius = baseRadius + radiusWave;
+            // Fixed radius for consistent ring
+            double slashRadius = 3.0;
+            
+            // Calculate base position on the circle
+            double xPos = Math.cos(rotationAngle) * slashRadius;
+            double zPos = Math.sin(rotationAngle) * slashRadius;
+            
+            // Create wide slash effect with depth layers and thickness
+            for (int depthLayer = 0; depthLayer < DEPTH_LAYERS; depthLayer++) {
+                // Radial depth - layers going inward from outer edge
+                double radiusOffset = depthLayer * 0.25;
+                double layerRadius = slashRadius - radiusOffset;
+                double layerX = Math.cos(rotationAngle) * layerRadius;
+                double layerZ = Math.sin(rotationAngle) * layerRadius;
+                
+                // Add vertical thickness for more impactful appearance
+                for (int vertLayer = -2; vertLayer <= 2; vertLayer++) {
+                    double verticalOffset = vertLayer * 0.15;
+                    
+                    // Add horizontal thickness perpendicular to the slash direction
+                    for (int perpLayer = -2; perpLayer <= 2; perpLayer++) {
+                        double perpOffset = perpLayer * 0.1;
+                        
+                        // Calculate perpendicular direction to the radius
+                        double perpX = -Math.sin(rotationAngle) * perpOffset;
+                        double perpZ = Math.cos(rotationAngle) * perpOffset;
+                        
+                        Vec3 pos = center
+                                .add(right.scale(layerX + perpX))
+                                .add(forward.scale(layerZ + perpZ))
+                                .add(up.scale(verticalOffset));
 
-            // Height wave for more dynamic movement
-            double heightWave = Math.sin(progress * Math.PI * 3) * 0.35;
-
-            // Calculate position
-            double xOffset = Math.cos(angle) * radius;
-            double zOffset = Math.sin(angle) * radius;
-
-            // Multiple radius layers for thick, powerful effect
-            for (int rLayer = 0; rLayer < 5; rLayer++) {
-                double layerRadius = radius - (rLayer * 0.25);
-                double layerX = Math.cos(angle) * layerRadius;
-                double layerZ = Math.sin(angle) * layerRadius;
-
-                // Height layers for vertical thickness
-                for (int hLayer = 0; hLayer < 3; hLayer++) {
-                    double hOffset = (hLayer - 1) * 0.3;
-
-                    Vec3 pos = center
-                            .add(right.scale(layerX))
-                            .add(forward.scale(layerZ))
-                            .add(up.scale(heightWave + hOffset));
-
-                    // Outer layers brightest for impact
-                    Vector3f color;
-                    if (rLayer == 0) {
-                        color = BRIGHT_YELLOW;
-                    } else if (rLayer <= 1) {
-                        color = LIGHT_GOLD;
-                    } else {
-                        color = GOLD;
+                        // Gradient: white at outer edge (swing edge), transitioning to gold at inner edge
+                        double gradientProgress = (double) depthLayer / (DEPTH_LAYERS - 1);
+                        Vector3f color = getGradientColor(gradientProgress);
+                        
+                        spawnParticle(level, pos, color, alpha);
                     }
-
-                    // Larger particles for devastating AOE feel
-                    float particleAlpha = alpha * 1.2f;
-                    spawnParticle(level, pos, color, particleAlpha);
                 }
             }
         }
