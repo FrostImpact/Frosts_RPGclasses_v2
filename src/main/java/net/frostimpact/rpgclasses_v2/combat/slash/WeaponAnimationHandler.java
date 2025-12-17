@@ -72,6 +72,7 @@ public abstract class WeaponAnimationHandler {
 
     /**
      * Select color based on layer position - creates a gradient from white (leading edge) to gold (back)
+     * Note: This method is kept for backward compatibility but new code should use getGradientColor()
      * @param layer Current layer index (0 = leading edge)
      * @param totalLayers Total number of layers
      * @param isSwingEdge Whether this is the horizontal swing edge (should be white)
@@ -87,20 +88,23 @@ public abstract class WeaponAnimationHandler {
             return WHITE;
         }
         
-        // Create gradient from white (front) to dark gold (back)
+        // Create gradient from white (front) to dark gold (back) - consistent with getGradientColor
         float progress = (float) layer / (totalLayers - 1);
         
-        if (progress < 0.25f) {
-            // White to bright yellow
+        if (progress < 0.2f) {
+            // Leading edge - white
             return WHITE;
-        } else if (progress < 0.5f) {
-            // Bright yellow
+        } else if (progress < 0.4f) {
+            // Transition to bright yellow
             return BRIGHT_YELLOW;
-        } else if (progress < 0.75f) {
+        } else if (progress < 0.6f) {
             // Light gold
             return LIGHT_GOLD;
+        } else if (progress < 0.8f) {
+            // Gold
+            return GOLD;
         } else {
-            // Dark gold
+            // Trailing edge - dark gold
             return DARK_GOLD;
         }
     }
