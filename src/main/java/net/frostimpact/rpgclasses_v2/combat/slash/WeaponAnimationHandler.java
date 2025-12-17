@@ -17,7 +17,7 @@ public abstract class WeaponAnimationHandler {
     protected static final Vector3f DARK_GOLD = new Vector3f(0.95f, 0.85f, 0.5f);
 
     // Base particle size
-    protected static final float PARTICLE_SIZE = 0.7f;
+    protected static final float PARTICLE_SIZE = 0.1f;
     
     /**
      * Gap between particles (multiplier for particle index to create spacing)
@@ -68,25 +68,12 @@ public abstract class WeaponAnimationHandler {
     }
     
     /**
-     * Helper to spawn a particle with custom size (for tapered slashes)
+     * Helper to spawn a particle with custom size
      */
     protected void spawnParticle(ServerLevel level, Vec3 pos, Vector3f color, float alpha, float customSize) {
         float size = customSize * alpha;
         DustParticleOptions dustOptions = new DustParticleOptions(color, size);
         level.sendParticles(dustOptions, pos.x, pos.y, pos.z, 1, 0.0, 0.0, 0.0, 0.0);
-    }
-    
-    /**
-     * Calculate tapered width based on progress along the slash
-     * @param progress Progress along slash (0.0 to 1.0, values outside this range are clamped)
-     * @param startWidth Starting width in pixels
-     * @param endWidth Ending width in pixels
-     * @return Width at this progress point
-     */
-    protected float calculateTaperedWidth(double progress, float startWidth, float endWidth) {
-        // Clamp progress to valid range
-        double clampedProgress = Math.max(0.0, Math.min(1.0, progress));
-        return startWidth + (float)clampedProgress * (endWidth - startWidth);
     }
     
     /**
