@@ -79,8 +79,8 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             // Gradient: white at swing edge (leading edge of the slash direction)
             Vector3f color = getGradientColor(progress);
             
-            // Tapered width: gradually increases from 1 to 4 pixels
-            float width = calculateTaperedWidth(progress, 1.0f, 4.0f);
+            // Constant width: 4 pixels
+            float width = 4.0f;
             spawnParticle(level, pos, color, alpha, width);
         }
     }
@@ -119,8 +119,8 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             // Gradient: white at swing edge (leading edge of the slash direction)
             Vector3f color = getGradientColor(progress);
             
-            // Tapered width: gradually increases from 1 to 4 pixels
-            float width = calculateTaperedWidth(progress, 1.0f, 4.0f);
+            // Constant width: 4 pixels
+            float width = 4.0f;
             spawnParticle(level, pos, color, alpha, width);
         }
     }
@@ -174,8 +174,8 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             // Gradient color - white at the swing edge (progress direction)
             Vector3f color = getGradientColor(progress);
             
-            // Tapered width: gradually increases from 1 to 4 pixels
-            float width = calculateTaperedWidth(progress, 1.0f, 4.0f);
+            // Constant width: 4 pixels
+            float width = 4.0f;
             
             spawnParticle(level, pos1, color, alpha, width);
             spawnParticle(level, pos2, color, alpha, width);
@@ -218,8 +218,8 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             // Gradient: white at the tip (leading edge)
             Vector3f color = getGradientColor(progress);
             
-            // Tapered width: gradually increases from 1 to 4 pixels
-            float width = calculateTaperedWidth(progress, 1.0f, 4.0f);
+            // Constant width: 4 pixels
+            float width = 4.0f;
             spawnParticle(level, pos, color, alpha, width);
         }
     }

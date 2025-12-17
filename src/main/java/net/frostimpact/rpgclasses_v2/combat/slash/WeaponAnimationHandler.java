@@ -17,7 +17,7 @@ public abstract class WeaponAnimationHandler {
     protected static final Vector3f DARK_GOLD = new Vector3f(0.95f, 0.85f, 0.5f);
 
     // Base particle size
-    protected static final float PARTICLE_SIZE = 0.7f;
+    protected static final float PARTICLE_SIZE = 0.1f;
     
     /**
      * Gap between particles (multiplier for particle index to create spacing)

@@ -78,8 +78,8 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             // Gradient: white at swing edge
             Vector3f color = getGradientColor(progress);
             
-            // Tapered width: gradually increases from 1 to 5 pixels
-            float width = calculateTaperedWidth(progress, 1.0f, 5.0f);
+            // Constant width: 5 pixels
+            float width = 5.0f;
             spawnParticle(level, pos, color, alpha, width);
         }
     }
@@ -117,8 +117,8 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             // Gradient: white at swing edge
             Vector3f color = getGradientColor(progress);
             
-            // Tapered width: gradually increases from 1 to 5 pixels
-            float width = calculateTaperedWidth(progress, 1.0f, 5.0f);
+            // Constant width: 5 pixels
+            float width = 5.0f;
             spawnParticle(level, pos, color, alpha, width);
         }
     }
@@ -154,8 +154,8 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             // Gradient: white at swing edge
             Vector3f color = getGradientColor(progress);
             
-            // Tapered width: gradually increases from 1 to 5 pixels
-            float width = calculateTaperedWidth(progress, 1.0f, 5.0f);
+            // Constant width: 5 pixels
+            float width = 5.0f;
             spawnParticle(level, pos, color, alpha, width);
         }
     }
@@ -191,8 +191,8 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             // Gradient: white at swing edge (downward direction)
             Vector3f color = getGradientColor(progress);
             
-            // Tapered width: gradually increases from 1 to 5 pixels
-            float width = calculateTaperedWidth(progress, 1.0f, 5.0f);
+            // Constant width: 5 pixels
+            float width = 5.0f;
             spawnParticle(level, pos, color, alpha, width);
         }
     }
