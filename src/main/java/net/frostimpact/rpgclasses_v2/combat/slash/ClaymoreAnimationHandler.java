@@ -133,7 +133,6 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
 
             // Single particle per position - creates clean downward slash
             Vec3 pos = center
-                    .add(right.scale(0))
                     .add(forward.scale(forwardReach))
                     .add(up.scale(-verticalDrop));
 
@@ -175,8 +174,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             // Single particle per position - creates clean circular slash
             Vec3 pos = center
                     .add(right.scale(xPos))
-                    .add(forward.scale(zPos))
-                    .add(up.scale(0));
+                    .add(forward.scale(zPos));
 
             // Gradient: white at outer edge (swing edge), transitioning to gold
             Vector3f color = getGradientColor(progress);

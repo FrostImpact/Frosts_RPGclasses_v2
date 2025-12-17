@@ -150,14 +150,12 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             // First slash (\) - white at leading edge (progress direction)
             Vec3 pos1 = center
                     .add(right.scale(x1))
-                    .add(up.scale(y1))
-                    .add(forward.scale(0));
+                    .add(up.scale(y1));
             
             // Second slash (/) - white at leading edge (progress direction)
             Vec3 pos2 = center
                     .add(right.scale(x2))
-                    .add(up.scale(y2))
-                    .add(forward.scale(0));
+                    .add(up.scale(y2));
 
             // Gradient color - white at the swing edge (progress direction)
             Vector3f color = getGradientColor(progress);

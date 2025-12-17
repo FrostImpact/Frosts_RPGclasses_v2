@@ -134,8 +134,7 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             // Single particle per position - creates clean, visible line
             Vec3 pos = center
                     .add(right.scale(arcSweep * 0.95))
-                    .add(forward.scale(arcForward))
-                    .add(up.scale(0)); // Flat but single height
+                    .add(forward.scale(arcForward)); // Flat at single height
 
             // Gradient: white at swing edge
             Vector3f color = getGradientColor(progress);
