@@ -67,24 +67,15 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             double arcForward = Math.sin(angle) * radius * 0.6; // More wrap-around
             double heightRise = progress * radius * 0.25; // Slight upward rise
 
-            // Create wider, layered effect with gradient
-            for (int layer = 0; layer < 6; layer++) {
-                double layerOffset = layer * 0.2;
-                
-                // Add horizontal thickness for wider appearance
-                for (int thickness = -2; thickness <= 2; thickness++) {
-                    double thicknessOffset = thickness * 0.1;
-                    
-                    Vec3 pos = center
-                            .add(right.scale(-arcSweep * 0.9 + thicknessOffset)) // Left to right (centered)
-                            .add(forward.scale(arcForward - layerOffset))
-                            .add(up.scale(heightRise));
+            // Single particle per position - creates clean, visible line
+            Vec3 pos = center
+                    .add(right.scale(-arcSweep * 0.9)) // Left to right (centered)
+                    .add(forward.scale(arcForward))
+                    .add(up.scale(heightRise));
 
-                    // Gradient: white at swing edge (leading edge of the slash direction)
-                    Vector3f color = getGradientColor(progress);
-                    spawnParticle(level, pos, color, alpha);
-                }
-            }
+            // Gradient: white at swing edge (leading edge of the slash direction)
+            Vector3f color = getGradientColor(progress);
+            spawnParticle(level, pos, color, alpha);
         }
     }
 
@@ -110,24 +101,15 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             double arcForward = Math.sin(angle) * radius * 0.6; // More wrap-around
             double heightRise = (1.0 - progress) * radius * 0.25; // Slight upward rise
 
-            // Create wider, layered effect with gradient
-            for (int layer = 0; layer < 6; layer++) {
-                double layerOffset = layer * 0.2;
-                
-                // Add horizontal thickness for wider appearance
-                for (int thickness = -2; thickness <= 2; thickness++) {
-                    double thicknessOffset = thickness * 0.1;
-                    
-                    Vec3 pos = center
-                            .add(right.scale(arcSweep * 0.9 + thicknessOffset)) // Right to left (centered)
-                            .add(forward.scale(arcForward - layerOffset))
-                            .add(up.scale(heightRise));
+            // Single particle per position - creates clean, visible line
+            Vec3 pos = center
+                    .add(right.scale(arcSweep * 0.9)) // Right to left (centered)
+                    .add(forward.scale(arcForward))
+                    .add(up.scale(heightRise));
 
-                    // Gradient: white at swing edge (leading edge of the slash direction)
-                    Vector3f color = getGradientColor(progress);
-                    spawnParticle(level, pos, color, alpha);
-                }
-            }
+            // Gradient: white at swing edge (leading edge of the slash direction)
+            Vector3f color = getGradientColor(progress);
+            spawnParticle(level, pos, color, alpha);
         }
     }
 
@@ -164,34 +146,22 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             double x2 = -slashWidth * 0.5 + progress * slashWidth;
             double y2 = -slashHeight * 0.5 + progress * slashHeight;
 
-            // Create wider slashes with multiple layers
-            for (int layer = 0; layer < 6; layer++) {
-                // Layers go from front to back (depth)
-                double layerDepth = layer * 0.15;
-                
-                // Side-to-side thickness for wider appearance
-                for (int thickness = -2; thickness <= 2; thickness++) {
-                    double thicknessOffset = thickness * 0.08;
-                    
-                    // First slash (\) - white at leading edge (progress direction)
-                    Vec3 pos1 = center
-                            .add(right.scale(x1 + thicknessOffset))
-                            .add(up.scale(y1))
-                            .add(forward.scale(layerDepth));
-                    
-                    // Second slash (/) - white at leading edge (progress direction)
-                    Vec3 pos2 = center
-                            .add(right.scale(x2 + thicknessOffset))
-                            .add(up.scale(y2))
-                            .add(forward.scale(layerDepth));
+            // Single particle per position - creates clean, visible lines
+            // First slash (\) - white at leading edge (progress direction)
+            Vec3 pos1 = center
+                    .add(right.scale(x1))
+                    .add(up.scale(y1));
+            
+            // Second slash (/) - white at leading edge (progress direction)
+            Vec3 pos2 = center
+                    .add(right.scale(x2))
+                    .add(up.scale(y2));
 
-                    // Gradient color - white at the swing edge (progress direction)
-                    Vector3f color = getGradientColor(progress);
-                    
-                    spawnParticle(level, pos1, color, alpha);
-                    spawnParticle(level, pos2, color, alpha);
-                }
-            }
+            // Gradient color - white at the swing edge (progress direction)
+            Vector3f color = getGradientColor(progress);
+            
+            spawnParticle(level, pos1, color, alpha);
+            spawnParticle(level, pos2, color, alpha);
         }
     }
 
@@ -214,28 +184,21 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             double lungeDistance = progress * 2.5; // Forward reach
             double lateralSpread = Math.sin(progress * Math.PI) * 0.4; // Small circular motion
 
-            // Create a wider spiral lunge effect
-            for (int layer = 0; layer < 6; layer++) {
-                double angle = (progress + layer * 0.25) * Math.PI * 2;
-                double spiralRadius = lateralSpread * (1.0 - progress * 0.3); // Tightens as it extends
-                
-                double xOffset = Math.cos(angle) * spiralRadius;
-                double yOffset = Math.sin(angle) * spiralRadius;
+            // Single particle per position - creates clean spiral lunge effect
+            double angle = progress * Math.PI * 2;
+            double spiralRadius = lateralSpread * (1.0 - progress * 0.3); // Tightens as it extends
+            
+            double xOffset = Math.cos(angle) * spiralRadius;
+            double yOffset = Math.sin(angle) * spiralRadius;
 
-                // Add thickness
-                for (int thickness = -1; thickness <= 1; thickness++) {
-                    double thickOffset = thickness * 0.08;
+            Vec3 pos = center
+                    .add(forward.scale(lungeDistance))
+                    .add(right.scale(xOffset))
+                    .add(up.scale(yOffset));
 
-                    Vec3 pos = center
-                            .add(forward.scale(lungeDistance))
-                            .add(right.scale(xOffset + thickOffset))
-                            .add(up.scale(yOffset));
-
-                    // Gradient: white at the tip (leading edge)
-                    Vector3f color = getGradientColor(progress);
-                    spawnParticle(level, pos, color, alpha);
-                }
-            }
+            // Gradient: white at the tip (leading edge)
+            Vector3f color = getGradientColor(progress);
+            spawnParticle(level, pos, color, alpha);
         }
     }
 }
