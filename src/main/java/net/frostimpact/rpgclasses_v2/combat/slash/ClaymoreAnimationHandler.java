@@ -152,9 +152,6 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
         float easedProgress = getEasedProgress(animProgress);
         float alpha = calculateAlpha(animProgress);
 
-        // Configuration for the spin slash
-        final int DEPTH_LAYERS = 1; // Single layer for clean line
-        
         for (int i = 0; i < particleCount; i++) {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
@@ -176,7 +173,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
                     .add(right.scale(xPos))
                     .add(forward.scale(zPos));
 
-            // Gradient: white at outer edge (swing edge), transitioning to gold
+            // Gradient: white at start of rotation, transitioning to gold
             Vector3f color = getGradientColor(progress);
             
             spawnParticle(level, pos, color, alpha * 1.1f); // Heavy weapon - more visible
