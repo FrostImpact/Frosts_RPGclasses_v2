@@ -50,6 +50,11 @@ public class SlashAnimation {
             this.lookDir = player.getLookAngle();
             this.handler = handlers.get(weaponType);
 
+            // Ensure handler exists
+            if (this.handler == null) {
+                throw new IllegalStateException("No animation handler found for weapon type: " + weaponType);
+            }
+
             // Adjust animation speed based on weapon handler
             float speedMultiplier = handler.getAnimationSpeedMultiplier();
             this.duration = (int) (BASE_ANIMATION_DURATION * speedMultiplier);

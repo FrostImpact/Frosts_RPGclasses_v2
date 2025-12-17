@@ -37,6 +37,11 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             case 2 -> spawnCenteredLeftSlash(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
             case 3 -> spawnXSlash(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
             case 4 -> spawnLungeSlash(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
+            default -> {
+                // Default to first combo attack if invalid combo hit
+                System.err.println("Invalid combo hit for Shortsword: " + comboHit + ", defaulting to combo 1");
+                spawnCenteredRightSlash(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
+            }
         }
     }
 

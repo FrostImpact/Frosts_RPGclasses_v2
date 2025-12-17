@@ -37,6 +37,11 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             case 2 -> spawnAngledLeftSlash(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
             case 3 -> spawnOverheadSmash(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
             case 4 -> spawnImprovedSpinAOE(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
+            default -> {
+                // Default to first combo attack if invalid combo hit
+                System.err.println("Invalid combo hit for Claymore: " + comboHit + ", defaulting to combo 1");
+                spawnAngledRightSlash(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
+            }
         }
     }
 

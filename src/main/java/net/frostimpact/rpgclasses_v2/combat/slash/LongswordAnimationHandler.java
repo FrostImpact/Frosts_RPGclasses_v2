@@ -37,6 +37,11 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             case 2 -> spawnRaisedLeftSlash(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
             case 3 -> spawnFlatSlash(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
             case 4 -> spawnOverheadSlash(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
+            default -> {
+                // Default to first combo attack if invalid combo hit
+                System.err.println("Invalid combo hit for Longsword: " + comboHit + ", defaulting to combo 1");
+                spawnRaisedRightSlash(level, basePos, forward, right, up, startParticle, particleCount, animProgress);
+            }
         }
     }
 
