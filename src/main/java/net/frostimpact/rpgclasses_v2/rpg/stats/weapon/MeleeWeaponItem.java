@@ -15,7 +15,7 @@ import net.minecraft.resources.ResourceLocation;
 /**
  * Base class for melee weapons - reusable for future weapon types (axes, etc.)
  */
-public class MeleeWeaponItem extends TieredItem {
+public abstract class MeleeWeaponItem extends TieredItem {
     private final float attackDamage;
     private final float attackSpeed;
     private final WeaponStats weaponStats;
@@ -76,4 +76,6 @@ public class MeleeWeaponItem extends TieredItem {
     public boolean canAttackBlock(BlockState state, Level level, BlockPos pos, Player player) {
         return false; // Don't break blocks on left click
     }
+
+    public abstract WeaponType getWeaponType();
 }

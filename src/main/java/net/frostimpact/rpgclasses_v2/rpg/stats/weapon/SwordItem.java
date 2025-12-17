@@ -2,22 +2,23 @@ package net.frostimpact.rpgclasses_v2.rpg.stats.weapon;
 
 import net.minecraft.world.item.Tier;
 
-
 /**
- * Sword weapon implementation with combo attack system
+ * Legacy SwordItem - now just extends LongswordItem for backwards compatibility
+ * @deprecated Use LongswordItem instead
  */
-public class SwordItem extends MeleeWeaponItem {
+@Deprecated
+public class SwordItem extends LongswordItem {
 
     public SwordItem(Tier tier, float attackDamage, float attackSpeed, Properties properties) {
-        this(tier, attackDamage, attackSpeed, WeaponStats.empty(), properties);
+        super(tier, attackDamage, attackSpeed, properties);
     }
 
     public SwordItem(Tier tier, Properties properties) {
-        this(tier, 3.0f, -2.4f, WeaponStats.empty(), properties);
+        super(tier, properties);
     }
 
     public SwordItem(Tier tier, WeaponStats weaponStats, Properties properties) {
-        this(tier, 3.0f, -2.4f, weaponStats, properties);
+        super(tier, weaponStats, properties);
     }
 
     public SwordItem(Tier tier, float attackDamage, float attackSpeed, WeaponStats weaponStats, Properties properties) {

@@ -3,7 +3,8 @@ package net.frostimpact.rpgclasses_v2.rpg.stats.combat;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.PlayerStats;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
-import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.SwordItem;
+import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.MeleeWeaponItem;
+import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.WeaponType;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
@@ -20,42 +21,40 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Handles combat events for sword weapons
+ * Handles combat events for all melee weapons
  */
 public class CombatEventHandler {
-    // Track attack cooldowns per player
     private static final Map<UUID, Integer> attackCooldowns = new HashMap<>();
 
     /**
-     * Disable block breaking with left click for swords
+     * Disable block breaking with left click for melee weapons
      */
     @SubscribeEvent
     public void onLeftClickBlock(PlayerInteractEvent.LeftClickBlock event) {
         Player player = event.getEntity();
         ItemStack heldItem = player.getMainHandItem();
 
-        if (heldItem.getItem() instanceof SwordItem) {
+        if (heldItem.getItem() instanceof MeleeWeaponItem) {
             event.setCanceled(true);
         }
     }
 
     /**
-     * Disable jump crits for swords
+     * Disable jump crits for melee weapons
      */
     @SubscribeEvent
     public void onCriticalHit(CriticalHitEvent event) {
         Player player = event.getEntity();
         ItemStack heldItem = player.getMainHandItem();
 
-        if (heldItem.getItem() instanceof SwordItem) {
+        if (heldItem.getItem() instanceof MeleeWeaponItem) {
             event.setCriticalHit(false);
             event.setDamageMultiplier(1.0f);
         }
     }
 
-
     /**
-     * Handle sword attacks with combo system
+     * Handle melee weapon attacks with weapon-specific combo systems
      */
     @SubscribeEvent(priority = EventPriority.NORMAL)
     public void onAttackEntity(AttackEntityEvent event) {
@@ -67,11 +66,10 @@ public class CombatEventHandler {
 
         ItemStack heldItem = player.getMainHandItem();
 
-        if (!(heldItem.getItem() instanceof SwordItem)) {
+        if (!(heldItem.getItem() instanceof MeleeWeaponItem meleeWeapon)) {
             return;
         }
 
-        // Check attack cooldown
         UUID playerUUID = player.getUUID();
         int currentCooldown = attackCooldowns.getOrDefault(playerUUID, 0);
 
@@ -80,22 +78,27 @@ public class CombatEventHandler {
             return;
         }
 
-        // Calculate cooldown based on attack speed stat
+        // Get weapon type and calculate cooldown with weapon speed multiplier
+        WeaponType weaponType = meleeWeapon.getWeaponType();
         PlayerStats stats = player.getData(ModAttachments.PLAYER_STATS);
         double attackSpeedBonus = stats.getStatValue(StatType.ATTACK_SPEED);
-        int cooldown = (int) (CombatConfig.BASE_ATTACK_COOLDOWN / (1.0 + attackSpeedBonus / 100.0));
+
+        // Apply weapon type speed multiplier
+        int baseCooldown = (int) (CombatConfig.BASE_ATTACK_COOLDOWN * weaponType.getSpeedMultiplier());
+        int cooldown = (int) (baseCooldown / (1.0 + attackSpeedBonus / 100.0));
         attackCooldowns.put(playerUUID, cooldown);
 
-        // Update combo
+        // Update combo with weapon type
         ComboTracker.ComboState combo = ComboTracker.getComboState(playerUUID);
-        combo.incrementCombo();
+        combo.incrementCombo(weaponType);
         int comboHit = combo.getComboCount();
 
-        System.out.println("[COMBAT] Player " + player.getName().getString() + " attacked - Combo: " + comboHit);
+        System.out.println("[COMBAT] Player " + player.getName().getString() +
+                " attacked with " + weaponType + " - Combo: " + comboHit);
 
-        // Start slash animation - now animated over time!
+        // Start weapon-specific slash animation
         if (player.level() instanceof ServerLevel serverLevel) {
-            SlashRenderer.spawnSlashParticles(serverLevel, player, comboHit);
+            SlashRenderer.spawnSlashParticles(serverLevel, player, weaponType, comboHit);
         }
     }
 
@@ -107,9 +110,10 @@ public class CombatEventHandler {
         if (event.getSource().getEntity() instanceof Player player) {
             ItemStack heldItem = player.getMainHandItem();
 
-            if (heldItem.getItem() instanceof SwordItem) {
+            if (heldItem.getItem() instanceof MeleeWeaponItem meleeWeapon) {
                 ComboTracker.ComboState combo = ComboTracker.getComboState(player.getUUID());
                 int comboHit = combo.getComboCount();
+                WeaponType weaponType = meleeWeapon.getWeaponType();
 
                 PlayerStats stats = player.getData(ModAttachments.PLAYER_STATS);
                 double damageBonus = stats.getStatValue(StatType.DAMAGE);
@@ -117,9 +121,10 @@ public class CombatEventHandler {
 
                 float finalDamage = baseDamage * (1.0f + (float)(damageBonus / 100.0));
 
-                if (comboHit == 4) {
+                // Apply finisher multiplier on last hit of combo
+                if (comboHit == weaponType.getMaxComboCount()) {
                     finalDamage *= CombatConfig.COMBO_FINISHER_MULTIPLIER;
-                    System.out.println("[COMBAT] COMBO FINISHER! Damage: " + finalDamage);
+                    System.out.println("[COMBAT] " + weaponType + " COMBO FINISHER! Damage: " + finalDamage);
                 }
 
                 event.setNewDamage(finalDamage);

@@ -1,4 +1,16 @@
 {
+  "item.rpgclasses_v2.iron_shortsword": "Iron Shortsword",
+  "item.rpgclasses_v2.diamond_shortsword": "Diamond Shortsword",
+  "item.rpgclasses_v2.netherite_shortsword": "Netherite Shortsword",
+
+  "item.rpgclasses_v2.iron_longsword": "Iron Longsword",
+  "item.rpgclasses_v2.diamond_longsword": "Diamond Longsword",
+  "item.rpgclasses_v2.netherite_longsword": "Netherite Longsword",
+
+  "item.rpgclasses_v2.iron_claymore": "Iron Claymore",
+  "item.rpgclasses_v2.diamond_claymore": "Diamond Claymore",
+  "item.rpgclasses_v2.netherite_claymore": "Netherite Claymore",
+
   "item.rpgclasses_v2.iron_rpg_sword": "Iron RPG Sword",
   "item.rpgclasses_v2.diamond_rpg_sword": "Diamond RPG Sword",
   "item.rpgclasses_v2.netherite_rpg_sword": "Netherite RPG Sword"
