@@ -6,7 +6,7 @@ import net.frostimpact.rpgclasses_v2.item.weapon.WeaponType;
 import net.minecraft.world.item.Tier;
 
 /**
- * Shortsword weapon - fast, 3-hit combo with dual slash finisher
+ * Shortsword weapon - fast, 4-hit combo with lunge finisher
  */
 public class ShortswordItem extends MeleeWeaponItem {
 

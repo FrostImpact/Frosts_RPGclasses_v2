@@ -4,7 +4,7 @@ package net.frostimpact.rpgclasses_v2.item.weapon;
  * Enum defining different weapon types with their combat properties
  */
 public enum WeaponType {
-    SHORTSWORD(3, 0.6f),  // 3-hit combo, faster attacks
+    SHORTSWORD(4, 0.6f),  // 4-hit combo (updated), faster attacks
     LONGSWORD(4, 1.0f),   // 4-hit combo, balanced
     CLAYMORE(4, 1.4f);    // 4-hit combo, slower but heavier
     

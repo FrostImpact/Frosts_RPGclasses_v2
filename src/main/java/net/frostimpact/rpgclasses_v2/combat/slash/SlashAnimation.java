@@ -1,5 +1,6 @@
 package net.frostimpact.rpgclasses_v2.combat.slash;
 
+import net.frostimpact.rpgclasses_v2.item.weapon.WeaponType;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
@@ -11,6 +12,14 @@ import java.util.*;
  */
 public class SlashAnimation {
     private static final Map<UUID, List<ActiveSlash>> activeSlashes = new HashMap<>();
+    private static final Map<WeaponType, WeaponAnimationHandler> handlers = new HashMap<>();
+
+    static {
+        // Initialize weapon-specific handlers
+        handlers.put(WeaponType.SHORTSWORD, new ShortswordAnimationHandler());
+        handlers.put(WeaponType.LONGSWORD, new LongswordAnimationHandler());
+        handlers.put(WeaponType.CLAYMORE, new ClaymoreAnimationHandler());
+    }
 
     // Animation configuration - Base values
     private static final int BASE_ANIMATION_DURATION = 8;
@@ -22,37 +31,34 @@ public class SlashAnimation {
     private static class ActiveSlash {
         final ServerLevel level;
         final Player player;
-        final SlashRenderer.SlashType slashType;
+        final WeaponType weaponType;
+        final int comboHit;
         final Vec3 startPos;
         final Vec3 lookDir;
         final int duration;
         final int particlesPerFrame;
+        final WeaponAnimationHandler handler;
         int currentTick = 0;
         int particlesSpawned = 0;
 
-        ActiveSlash(ServerLevel level, Player player, SlashRenderer.SlashType slashType) {
+        ActiveSlash(ServerLevel level, Player player, WeaponType weaponType, int comboHit) {
             this.level = level;
             this.player = player;
-            this.slashType = slashType;
+            this.weaponType = weaponType;
+            this.comboHit = comboHit;
             this.startPos = player.position();
             this.lookDir = player.getLookAngle();
+            this.handler = handlers.get(weaponType);
 
-            // Adjust animation speed based on slash type
-            float speedMultiplier = getSpeedMultiplier(slashType);
+            // Ensure handler exists
+            if (this.handler == null) {
+                throw new IllegalStateException("No animation handler found for weapon type: " + weaponType);
+            }
+
+            // Adjust animation speed based on weapon handler
+            float speedMultiplier = handler.getAnimationSpeedMultiplier();
             this.duration = (int) (BASE_ANIMATION_DURATION * speedMultiplier);
             this.particlesPerFrame = (int) (BASE_PARTICLES_PER_FRAME / speedMultiplier);
-        }
-
-        private float getSpeedMultiplier(SlashRenderer.SlashType slashType) {
-            // Determine weapon type from slash type
-            String typeName = slashType.name();
-            if (typeName.startsWith("SHORT_")) {
-                return 0.6f; // Shortsword: 60% duration = faster
-            } else if (typeName.startsWith("CLAY_")) {
-                return 1.5f; // Claymore: 150% duration = slower
-            } else {
-                return 1.0f; // Longsword: normal speed
-            }
         }
 
         boolean isComplete() {
@@ -65,12 +71,12 @@ public class SlashAnimation {
             // Calculate animation progress (0.0 to 1.0)
             float progress = (float) currentTick / duration;
 
-            // Spawn particles for this frame
-            SlashRenderer.spawnSlashFrame(
+            // Spawn particles for this frame using weapon-specific handler
+            handler.spawnComboParticles(
                     level,
                     startPos,
                     lookDir,
-                    slashType,
+                    comboHit,
                     particlesSpawned,
                     particlesPerFrame,
                     progress
@@ -83,14 +89,14 @@ public class SlashAnimation {
     /**
      * Start a new slash animation
      */
-    public static void startSlashAnimation(ServerLevel level, Player player, SlashRenderer.SlashType slashType) {
+    public static void startSlashAnimation(ServerLevel level, Player player, WeaponType weaponType, int comboHit) {
         UUID playerUUID = player.getUUID();
 
         // Get or create list for this player
         List<ActiveSlash> slashes = activeSlashes.computeIfAbsent(playerUUID, k -> new ArrayList<>());
 
-        // Add new slash animation
-        slashes.add(new ActiveSlash(level, player, slashType));
+        // Add new slash animation with weapon-specific handler
+        slashes.add(new ActiveSlash(level, player, weaponType, comboHit));
     }
 
     /**
