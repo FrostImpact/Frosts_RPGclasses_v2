@@ -9,10 +9,12 @@ import org.joml.Vector3f;
  * Base class for weapon-specific animation handlers
  */
 public abstract class WeaponAnimationHandler {
-    // Bright yellow/gold colors
+    // Gradient colors - white at the leading edge, transitioning to gold
+    protected static final Vector3f WHITE = new Vector3f(1.0f, 1.0f, 1.0f);
     protected static final Vector3f BRIGHT_YELLOW = new Vector3f(1.0f, 0.95f, 0.5f);
     protected static final Vector3f GOLD = new Vector3f(1.0f, 0.85f, 0.35f);
     protected static final Vector3f LIGHT_GOLD = new Vector3f(1.0f, 0.90f, 0.45f);
+    protected static final Vector3f DARK_GOLD = new Vector3f(0.9f, 0.75f, 0.25f);
 
     // Base particle size
     protected static final float PARTICLE_SIZE = 0.7f;
@@ -69,15 +71,56 @@ public abstract class WeaponAnimationHandler {
     }
 
     /**
-     * Select color based on layer position
+     * Select color based on layer position - creates a gradient from white (leading edge) to gold (back)
+     * @param layer Current layer index (0 = leading edge)
+     * @param totalLayers Total number of layers
+     * @param isSwingEdge Whether this is the horizontal swing edge (should be white)
      */
-    protected Vector3f selectColor(int layer, int totalLayers, boolean isEdge) {
-        if (isEdge || layer == 0) {
+    protected Vector3f selectColor(int layer, int totalLayers, boolean isSwingEdge) {
+        // The swing edge (horizontal leading edge) should always be white
+        if (isSwingEdge) {
+            return WHITE;
+        }
+        
+        // Create gradient from white (front) to dark gold (back)
+        float progress = (float) layer / (totalLayers - 1);
+        
+        if (progress < 0.25f) {
+            // White to bright yellow
+            return WHITE;
+        } else if (progress < 0.5f) {
+            // Bright yellow
             return BRIGHT_YELLOW;
-        } else if (layer >= totalLayers - 1) {
+        } else if (progress < 0.75f) {
+            // Light gold
+            return LIGHT_GOLD;
+        } else {
+            // Dark gold
+            return DARK_GOLD;
+        }
+    }
+    
+    /**
+     * Get gradient color based on progress along the slash (0.0 to 1.0)
+     * Used for creating smooth gradients where the swing direction is white
+     * @param progress 0.0 = start of swing (white), 1.0 = end of swing (gold)
+     */
+    protected Vector3f getGradientColor(double progress) {
+        if (progress < 0.2) {
+            // Leading edge - white
+            return WHITE;
+        } else if (progress < 0.4) {
+            // Transition to bright yellow
+            return BRIGHT_YELLOW;
+        } else if (progress < 0.6) {
+            // Light gold
+            return LIGHT_GOLD;
+        } else if (progress < 0.8) {
+            // Gold
             return GOLD;
         } else {
-            return LIGHT_GOLD;
+            // Trailing edge - dark gold
+            return DARK_GOLD;
         }
     }
 

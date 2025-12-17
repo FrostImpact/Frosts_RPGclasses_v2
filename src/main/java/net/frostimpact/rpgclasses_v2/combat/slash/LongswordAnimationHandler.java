@@ -66,16 +66,23 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             double arcForward = Math.sin(angle) * radius * 0.65; // Good wrap-around
             double heightRise = progress * radius * 0.3;
 
-            for (int layer = 0; layer < 3; layer++) {
+            // More layers and width for better visibility
+            for (int layer = 0; layer < 7; layer++) {
                 double layerOffset = layer * 0.22;
                 
-                Vec3 pos = center
-                        .add(right.scale(-arcSweep * 0.95))
-                        .add(forward.scale(arcForward - layerOffset))
-                        .add(up.scale(heightRise));
+                // Add horizontal thickness
+                for (int thickness = -2; thickness <= 2; thickness++) {
+                    double thicknessOffset = thickness * 0.11;
+                    
+                    Vec3 pos = center
+                            .add(right.scale(-arcSweep * 0.95 + thicknessOffset))
+                            .add(forward.scale(arcForward - layerOffset))
+                            .add(up.scale(heightRise));
 
-                Vector3f color = selectColor(layer, 3, layer == 0);
-                spawnParticle(level, pos, color, alpha);
+                    // Gradient: white at swing edge
+                    Vector3f color = getGradientColor(progress);
+                    spawnParticle(level, pos, color, alpha);
+                }
             }
         }
     }
@@ -101,16 +108,23 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             double arcForward = Math.sin(angle) * radius * 0.65; // Good wrap-around
             double heightRise = (1.0 - progress) * radius * 0.3;
 
-            for (int layer = 0; layer < 3; layer++) {
+            // More layers and width for better visibility
+            for (int layer = 0; layer < 7; layer++) {
                 double layerOffset = layer * 0.22;
                 
-                Vec3 pos = center
-                        .add(right.scale(arcSweep * 0.95))
-                        .add(forward.scale(arcForward - layerOffset))
-                        .add(up.scale(heightRise));
+                // Add horizontal thickness
+                for (int thickness = -2; thickness <= 2; thickness++) {
+                    double thicknessOffset = thickness * 0.11;
+                    
+                    Vec3 pos = center
+                            .add(right.scale(arcSweep * 0.95 + thicknessOffset))
+                            .add(forward.scale(arcForward - layerOffset))
+                            .add(up.scale(heightRise));
 
-                Vector3f color = selectColor(layer, 3, layer == 0);
-                spawnParticle(level, pos, color, alpha);
+                    // Gradient: white at swing edge
+                    Vector3f color = getGradientColor(progress);
+                    spawnParticle(level, pos, color, alpha);
+                }
             }
         }
     }
@@ -135,18 +149,28 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             double arcSweep = Math.cos(angle) * radius;
             double arcForward = Math.sin(angle) * radius * 0.65; // Good wrap-around
 
-            for (int layer = 0; layer < 3; layer++) {
+            // More layers and width for better visibility
+            for (int layer = 0; layer < 7; layer++) {
                 double layerOffset = layer * 0.22;
-                // Add slight vertical layers for thickness
-                double verticalSpread = (layer - 1) * 0.15;
                 
-                Vec3 pos = center
-                        .add(right.scale(arcSweep * 0.95))
-                        .add(forward.scale(arcForward - layerOffset))
-                        .add(up.scale(verticalSpread)); // Flat but with thickness
+                // Add horizontal thickness
+                for (int thickness = -2; thickness <= 2; thickness++) {
+                    double thicknessOffset = thickness * 0.11;
+                    
+                    // Add slight vertical layers for thickness
+                    for (int vertLayer = -1; vertLayer <= 1; vertLayer++) {
+                        double verticalSpread = vertLayer * 0.15;
+                        
+                        Vec3 pos = center
+                                .add(right.scale(arcSweep * 0.95 + thicknessOffset))
+                                .add(forward.scale(arcForward - layerOffset))
+                                .add(up.scale(verticalSpread)); // Flat but with thickness
 
-                Vector3f color = selectColor(layer, 3, layer == 0);
-                spawnParticle(level, pos, color, alpha);
+                        // Gradient: white at swing edge
+                        Vector3f color = getGradientColor(progress);
+                        spawnParticle(level, pos, color, alpha);
+                    }
+                }
             }
         }
     }
@@ -171,16 +195,23 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
             double verticalDrop = Math.cos(angle) * radius * 0.75;
             double forwardReach = Math.sin(angle) * radius * 0.85;
 
-            for (int layer = 0; layer < 3; layer++) {
-                double sideSpread = (layer - 1) * 0.18;
+            // More layers and width for better visibility
+            for (int layer = 0; layer < 7; layer++) {
+                double layerDepth = layer * 0.18;
                 
-                Vec3 pos = center
-                        .add(right.scale(sideSpread))
-                        .add(forward.scale(forwardReach))
-                        .add(up.scale(-verticalDrop));
+                // Add horizontal thickness
+                for (int sideLayer = -2; sideLayer <= 2; sideLayer++) {
+                    double sideSpread = sideLayer * 0.15;
+                    
+                    Vec3 pos = center
+                            .add(right.scale(sideSpread))
+                            .add(forward.scale(forwardReach - layerDepth))
+                            .add(up.scale(-verticalDrop));
 
-                Vector3f color = selectColor(layer, 3, layer == 0 || layer == 2);
-                spawnParticle(level, pos, color, alpha);
+                    // Gradient: white at swing edge (downward direction)
+                    Vector3f color = getGradientColor(progress);
+                    spawnParticle(level, pos, color, alpha);
+                }
             }
         }
     }
