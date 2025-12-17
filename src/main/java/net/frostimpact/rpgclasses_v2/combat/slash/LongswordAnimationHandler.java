@@ -164,7 +164,6 @@ public class LongswordAnimationHandler extends WeaponAnimationHandler {
 
             // Single particle per position - creates clean, visible line
             Vec3 pos = center
-                    .add(right.scale(0))
                     .add(forward.scale(forwardReach))
                     .add(up.scale(-verticalDrop));
 
