@@ -1,6 +1,6 @@
-package net.frostimpact.rpgclasses_v2.rpg.stats.combat;
+package net.frostimpact.rpgclasses_v2.combat;
 
-import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.WeaponType;
+import net.frostimpact.rpgclasses_v2.item.weapon.WeaponType;
 
 import java.util.HashMap;
 import java.util.Map;

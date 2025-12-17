@@ -1,4 +1,4 @@
-package net.frostimpact.rpgclasses_v2.rpg.stats.combat;
+package net.frostimpact.rpgclasses_v2.combat;
 
 /**
  * Configuration constants for combat mechanics

@@ -1,4 +1,4 @@
-package net.frostimpact.rpgclasses_v2.rpg.stats.weapon;
+package net.frostimpact.rpgclasses_v2.item.weapon;
 
 /**
  * Enum defining different weapon types with their combat properties
