@@ -9,12 +9,13 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.InputEvent;
 import org.lwjgl.glfw.GLFW;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 @EventBusSubscriber(modid = RpgClassesMod.MOD_ID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
 public class ClientEvents {
-
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClientEvents.class);
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onMouseClick(InputEvent.MouseButton.Pre event) {
@@ -39,6 +40,7 @@ public class ClientEvents {
         double mouseY = mc.mouseHandler.ypos() * screenHeight / mc.getWindow().getScreenHeight();
 
         if (StatsDropdownOverlay.isMouseOverButton((int)mouseX, (int)mouseY, screenWidth)) {
+            LOGGER.debug("Stats dropdown button clicked at ({}, {})", mouseX, mouseY);
             StatsDropdownOverlay.toggleDropdown();
             event.setCanceled(true);
         }

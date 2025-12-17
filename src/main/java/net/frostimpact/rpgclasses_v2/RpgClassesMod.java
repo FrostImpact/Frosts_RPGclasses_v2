@@ -25,8 +25,6 @@ public class RpgClassesMod {
         // Register networking
         ModMessages.register(modEventBus);
         
-        // Register weapons
-
         // Register client-side overlays only on client
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modEventBus.addListener(this::registerOverlays);
@@ -34,8 +32,6 @@ public class RpgClassesMod {
 
         // Register server events
         NeoForge.EVENT_BUS.register(new ServerEvents());
-        
-        // Register combat event handler
     }
 
     private void registerOverlays(net.neoforged.neoforge.client.event.RegisterGuiLayersEvent event) {

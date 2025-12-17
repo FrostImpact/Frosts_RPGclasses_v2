@@ -38,12 +38,11 @@ public class ServerEvents {
             var stats = player.getData(ModAttachments.PLAYER_STATS);
             stats.tick();
 
-            // Update weapon stats based on equipped item
             // Mana regeneration
             if (tickCounter % MANA_REGEN_INTERVAL == 0) {
-                double manaRegenBonus = stats.getStatValue(StatType.MANA_REGEN);
+                int manaRegenBonus = stats.getIntStatValue(StatType.MANA_REGEN);
                 int baseRegen = 1;
-                int regenAmount = baseRegen + (int) (baseRegen * manaRegenBonus / 100.0);
+                int regenAmount = baseRegen + manaRegenBonus;
 
                 int oldMana = rpgData.getMana();
                 rpgData.regenMana(regenAmount);
@@ -58,15 +57,13 @@ public class ServerEvents {
             }
 
             // Apply movement speed modifier only if it changed
-            double currentSpeedStat = stats.getStatValue(StatType.MOVE_SPEED);
+            double currentSpeedStat = stats.getPercentageStatValue(StatType.MOVE_SPEED);
 
             Double lastSpeedStat = lastMoveSpeedStats.get(player.getUUID());
             if (lastSpeedStat == null || !lastSpeedStat.equals(currentSpeedStat)) {
                 applyMovementSpeed(player, currentSpeedStat);
                 lastMoveSpeedStats.put(player.getUUID(), currentSpeedStat);
             }
-
-            // Tick combat system (attack cooldowns and combo tracker)
         });
     }
 
@@ -75,7 +72,6 @@ public class ServerEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             UUID playerUUID = player.getUUID();
             lastMoveSpeedStats.remove(playerUUID);
-
         }
     }
 
