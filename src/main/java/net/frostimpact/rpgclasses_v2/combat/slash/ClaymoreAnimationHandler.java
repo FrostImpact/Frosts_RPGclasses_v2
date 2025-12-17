@@ -58,7 +58,10 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
-            double progress = (double) particleIndex / TOTAL_PARTICLES;
+            // Add gap between particles
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
+            if (progress > 1.0) break;
+            
             double angle = progress * Math.PI;
 
             double radius = BASE_RADIUS + (MAX_RADIUS - BASE_RADIUS) * Math.sin(angle);
@@ -74,7 +77,10 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at swing edge
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha * 1.1f); // Heavy weapon - more visible
+            
+            // Tapered width: gradually increases from 1 to 6 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 6.0f);
+            spawnParticle(level, pos, color, alpha * 1.1f, width); // Heavy weapon - more visible
         }
     }
 
@@ -91,7 +97,10 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
-            double progress = (double) particleIndex / TOTAL_PARTICLES;
+            // Add gap between particles
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
+            if (progress > 1.0) break;
+            
             double angle = progress * Math.PI;
 
             double radius = BASE_RADIUS + (MAX_RADIUS - BASE_RADIUS) * Math.sin(angle);
@@ -107,7 +116,10 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at swing edge
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha * 1.1f); // Heavy weapon - more visible
+            
+            // Tapered width: gradually increases from 1 to 6 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 6.0f);
+            spawnParticle(level, pos, color, alpha * 1.1f, width); // Heavy weapon - more visible
         }
     }
 
@@ -124,7 +136,10 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
-            double progress = (double) particleIndex / TOTAL_PARTICLES;
+            // Add gap between particles
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
+            if (progress > 1.0) break;
+            
             double angle = progress * Math.PI;
 
             double radius = BASE_RADIUS + (MAX_RADIUS - BASE_RADIUS) * 0.9;
@@ -138,7 +153,10 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at the leading edge (downward swing direction)
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha * 1.1f); // Heavy weapon - more visible
+            
+            // Tapered width: gradually increases from 1 to 6 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 6.0f);
+            spawnParticle(level, pos, color, alpha * 1.1f, width); // Heavy weapon - more visible
         }
     }
 
@@ -156,7 +174,9 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
-            double progress = (double) particleIndex / TOTAL_PARTICLES;
+            // Add gap between particles
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
+            if (progress > 1.0) break;
 
             // Full 360 degree rotation
             double rotationAngle = progress * Math.PI * 2;
@@ -176,7 +196,9 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             // Gradient: white at start of rotation, transitioning to gold
             Vector3f color = getGradientColor(progress);
             
-            spawnParticle(level, pos, color, alpha * 1.1f); // Heavy weapon - more visible
+            // Tapered width: gradually increases from 1 to 6 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 6.0f);
+            spawnParticle(level, pos, color, alpha * 1.1f, width); // Heavy weapon - more visible
         }
     }
 }

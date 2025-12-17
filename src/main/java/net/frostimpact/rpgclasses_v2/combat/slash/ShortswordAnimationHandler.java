@@ -58,7 +58,10 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
-            double progress = (double) particleIndex / TOTAL_PARTICLES;
+            // Add gap between particles
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
+            if (progress > 1.0) break;
+            
             double angle = progress * Math.PI; // 180 degree arc
 
             // Centered arc - extends equally around player
@@ -75,7 +78,10 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at swing edge (leading edge of the slash direction)
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha);
+            
+            // Tapered width: gradually increases from 1 to 4 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 4.0f);
+            spawnParticle(level, pos, color, alpha, width);
         }
     }
 
@@ -92,7 +98,10 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
-            double progress = (double) particleIndex / TOTAL_PARTICLES;
+            // Add gap between particles
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
+            if (progress > 1.0) break;
+            
             double angle = progress * Math.PI; // 180 degree arc
 
             // Centered arc - extends equally around player
@@ -109,7 +118,10 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at swing edge (leading edge of the slash direction)
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha);
+            
+            // Tapered width: gradually increases from 1 to 4 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 4.0f);
+            spawnParticle(level, pos, color, alpha, width);
         }
     }
 
@@ -132,7 +144,9 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             if (particleIndex >= halfTotalParticles) break;
 
             // Linear progress from 0 to 1 for each slash - use double to avoid precision loss
-            double progress = (double) particleIndex / (double) halfTotalParticles;
+            // Add gap between particles
+            double progress = calculateProgressWithGap(particleIndex, halfTotalParticles);
+            if (progress > 1.0) break;
             
             // X slash dimensions - wider and more visible
             double slashWidth = 2.0; // Width of the X
@@ -160,8 +174,11 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             // Gradient color - white at the swing edge (progress direction)
             Vector3f color = getGradientColor(progress);
             
-            spawnParticle(level, pos1, color, alpha);
-            spawnParticle(level, pos2, color, alpha);
+            // Tapered width: gradually increases from 1 to 4 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 4.0f);
+            
+            spawnParticle(level, pos1, color, alpha, width);
+            spawnParticle(level, pos2, color, alpha, width);
         }
     }
 
@@ -178,7 +195,9 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
 
-            double progress = (double) particleIndex / TOTAL_PARTICLES;
+            // Add gap between particles
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
+            if (progress > 1.0) break;
             
             // Lunge motion: starts at player, extends forward rapidly
             double lungeDistance = progress * 2.5; // Forward reach
@@ -198,7 +217,10 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
 
             // Gradient: white at the tip (leading edge)
             Vector3f color = getGradientColor(progress);
-            spawnParticle(level, pos, color, alpha);
+            
+            // Tapered width: gradually increases from 1 to 4 pixels
+            float width = calculateTaperedWidth(progress, 1.0f, 4.0f);
+            spawnParticle(level, pos, color, alpha, width);
         }
     }
 }
