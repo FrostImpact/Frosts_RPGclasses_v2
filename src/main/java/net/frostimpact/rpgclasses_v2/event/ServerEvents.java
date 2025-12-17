@@ -6,6 +6,7 @@ import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncStats;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
 import net.frostimpact.rpgclasses_v2.rpg.stats.combat.CombatEventHandler;
+import net.frostimpact.rpgclasses_v2.rpg.stats.combat.SlashAnimation;
 import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.WeaponStatHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
@@ -31,6 +32,8 @@ public class ServerEvents {
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Pre event) {
         tickCounter++;
+
+        SlashAnimation.tickAnimations();
 
         event.getServer().getPlayerList().getPlayers().forEach(player -> {
             // Tick cooldowns

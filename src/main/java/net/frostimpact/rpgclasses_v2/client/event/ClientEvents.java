@@ -12,9 +12,7 @@ import net.neoforged.neoforge.client.event.InputEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.lwjgl.glfw.GLFW;
 
-/**
- * Handles client-side events for the stats dropdown
- */
+
 @EventBusSubscriber(modid = RpgClassesMod.MOD_ID, bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
 public class ClientEvents {
 
@@ -22,6 +20,7 @@ public class ClientEvents {
 
     @SubscribeEvent(priority = EventPriority.HIGH)
     public static void onMouseClick(InputEvent.MouseButton.Pre event) {
+
         // Only handle left clicks (button 0) when pressed (action 1)
         if (event.getButton() != GLFW.GLFW_MOUSE_BUTTON_LEFT || event.getAction() != GLFW.GLFW_PRESS) {
             return;
@@ -29,7 +28,7 @@ public class ClientEvents {
 
         Minecraft mc = Minecraft.getInstance();
 
-        // Only handle when no screen is open (in-game HUD) and player exists
+        // Only handle when no screen is open and player exists
         if (mc.screen != null || mc.player == null) {
             return;
         }

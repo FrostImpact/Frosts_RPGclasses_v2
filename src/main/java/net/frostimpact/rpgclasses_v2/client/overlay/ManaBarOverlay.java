@@ -35,7 +35,7 @@ public class ManaBarOverlay implements LayeredDraw.Layer {
 
         RenderSystem.enableBlend();
 
-        // Draw ornate frame
+        // Draw frame
         drawOrnateFrame(guiGraphics, x, y, BAR_WIDTH, BAR_HEIGHT, 0xFF5577aa, 0xFF66ccff);
 
         // Draw mana bar with cyan-to-blue gradient
@@ -50,7 +50,7 @@ public class ManaBarOverlay implements LayeredDraw.Layer {
             guiGraphics.fill(shimmerX, y + BORDER_WIDTH, shimmerX + SHIMMER_WIDTH, y + BAR_HEIGHT - BORDER_WIDTH, 0x80FFFFFF);
         }
 
-        // Low mana pulsing effect
+        // Low mana effect
         if (manaPercent < 0.15f) {
             long currentTime = System.currentTimeMillis();
             float pulse = (float) Math.sin(currentTime / 200.0) * 0.5f + 0.5f;

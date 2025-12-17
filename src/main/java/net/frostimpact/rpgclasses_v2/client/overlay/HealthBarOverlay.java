@@ -31,7 +31,7 @@ public class HealthBarOverlay implements LayeredDraw.Layer {
 
         RenderSystem.enableBlend();
 
-        // Draw ornate frame
+        // Draw frame
         drawOrnateFrame(guiGraphics, x, y, BAR_WIDTH, BAR_HEIGHT, 0xFF8b7355, 0xFFd4af37);
 
         // Draw health bar with gradient based on health percentage
@@ -52,7 +52,7 @@ public class HealthBarOverlay implements LayeredDraw.Layer {
         drawGradientBar(guiGraphics, x + BORDER_WIDTH, y + BORDER_WIDTH, 
             fillWidth - BORDER_WIDTH * 2, BAR_HEIGHT - BORDER_WIDTH * 2, topColor, bottomColor);
 
-        // Low health pulsing effect
+        // Low health effect
         if (healthPercent < 0.25f) {
             long currentTime = System.currentTimeMillis();
             float pulse = (float) Math.sin(currentTime / 200.0) * 0.5f + 0.5f;

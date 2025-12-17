@@ -1,18 +1,17 @@
-package net. frostimpact.rpgclasses_v2.rpg. stats.combat;
+package net.frostimpact.rpgclasses_v2.rpg.stats.combat;
 
-import net. minecraft.core. particles.DustParticleOptions;
+import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft. world.entity. player.Player;
-import net. minecraft.world. phys.Vec3;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
 
 /**
- * Renders slash particle animations with filled volume arcs
- * that start thin and gradually increase in height.
+ * Renders slash particle animations with frame-by-frame progression
  */
 public class SlashRenderer {
 
-    // Bright yellow/gold colors matching reference
+    // Bright yellow/gold colors
     private static final Vector3f BRIGHT_YELLOW = new Vector3f(1.0f, 0.95f, 0.5f);
     private static final Vector3f GOLD = new Vector3f(1.0f, 0.85f, 0.35f);
     private static final Vector3f LIGHT_GOLD = new Vector3f(1.0f, 0.90f, 0.45f);
@@ -21,19 +20,19 @@ public class SlashRenderer {
     private static final float PARTICLE_SIZE = 0.7f;
 
     // Arc configuration
-    private static final int MAX_HEIGHT_LAYERS = 7;     // Maximum vertical layers at the end
-    private static final int RADIUS_LAYERS = 5;         // Radial layers to fill volume
-    private static final int PARTICLES_PER_LAYER = 40;  // Particles per arc layer
-    private static final double BASE_RADIUS = 1.5;      // Inner radius
-    private static final double MAX_RADIUS = 4.0;       // Outer radius at peak
-    private static final double LAYER_SPACING = 0.12;   // Vertical spacing between layers
-    private static final double RADIUS_SPACING = 0.35;  // Radial spacing to fill in
+    private static final int MAX_HEIGHT_LAYERS = 7;
+    private static final int RADIUS_LAYERS = 5;
+    private static final int TOTAL_PARTICLES = 800; // Total particles in full animation, INCREASE FOR MORE MAX FRAMES ESSENTIALLY
+    private static final double BASE_RADIUS = 1.5;
+    private static final double MAX_RADIUS = 4.0;
+    private static final double LAYER_SPACING = 0.12;
+    private static final double RADIUS_SPACING = 0.35;
 
     public enum SlashType {
-        RAISED_RIGHT,    // Combo 1: Left to right sweep, angled upward
-        RAISED_LEFT,     // Combo 2: Right to left sweep, angled upward
-        FLAT,            // Combo 3: Left to right, completely flat horizontal
-        OVERHEAD         // Combo 4: Over the head downward
+        RAISED_RIGHT,
+        RAISED_LEFT,
+        FLAT,
+        OVERHEAD
     }
 
     /**
@@ -43,187 +42,169 @@ public class SlashRenderer {
         SlashType slashType;
         switch (comboHit) {
             case 1 -> slashType = SlashType.RAISED_RIGHT;
-            case 2 -> slashType = SlashType. RAISED_LEFT;
+            case 2 -> slashType = SlashType.RAISED_LEFT;
             case 3 -> slashType = SlashType.FLAT;
             case 4 -> slashType = SlashType.OVERHEAD;
             default -> slashType = SlashType.RAISED_RIGHT;
         }
 
-        spawnSlashArc(level, player, slashType);
+        SlashAnimation.startSlashAnimation(level, player, slashType);
     }
 
     /**
-     * Spawn filled slash arc that starts thin and grows in height.
-     * Arc spawns ON the player with combo-based orientations.
+     * Spawn a frame of the slash animation (called per tick by SlashAnimation)
+     * @param startParticle Starting particle index for this frame
+     * @param particleCount Number of particles to spawn this frame
+     * @param animProgress Overall animation progress (0.0 to 1.0)
      */
-    private static void spawnSlashArc(ServerLevel level, Player player, SlashType slashType) {
-        // Get player's horizontal look direction
-        Vec3 lookDir = player.getLookAngle();
-        Vec3 forward = new Vec3(lookDir.x, 0, lookDir.z).normalize();
+    public static void spawnSlashFrame(ServerLevel level, Vec3 basePos, Vec3 lookDir,
+                                       SlashType slashType, int startParticle,
+                                       int particleCount, float animProgress) {
 
-        // Calculate right vector (perpendicular to forward on horizontal plane)
+        // Calculate directional vectors
+        Vec3 forward = new Vec3(lookDir.x, 0, lookDir.z).normalize();
         Vec3 right = forward.cross(new Vec3(0, 1, 0)).normalize();
         Vec3 up = new Vec3(0, 1, 0);
 
-        // Arc center position based on slash type
-        Vec3 arcCenter = getArcCenter(player, up, slashType);
+        // Arc center position
+        Vec3 arcCenter = getArcCenter(basePos, up, slashType);
 
         // Check if height progression should be reversed
         boolean reverseHeight = shouldReverseHeight(slashType);
 
-        // Spawn particles along the arc
-        for (int i = 0; i < PARTICLES_PER_LAYER; i++) {
-            double progress = (double) i / PARTICLES_PER_LAYER;
+        // Spawn particles for this frame
+        for (int i = 0; i < particleCount; i++) {
+            int particleIndex = startParticle + i;
+            if (particleIndex >= TOTAL_PARTICLES) break;
 
-            // Height progress - can be reversed based on slash direction
-            double heightProgress = reverseHeight ? 1.0 - progress : progress;
+            // Calculate where this particle is in the overall arc
+            double arcProgress = (double) particleIndex / TOTAL_PARTICLES;
 
-            // Calculate how many height layers at this point (grows from 1 to MAX)
+            // Height progress
+            double heightProgress = reverseHeight ? 1.0 - arcProgress : arcProgress;
+
+            // Calculate layers for this particle
             int heightLayersAtPoint = Math.max(1, (int) Math.ceil(heightProgress * MAX_HEIGHT_LAYERS));
-
-            // Calculate the height spread at this point
             double maxHeightSpread = heightProgress * (MAX_HEIGHT_LAYERS - 1) * LAYER_SPACING;
 
-            // Spawn vertical layers (fewer at start, more at end)
-            for (int vLayer = 0; vLayer < heightLayersAtPoint; vLayer++) {
-                // Center the layers vertically
-                double verticalOffset = 0;
-                if (heightLayersAtPoint > 1) {
-                    verticalOffset = (vLayer - (heightLayersAtPoint - 1) / 2.0) *
-                            (maxHeightSpread / (heightLayersAtPoint - 1));
-                }
+            // Determine which layer this particle belongs to
+            int layerCycle = particleIndex % (MAX_HEIGHT_LAYERS * RADIUS_LAYERS);
+            int vLayer = layerCycle / RADIUS_LAYERS;
+            int rLayer = layerCycle % RADIUS_LAYERS;
 
-                // Spawn multiple radial layers to fill in the volume
-                for (int rLayer = 0; rLayer < RADIUS_LAYERS; rLayer++) {
-                    double radiusOffset = rLayer * RADIUS_SPACING;
+            // Only spawn if within current layer count
+            if (vLayer >= heightLayersAtPoint) continue;
 
-                    // Calculate dynamic radius with fill offset
-                    double radiusMultiplier = Math. sin(progress * Math.PI);
-                    double currentRadius = BASE_RADIUS + radiusOffset +
-                            (MAX_RADIUS - BASE_RADIUS - RADIUS_SPACING * RADIUS_LAYERS) * radiusMultiplier;
-
-                    // Calculate particle position along the arc
-                    Vec3 particlePos = calculateArcPosition(
-                            arcCenter, right, up, forward, currentRadius,
-                            progress, verticalOffset, slashType
-                    );
-
-                    // Color based on layer depth for 3D effect
-                    Vector3f color = selectColor(vLayer, rLayer, i, heightLayersAtPoint);
-
-                    DustParticleOptions dustOptions = new DustParticleOptions(color, PARTICLE_SIZE);
-
-                    // Spawn particle at computed position
-                    level.sendParticles(
-                            dustOptions,
-                            particlePos.x,
-                            particlePos. y,
-                            particlePos.z,
-                            1,
-                            0.0, 0.0, 0.0,
-                            0.0
-                    );
-                }
+            // Calculate vertical offset
+            double verticalOffset = 0;
+            if (heightLayersAtPoint > 1) {
+                verticalOffset = (vLayer - (heightLayersAtPoint - 1) / 2.0) *
+                        (maxHeightSpread / (heightLayersAtPoint - 1));
             }
+
+            // Calculate radius with offset
+            double radiusOffset = rLayer * RADIUS_SPACING;
+            double radiusMultiplier = Math.sin(arcProgress * Math.PI);
+            double currentRadius = BASE_RADIUS + radiusOffset +
+                    (MAX_RADIUS - BASE_RADIUS - RADIUS_SPACING * RADIUS_LAYERS) * radiusMultiplier;
+
+            // Calculate particle position
+            Vec3 particlePos = calculateArcPosition(
+                    arcCenter, right, up, forward, currentRadius,
+                    arcProgress, verticalOffset, slashType
+            );
+
+            // Select color
+            Vector3f color = selectColor(vLayer, rLayer, particleIndex, heightLayersAtPoint);
+
+            // Apply fade effect at end of animation
+            float alpha = animProgress < 0.8f ? 1.0f : (1.0f - (animProgress - 0.8f) / 0.2f);
+            float size = PARTICLE_SIZE * alpha;
+
+            DustParticleOptions dustOptions = new DustParticleOptions(color, size);
+
+            // Spawn particle
+            level.sendParticles(
+                    dustOptions,
+                    particlePos.x,
+                    particlePos.y,
+                    particlePos.z,
+                    1,
+                    0.0, 0.0, 0.0,
+                    0.0
+            );
         }
     }
 
-    /**
-     * Get the arc center position based on slash type
-     */
-    private static Vec3 getArcCenter(Player player, Vec3 up, SlashType slashType) {
+    private static Vec3 getArcCenter(Vec3 basePos, Vec3 up, SlashType slashType) {
         return switch (slashType) {
             case RAISED_RIGHT, RAISED_LEFT, FLAT ->
-                    player.position().add(0, player.getBbHeight() * 0.6, 0);
+                    basePos.add(0, 1.4, 0); // Approximate player height * 0.6
             case OVERHEAD ->
-                    player.position().add(0, player.getBbHeight() * 1.2, 0); // Above head
+                    basePos.add(0, 2.4, 0); // Approximate player height * 1.2
         };
     }
 
-    /**
-     * Determine if height progression should be reversed based on slash type.
-     * Height starts thin at the BEGINNING of the slash motion.
-     */
     private static boolean shouldReverseHeight(SlashType slashType) {
         return switch (slashType) {
-            case RAISED_RIGHT -> false; // Starts left (thin) -> ends right (thick)
-            case RAISED_LEFT -> true;   // Starts right (thin) -> ends left (thick)
-            case FLAT -> false;         // Starts left (thin) -> ends right (thick)
-            case OVERHEAD -> false;     // Starts top (thin) -> ends bottom (thick)
+            case RAISED_RIGHT -> false;
+            case RAISED_LEFT -> true;
+            case FLAT -> false;
+            case OVERHEAD -> false;
         };
     }
 
-    /**
-     * Calculate position along arc based on slash type.
-     */
     private static Vec3 calculateArcPosition(Vec3 basePos, Vec3 right, Vec3 up, Vec3 forward,
                                              double radius, double progress,
                                              double verticalLayerOffset, SlashType slashType) {
-        // Arc angle sweep (crescent shape - about 180 degrees)
         double angle = progress * Math.PI;
-
-        // Base arc coordinates
-        double arcSweep = Math.cos(angle) * radius;    // Sweep direction
-        double arcForward = Math.sin(angle) * radius;  // Forward curve at peak
+        double arcSweep = Math.cos(angle) * radius;
+        double arcForward = Math.sin(angle) * radius;
 
         return switch (slashType) {
             case RAISED_RIGHT -> {
-                // Left to right sweep, rising upward
-                // Starts on LEFT (negative X), ends on RIGHT (positive X)
                 double heightRise = progress * radius * 0.4;
                 yield basePos
-                        .add(right.scale(-arcSweep)) // Flip so it goes left to right
+                        .add(right.scale(-arcSweep))
                         .add(forward.scale(arcForward))
                         .add(up.scale(heightRise + verticalLayerOffset));
             }
 
             case RAISED_LEFT -> {
-                // Right to left sweep, rising upward
-                // Starts on RIGHT (positive X), ends on LEFT (negative X)
-                double heightRise = (1.0 - progress) * radius * 0.4; // Reverse rise
+                double heightRise = (1.0 - progress) * radius * 0.4;
                 yield basePos
-                        .add(right.scale(-arcSweep)) // Normal direction (right to left)
-                        . add(forward.scale(arcForward))
+                        .add(right.scale(-arcSweep))
+                        .add(forward.scale(arcForward))
                         .add(up.scale(heightRise + verticalLayerOffset));
             }
 
             case FLAT -> {
-                // Left to right, completely flat horizontal sweep
                 yield basePos
-                        .add(right.scale(-arcSweep)) // Flip so it goes left to right
+                        .add(right.scale(-arcSweep))
                         .add(forward.scale(arcForward))
-                        .add(up. scale(verticalLayerOffset)); // Only layer offset, no rise
+                        .add(up.scale(verticalLayerOffset));
             }
 
             case OVERHEAD -> {
-                // Over the head, sweeping downward in front
                 double verticalDrop = Math.cos(angle) * radius * 0.8;
                 double forwardReach = Math.sin(angle) * radius;
                 yield basePos
-                        .add(right.scale(arcSweep * 0.2)) // Minimal side movement
-                        .add(forward. scale(forwardReach))
+                        .add(right.scale(arcSweep * 0.2))
+                        .add(forward.scale(forwardReach))
                         .add(up.scale(-verticalDrop + verticalLayerOffset));
             }
         };
     }
 
-    /**
-     * Select color based on layer position for depth effect
-     */
     private static Vector3f selectColor(int vLayer, int rLayer, int particleIndex, int totalHeightLayers) {
         int combinedIndex = vLayer + rLayer + particleIndex;
-
-        // Edges brighter for glow effect
         boolean isEdgeLayer = (vLayer == 0 || vLayer == totalHeightLayers - 1);
 
         if (rLayer >= RADIUS_LAYERS - 1 || isEdgeLayer) {
-            // Outer edge or top/bottom - brightest
             return BRIGHT_YELLOW;
         } else if (rLayer == 0) {
-            // Inner edge - gold
             return GOLD;
         } else {
-            // Middle layers - alternating
             return (combinedIndex % 2 == 0) ? LIGHT_GOLD : GOLD;
         }
     }
