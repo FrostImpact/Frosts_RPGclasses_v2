@@ -66,24 +66,15 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             double arcForward = Math.sin(angle) * radius * 0.7; // More wrap-around
             double heightRise = progress * radius * 0.35;
 
-            // Heavy weapon has more layers and width
-            for (int layer = 0; layer < 8; layer++) {
-                double layerOffset = layer * 0.25;
-                
-                // Add horizontal thickness for wider slash
-                for (int thickness = -3; thickness <= 3; thickness++) {
-                    double thicknessOffset = thickness * 0.12;
-                    
-                    Vec3 pos = center
-                            .add(right.scale(-arcSweep * 1.0 + thicknessOffset)) // Wide arc
-                            .add(forward.scale(arcForward - layerOffset))
-                            .add(up.scale(heightRise));
+            // Single particle per position - creates clean, visible line
+            Vec3 pos = center
+                    .add(right.scale(-arcSweep * 1.0)) // Wide arc
+                    .add(forward.scale(arcForward))
+                    .add(up.scale(heightRise));
 
-                    // Gradient: white at swing edge
-                    Vector3f color = getGradientColor(progress);
-                    spawnParticle(level, pos, color, alpha * 1.1f); // Slightly more visible
-                }
-            }
+            // Gradient: white at swing edge
+            Vector3f color = getGradientColor(progress);
+            spawnParticle(level, pos, color, alpha);
         }
     }
 
@@ -108,24 +99,15 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             double arcForward = Math.sin(angle) * radius * 0.7; // More wrap-around
             double heightRise = (1.0 - progress) * radius * 0.35;
 
-            // Heavy weapon has more layers and width
-            for (int layer = 0; layer < 8; layer++) {
-                double layerOffset = layer * 0.25;
-                
-                // Add horizontal thickness for wider slash
-                for (int thickness = -3; thickness <= 3; thickness++) {
-                    double thicknessOffset = thickness * 0.12;
-                    
-                    Vec3 pos = center
-                            .add(right.scale(arcSweep * 1.0 + thicknessOffset)) // Wide arc
-                            .add(forward.scale(arcForward - layerOffset))
-                            .add(up.scale(heightRise));
+            // Single particle per position - creates clean, visible line
+            Vec3 pos = center
+                    .add(right.scale(arcSweep * 1.0)) // Wide arc
+                    .add(forward.scale(arcForward))
+                    .add(up.scale(heightRise));
 
-                    // Gradient: white at swing edge
-                    Vector3f color = getGradientColor(progress);
-                    spawnParticle(level, pos, color, alpha * 1.1f);
-                }
-            }
+            // Gradient: white at swing edge
+            Vector3f color = getGradientColor(progress);
+            spawnParticle(level, pos, color, alpha);
         }
     }
 
@@ -149,24 +131,15 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             double verticalDrop = Math.cos(angle) * radius * 0.9;
             double forwardReach = Math.sin(angle) * radius * 0.9;
 
-            // Create powerful downward slash with more layers and thickness
-            for (int layer = 0; layer < 8; layer++) {
-                double layerDepth = layer * 0.2;
-                
-                // Add horizontal thickness
-                for (int sideLayer = -3; sideLayer <= 3; sideLayer++) {
-                    double sideSpread = sideLayer * 0.15;
-                    
-                    Vec3 pos = center
-                            .add(right.scale(sideSpread))
-                            .add(forward.scale(forwardReach - layerDepth))
-                            .add(up.scale(-verticalDrop));
+            // Single particle per position - creates clean downward slash
+            Vec3 pos = center
+                    .add(right.scale(0))
+                    .add(forward.scale(forwardReach))
+                    .add(up.scale(-verticalDrop));
 
-                    // Gradient: white at the leading edge (downward swing direction)
-                    Vector3f color = getGradientColor(progress);
-                    spawnParticle(level, pos, color, alpha * 1.1f);
-                }
-            }
+            // Gradient: white at the leading edge (downward swing direction)
+            Vector3f color = getGradientColor(progress);
+            spawnParticle(level, pos, color, alpha);
         }
     }
 
@@ -181,7 +154,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
         float alpha = calculateAlpha(animProgress);
 
         // Configuration for the spin slash
-        final int DEPTH_LAYERS = 8; // Number of radial depth layers
+        final int DEPTH_LAYERS = 1; // Single layer for clean line
         
         for (int i = 0; i < particleCount; i++) {
             int particleIndex = startParticle + i;
@@ -195,43 +168,20 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             // Fixed radius for consistent ring
             double slashRadius = 3.0;
             
-            // Calculate base position on the circle
+            // Calculate position on the circle
             double xPos = Math.cos(rotationAngle) * slashRadius;
             double zPos = Math.sin(rotationAngle) * slashRadius;
             
-            // Create wide slash effect with depth layers and thickness
-            for (int depthLayer = 0; depthLayer < DEPTH_LAYERS; depthLayer++) {
-                // Radial depth - layers going inward from outer edge
-                double radiusOffset = depthLayer * 0.25;
-                double layerRadius = slashRadius - radiusOffset;
-                double layerX = Math.cos(rotationAngle) * layerRadius;
-                double layerZ = Math.sin(rotationAngle) * layerRadius;
-                
-                // Add vertical thickness for more impactful appearance
-                for (int vertLayer = -2; vertLayer <= 2; vertLayer++) {
-                    double verticalOffset = vertLayer * 0.15;
-                    
-                    // Add horizontal thickness perpendicular to the slash direction
-                    for (int perpLayer = -2; perpLayer <= 2; perpLayer++) {
-                        double perpOffset = perpLayer * 0.1;
-                        
-                        // Calculate perpendicular direction to the radius
-                        double perpX = -Math.sin(rotationAngle) * perpOffset;
-                        double perpZ = Math.cos(rotationAngle) * perpOffset;
-                        
-                        Vec3 pos = center
-                                .add(right.scale(layerX + perpX))
-                                .add(forward.scale(layerZ + perpZ))
-                                .add(up.scale(verticalOffset));
+            // Single particle per position - creates clean circular slash
+            Vec3 pos = center
+                    .add(right.scale(xPos))
+                    .add(forward.scale(zPos))
+                    .add(up.scale(0));
 
-                        // Gradient: white at outer edge (swing edge), transitioning to gold at inner edge
-                        double gradientProgress = (double) depthLayer / (DEPTH_LAYERS - 1);
-                        Vector3f color = getGradientColor(gradientProgress);
-                        
-                        spawnParticle(level, pos, color, alpha);
-                    }
-                }
-            }
+            // Gradient: white at outer edge (swing edge), transitioning to gold
+            Vector3f color = getGradientColor(progress);
+            
+            spawnParticle(level, pos, color, alpha);
         }
     }
 }
