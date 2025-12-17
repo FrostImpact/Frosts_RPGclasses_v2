@@ -4,9 +4,6 @@ import net.frostimpact.rpgclasses_v2.networking.ModMessages;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMana;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
-import net.frostimpact.rpgclasses_v2.combat.CombatEventHandler;
-import net.frostimpact.rpgclasses_v2.combat.slash.SlashAnimation;
-import net.frostimpact.rpgclasses_v2.item.weapon.WeaponStatHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -32,8 +29,6 @@ public class ServerEvents {
     public void onServerTick(ServerTickEvent.Pre event) {
         tickCounter++;
 
-        SlashAnimation.tickAnimations();
-
         event.getServer().getPlayerList().getPlayers().forEach(player -> {
             // Tick cooldowns
             var rpgData = player.getData(ModAttachments.PLAYER_RPG);
@@ -44,8 +39,6 @@ public class ServerEvents {
             stats.tick();
 
             // Update weapon stats based on equipped item
-            WeaponStatHandler.tick(player);
-
             // Mana regeneration
             if (tickCounter % MANA_REGEN_INTERVAL == 0) {
                 double manaRegenBonus = stats.getStatValue(StatType.MANA_REGEN);
@@ -74,7 +67,6 @@ public class ServerEvents {
             }
 
             // Tick combat system (attack cooldowns and combo tracker)
-            CombatEventHandler.tick(player);
         });
     }
 
@@ -83,8 +75,7 @@ public class ServerEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             UUID playerUUID = player.getUUID();
             lastMoveSpeedStats.remove(playerUUID);
-            CombatEventHandler.removePlayer(playerUUID);
-            WeaponStatHandler.removePlayer(playerUUID);
+
         }
     }
 

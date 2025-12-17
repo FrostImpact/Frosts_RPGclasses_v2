@@ -6,8 +6,6 @@ import net.frostimpact.rpgclasses_v2.event.ServerEvents;
 import net.frostimpact.rpgclasses_v2.networking.ModMessages;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatsDropdownOverlay;
-import net.frostimpact.rpgclasses_v2.combat.CombatEventHandler;
-import net.frostimpact.rpgclasses_v2.item.weapon.ModWeapons;
 import net.minecraft.client.gui.LayeredDraw;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
@@ -28,7 +26,6 @@ public class RpgClassesMod {
         ModMessages.register(modEventBus);
         
         // Register weapons
-        ModWeapons.register(modEventBus);
 
         // Register client-side overlays only on client
         if (FMLEnvironment.dist == Dist.CLIENT) {
@@ -39,7 +36,6 @@ public class RpgClassesMod {
         NeoForge.EVENT_BUS.register(new ServerEvents());
         
         // Register combat event handler
-        NeoForge.EVENT_BUS.register(new CombatEventHandler());
     }
 
     private void registerOverlays(net.neoforged.neoforge.client.event.RegisterGuiLayersEvent event) {
