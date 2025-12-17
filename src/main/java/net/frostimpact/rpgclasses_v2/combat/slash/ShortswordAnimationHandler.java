@@ -59,7 +59,7 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             if (particleIndex >= TOTAL_PARTICLES) break;
 
             // Add gap between particles
-            double progress = (double) particleIndex / TOTAL_PARTICLES * PARTICLE_GAP;
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
             if (progress > 1.0) break;
             
             double angle = progress * Math.PI; // 180 degree arc
@@ -99,7 +99,7 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             if (particleIndex >= TOTAL_PARTICLES) break;
 
             // Add gap between particles
-            double progress = (double) particleIndex / TOTAL_PARTICLES * PARTICLE_GAP;
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
             if (progress > 1.0) break;
             
             double angle = progress * Math.PI; // 180 degree arc
@@ -145,7 +145,7 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
 
             // Linear progress from 0 to 1 for each slash - use double to avoid precision loss
             // Add gap between particles
-            double progress = (double) particleIndex / (double) halfTotalParticles * PARTICLE_GAP;
+            double progress = calculateProgressWithGap(particleIndex, halfTotalParticles);
             if (progress > 1.0) break;
             
             // X slash dimensions - wider and more visible
@@ -196,7 +196,7 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
             if (particleIndex >= TOTAL_PARTICLES) break;
 
             // Add gap between particles
-            double progress = (double) particleIndex / TOTAL_PARTICLES * PARTICLE_GAP;
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
             if (progress > 1.0) break;
             
             // Lunge motion: starts at player, extends forward rapidly

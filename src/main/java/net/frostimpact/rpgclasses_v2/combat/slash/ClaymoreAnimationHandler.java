@@ -59,7 +59,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             if (particleIndex >= TOTAL_PARTICLES) break;
 
             // Add gap between particles
-            double progress = (double) particleIndex / TOTAL_PARTICLES * PARTICLE_GAP;
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
             if (progress > 1.0) break;
             
             double angle = progress * Math.PI;
@@ -98,7 +98,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             if (particleIndex >= TOTAL_PARTICLES) break;
 
             // Add gap between particles
-            double progress = (double) particleIndex / TOTAL_PARTICLES * PARTICLE_GAP;
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
             if (progress > 1.0) break;
             
             double angle = progress * Math.PI;
@@ -137,7 +137,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             if (particleIndex >= TOTAL_PARTICLES) break;
 
             // Add gap between particles
-            double progress = (double) particleIndex / TOTAL_PARTICLES * PARTICLE_GAP;
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
             if (progress > 1.0) break;
             
             double angle = progress * Math.PI;
@@ -175,7 +175,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             if (particleIndex >= TOTAL_PARTICLES) break;
 
             // Add gap between particles
-            double progress = (double) particleIndex / TOTAL_PARTICLES * PARTICLE_GAP;
+            double progress = calculateProgressWithGap(particleIndex, TOTAL_PARTICLES);
             if (progress > 1.0) break;
 
             // Full 360 degree rotation

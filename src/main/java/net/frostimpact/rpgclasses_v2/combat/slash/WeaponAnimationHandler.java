@@ -19,7 +19,11 @@ public abstract class WeaponAnimationHandler {
     // Base particle size
     protected static final float PARTICLE_SIZE = 0.7f;
     
-    // Gap between particles (multiplier for particle index to create spacing)
+    /**
+     * Gap between particles (multiplier for particle index to create spacing)
+     * Value of 1.02 creates a subtle 2% spacing between particles, making the slash more distinct
+     * without creating noticeable gaps. Values closer to 1.0 = tighter, closer to 1.1 = larger gaps.
+     */
     protected static final double PARTICLE_GAP = 1.02;
 
     /**
@@ -74,13 +78,25 @@ public abstract class WeaponAnimationHandler {
     
     /**
      * Calculate tapered width based on progress along the slash
-     * @param progress Progress along slash (0.0 to 1.0)
+     * @param progress Progress along slash (0.0 to 1.0, values outside this range are clamped)
      * @param startWidth Starting width in pixels
      * @param endWidth Ending width in pixels
      * @return Width at this progress point
      */
     protected float calculateTaperedWidth(double progress, float startWidth, float endWidth) {
-        return startWidth + (float)progress * (endWidth - startWidth);
+        // Clamp progress to valid range
+        double clampedProgress = Math.max(0.0, Math.min(1.0, progress));
+        return startWidth + (float)clampedProgress * (endWidth - startWidth);
+    }
+    
+    /**
+     * Calculate progress with particle gap applied
+     * @param particleIndex Current particle index
+     * @param totalParticles Total number of particles
+     * @return Progress value (may exceed 1.0 when gap causes particle to be skipped)
+     */
+    protected double calculateProgressWithGap(int particleIndex, int totalParticles) {
+        return (double) particleIndex / totalParticles * PARTICLE_GAP;
     }
 
     /**
