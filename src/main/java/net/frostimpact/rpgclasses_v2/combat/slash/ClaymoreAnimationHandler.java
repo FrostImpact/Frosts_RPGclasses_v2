@@ -180,6 +180,9 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
         float easedProgress = getEasedProgress(animProgress);
         float alpha = calculateAlpha(animProgress);
 
+        // Configuration for the spin slash
+        final int DEPTH_LAYERS = 8; // Number of radial depth layers
+        
         for (int i = 0; i < particleCount; i++) {
             int particleIndex = startParticle + i;
             if (particleIndex >= TOTAL_PARTICLES) break;
@@ -197,7 +200,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
             double zPos = Math.sin(rotationAngle) * slashRadius;
             
             // Create wide slash effect with depth layers and thickness
-            for (int depthLayer = 0; depthLayer < 8; depthLayer++) {
+            for (int depthLayer = 0; depthLayer < DEPTH_LAYERS; depthLayer++) {
                 // Radial depth - layers going inward from outer edge
                 double radiusOffset = depthLayer * 0.25;
                 double layerRadius = slashRadius - radiusOffset;
@@ -222,7 +225,7 @@ public class ClaymoreAnimationHandler extends WeaponAnimationHandler {
                                 .add(up.scale(verticalOffset));
 
                         // Gradient: white at outer edge (swing edge), transitioning to gold at inner edge
-                        double gradientProgress = (double) depthLayer / 8.0;
+                        double gradientProgress = (double) depthLayer / (DEPTH_LAYERS - 1);
                         Vector3f color = getGradientColor(gradientProgress);
                         
                         spawnParticle(level, pos, color, alpha);

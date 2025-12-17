@@ -82,6 +82,11 @@ public abstract class WeaponAnimationHandler {
             return WHITE;
         }
         
+        // Handle edge cases
+        if (totalLayers <= 1) {
+            return WHITE;
+        }
+        
         // Create gradient from white (front) to dark gold (back)
         float progress = (float) layer / (totalLayers - 1);
         

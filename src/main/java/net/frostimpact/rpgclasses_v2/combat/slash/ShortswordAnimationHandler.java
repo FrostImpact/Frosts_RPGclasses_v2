@@ -143,13 +143,14 @@ public class ShortswordAnimationHandler extends WeaponAnimationHandler {
 
         // Split particles between two slashes
         int particlesPerSlash = particleCount / 2;
+        int halfTotalParticles = TOTAL_PARTICLES / 2;
 
         for (int i = 0; i < particlesPerSlash; i++) {
             int particleIndex = startParticle + i;
-            if (particleIndex >= TOTAL_PARTICLES / 2) break;
+            if (particleIndex >= halfTotalParticles) break;
 
-            // Linear progress from 0 to 1 for each slash
-            double progress = (double) particleIndex / (TOTAL_PARTICLES / 2);
+            // Linear progress from 0 to 1 for each slash - use double to avoid precision loss
+            double progress = (double) particleIndex / (double) halfTotalParticles;
             
             // X slash dimensions - wider and more visible
             double slashWidth = 2.0; // Width of the X
