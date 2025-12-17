@@ -3,6 +3,8 @@ package net.frostimpact.rpgclasses_v2.rpg.stats.combat;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.PlayerStats;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
+import net.frostimpact.rpgclasses_v2.rpg.stats.combat.slash.SlashAnimation;
+import net.frostimpact.rpgclasses_v2.rpg.stats.combat.slash.SlashRenderer;
 import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.MeleeWeaponItem;
 import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.WeaponType;
 import net.minecraft.server.level.ServerLevel;

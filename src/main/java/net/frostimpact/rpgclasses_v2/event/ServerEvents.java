@@ -2,11 +2,10 @@ package net.frostimpact.rpgclasses_v2.event;
 
 import net.frostimpact.rpgclasses_v2.networking.ModMessages;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMana;
-import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncStats;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
 import net.frostimpact.rpgclasses_v2.rpg.stats.combat.CombatEventHandler;
-import net.frostimpact.rpgclasses_v2.rpg.stats.combat.SlashAnimation;
+import net.frostimpact.rpgclasses_v2.rpg.stats.combat.slash.SlashAnimation;
 import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.WeaponStatHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;

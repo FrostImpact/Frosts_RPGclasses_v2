@@ -1,6 +1,9 @@
 package net.frostimpact.rpgclasses_v2.rpg.stats.weapon;
 
 import net.frostimpact.rpgclasses_v2.RpgClassesMod;
+import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.sword.ClaymoreItem;
+import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.sword.LongswordItem;
+import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.sword.ShortswordItem;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Tiers;

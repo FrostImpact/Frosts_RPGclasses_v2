@@ -1,4 +1,4 @@
-package net.frostimpact.rpgclasses_v2.rpg.stats.combat;
+package net.frostimpact.rpgclasses_v2.rpg.stats.combat.slash;
 
 import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.WeaponType;
 import net.minecraft.core.particles.DustParticleOptions;

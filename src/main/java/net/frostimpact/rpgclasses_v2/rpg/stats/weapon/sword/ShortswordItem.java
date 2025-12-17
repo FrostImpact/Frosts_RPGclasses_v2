@@ -1,5 +1,8 @@
-package net.frostimpact.rpgclasses_v2.rpg.stats.weapon;
+package net.frostimpact.rpgclasses_v2.rpg.stats.weapon.sword;
 
+import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.MeleeWeaponItem;
+import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.WeaponStats;
+import net.frostimpact.rpgclasses_v2.rpg.stats.weapon.WeaponType;
 import net.minecraft.world.item.Tier;
 
 /**

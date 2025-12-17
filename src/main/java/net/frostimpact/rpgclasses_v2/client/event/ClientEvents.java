@@ -2,14 +2,12 @@ package net.frostimpact.rpgclasses_v2.client.event;
 
 import net.frostimpact.rpgclasses_v2.RpgClassesMod;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatsDropdownOverlay;
-import net.frostimpact.rpgclasses_v2.rpg.stats.combat.SlashRenderer;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.client.event.InputEvent;
-import net.neoforged.neoforge.event.tick.ServerTickEvent;
 import org.lwjgl.glfw.GLFW;
 
 

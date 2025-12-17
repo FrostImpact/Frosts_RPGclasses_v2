@@ -1,10 +1,8 @@
-package net.frostimpact.rpgclasses_v2.rpg.stats.combat;
+package net.frostimpact.rpgclasses_v2.rpg.stats.combat.slash;
 
-import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import org.joml.Vector3f;
 
 import java.util.*;
 
