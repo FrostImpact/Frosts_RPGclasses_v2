@@ -14,9 +14,9 @@ import java.util.*;
 public class SlashAnimation {
     private static final Map<UUID, List<ActiveSlash>> activeSlashes = new HashMap<>();
 
-    // Animation configuration
-    private static final int ANIMATION_DURATION = 6; // Ticks for full animation (0.75 seconds)
-    private static final int PARTICLES_PER_FRAME = 150; // Particles spawned per tick
+    // Animation configuration - Base values
+    private static final int BASE_ANIMATION_DURATION = 8;
+    private static final int BASE_PARTICLES_PER_FRAME = 100;
 
     /**
      * Represents an active slash animation
@@ -27,6 +27,8 @@ public class SlashAnimation {
         final SlashRenderer.SlashType slashType;
         final Vec3 startPos;
         final Vec3 lookDir;
+        final int duration;
+        final int particlesPerFrame;
         int currentTick = 0;
         int particlesSpawned = 0;
 
@@ -36,17 +38,34 @@ public class SlashAnimation {
             this.slashType = slashType;
             this.startPos = player.position();
             this.lookDir = player.getLookAngle();
+
+            // Adjust animation speed based on slash type
+            float speedMultiplier = getSpeedMultiplier(slashType);
+            this.duration = (int) (BASE_ANIMATION_DURATION * speedMultiplier);
+            this.particlesPerFrame = (int) (BASE_PARTICLES_PER_FRAME / speedMultiplier);
+        }
+
+        private float getSpeedMultiplier(SlashRenderer.SlashType slashType) {
+            // Determine weapon type from slash type
+            String typeName = slashType.name();
+            if (typeName.startsWith("SHORT_")) {
+                return 0.6f; // Shortsword: 60% duration = faster
+            } else if (typeName.startsWith("CLAY_")) {
+                return 1.5f; // Claymore: 150% duration = slower
+            } else {
+                return 1.0f; // Longsword: normal speed
+            }
         }
 
         boolean isComplete() {
-            return currentTick >= ANIMATION_DURATION;
+            return currentTick >= duration;
         }
 
         void tick() {
             currentTick++;
 
             // Calculate animation progress (0.0 to 1.0)
-            float progress = (float) currentTick / ANIMATION_DURATION;
+            float progress = (float) currentTick / duration;
 
             // Spawn particles for this frame
             SlashRenderer.spawnSlashFrame(
@@ -55,11 +74,11 @@ public class SlashAnimation {
                     lookDir,
                     slashType,
                     particlesSpawned,
-                    PARTICLES_PER_FRAME,
+                    particlesPerFrame,
                     progress
             );
 
-            particlesSpawned += PARTICLES_PER_FRAME;
+            particlesSpawned += particlesPerFrame;
         }
     }
 

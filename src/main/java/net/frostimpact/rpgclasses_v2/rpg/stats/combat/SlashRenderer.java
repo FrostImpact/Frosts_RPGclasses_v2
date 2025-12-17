@@ -23,7 +23,7 @@ public class SlashRenderer {
     // Arc configuration
     private static final int MAX_HEIGHT_LAYERS = 7;
     private static final int RADIUS_LAYERS = 5;
-    private static final int TOTAL_PARTICLES = 225;
+    private static final int TOTAL_PARTICLES = 800;
     private static final double BASE_RADIUS = 1.5;
     private static final double MAX_RADIUS = 4.0;
     private static final double LAYER_SPACING = 0.12;
@@ -156,53 +156,76 @@ public class SlashRenderer {
      */
     private static void spawnDualSlashFrame(ServerLevel level, Vec3 arcCenter, Vec3 right, Vec3 up, Vec3 forward,
                                             int startParticle, int particleCount, float animProgress) {
-        for (int i = 0; i < particleCount; i++) {
+        // Calculate how many particles to spawn for EACH slash
+        int particlesPerSlash = Math.max(1, particleCount / 2);
+
+        for (int i = 0; i < particlesPerSlash; i++) {
             int particleIndex = startParticle + i;
-            if (particleIndex >= TOTAL_PARTICLES) break;
+            if (particleIndex >= TOTAL_PARTICLES) break; // Each slash gets half the total
 
-            double arcProgress = (double) particleIndex / TOTAL_PARTICLES;
+            double arcProgress = (double) particleIndex / (TOTAL_PARTICLES);
 
-            // First slash: Top-left to bottom-right
-            Vec3 pos1 = calculateDualSlashPosition(arcCenter, right, up, forward, arcProgress, true);
+            // Calculate arc sweep with proper curve
+            double angle = arcProgress * Math.PI;
+            double radius = 2.2;
 
-            // Second slash: Top-right to bottom-left
-            Vec3 pos2 = calculateDualSlashPosition(arcCenter, right, up, forward, arcProgress, false);
+            // Arc positioning
+            double arcSweep = Math.cos(angle) * radius;
+            double arcForward = Math.sin(angle) * radius * 0.3;
+            double verticalOffset = Math.sin(angle) * radius * 0.8;
 
-            Vector3f color = (particleIndex % 2 == 0) ? BRIGHT_YELLOW : GOLD;
-            float alpha = animProgress < 0.8f ? 1.0f : (1.0f - (animProgress - 0.8f) / 0.2f);
-            float size = PARTICLE_SIZE * 0.9f * alpha; // Slightly smaller for dual slash
+            // First slash: Top-left to bottom-right (diagonal down-right)
+            Vec3 pos1 = arcCenter
+                    .add(right.scale(-arcSweep * 0.8))           // Left to right
+                    .add(forward.scale(arcForward))              // Slight forward
+                    .add(up.scale(0.5 - verticalOffset));       // Top to bottom
 
-            DustParticleOptions dustOptions = new DustParticleOptions(color, size);
+            // Second slash: Top-right to bottom-left (diagonal down-left)
+            Vec3 pos2 = arcCenter
+                    .add(right.scale(arcSweep * 0.8))            // Right to left
+                    .add(forward.scale(arcForward))              // Slight forward
+                    .add(up.scale(0.5 - verticalOffset));       // Top to bottom
 
-            // Spawn both slashes
-            level.sendParticles(dustOptions, pos1.x, pos1.y, pos1.z, 1, 0.0, 0.0, 0.0, 0.0);
-            level.sendParticles(dustOptions, pos2.x, pos2.y, pos2.z, 1, 0.0, 0.0, 0.0, 0.0);
-        }
-    }
+            // Add height layers for volume
+            int heightLayers = Math.max(1, (int)(arcProgress * 5));
+            for (int h = 0; h < heightLayers; h++) {
+                double heightOffset = (h - heightLayers / 2.0) * 0.15;
 
-    /**
-     * Calculate position for dual slash X pattern
-     */
-    private static Vec3 calculateDualSlashPosition(Vec3 center, Vec3 right, Vec3 up, Vec3 forward,
-                                                   double progress, boolean leftToRight) {
-        double angle = progress * Math.PI;
-        double radius = 2.0;
+                // Add radius layers for thickness
+                for (int r = 0; r < 3; r++) {
+                    double radiusOffset = r * 0.25;
 
-        double horizontalOffset = Math.cos(angle) * radius;
-        double verticalOffset = Math.sin(angle) * radius * 0.6;
+                    // Calculate adjusted positions with layers
+                    Vec3 layeredPos1 = pos1
+                            .add(up.scale(heightOffset))
+                            .add(forward.scale(-radiusOffset));
 
-        if (leftToRight) {
-            // Top-left to bottom-right
-            return center
-                    .add(right.scale(-horizontalOffset))
-                    .add(up.scale(radius * 0.3 - verticalOffset))
-                    .add(forward.scale(Math.sin(angle) * 0.5));
-        } else {
-            // Top-right to bottom-left (mirrored)
-            return center
-                    .add(right.scale(horizontalOffset))
-                    .add(up.scale(radius * 0.3 - verticalOffset))
-                    .add(forward.scale(Math.sin(angle) * 0.5));
+                    Vec3 layeredPos2 = pos2
+                            .add(up.scale(heightOffset))
+                            .add(forward.scale(-radiusOffset));
+
+                    // Color selection
+                    Vector3f color;
+                    if (r == 0) {
+                        color = BRIGHT_YELLOW; // Brightest edge
+                    } else if (r == 1) {
+                        color = LIGHT_GOLD;
+                    } else {
+                        color = GOLD;
+                    }
+
+                    float alpha = animProgress < 0.8f ? 1.0f : (1.0f - (animProgress - 0.8f) / 0.2f);
+                    float size = PARTICLE_SIZE * 0.85f * alpha;
+
+                    DustParticleOptions dustOptions = new DustParticleOptions(color, size);
+
+                    // Spawn both slashes
+                    level.sendParticles(dustOptions, layeredPos1.x, layeredPos1.y, layeredPos1.z,
+                            1, 0.0, 0.0, 0.0, 0.0);
+                    level.sendParticles(dustOptions, layeredPos2.x, layeredPos2.y, layeredPos2.z,
+                            1, 0.0, 0.0, 0.0, 0.0);
+                }
+            }
         }
     }
 
@@ -219,37 +242,51 @@ public class SlashRenderer {
 
             // Full 360 degree rotation
             double angle = progress * Math.PI * 2;
-            double radius = 3.5; // Larger radius for AOE
 
-            // Height varies slightly (waist to shoulder level)
-            double heightVariation = Math.sin(progress * Math.PI * 4) * 0.3;
+            // Vary radius slightly for more dynamic effect
+            double baseRadius = 3.5;
+            double radiusVariation = Math.sin(progress * Math.PI * 8) * 0.3;
+            double radius = baseRadius + radiusVariation;
+
+            // Height varies (waist to chest level) with wave pattern
+            double heightVariation = Math.sin(progress * Math.PI * 4) * 0.4;
 
             // Calculate position in circle
             double xOffset = Math.cos(angle) * radius;
             double zOffset = Math.sin(angle) * radius;
 
-            Vec3 particlePos = arcCenter
-                    .add(right.scale(xOffset))
-                    .add(forward.scale(zOffset))
-                    .add(up.scale(heightVariation));
-
-            // Add multiple radius layers for thickness
-            for (int layer = 0; layer < 3; layer++) {
-                double layerRadius = radius - (layer * 0.4);
+            // Add multiple radius layers for thickness and impact
+            for (int layer = 0; layer < 4; layer++) {
+                double layerRadius = radius - (layer * 0.35);
                 double layerX = Math.cos(angle) * layerRadius;
                 double layerZ = Math.sin(angle) * layerRadius;
 
-                Vec3 layerPos = arcCenter
-                        .add(right.scale(layerX))
-                        .add(forward.scale(layerZ))
-                        .add(up.scale(heightVariation));
+                // Add height layers for vertical thickness
+                for (int hLayer = 0; hLayer < 3; hLayer++) {
+                    double hOffset = (hLayer - 1) * 0.25;
 
-                Vector3f color = (layer == 0) ? BRIGHT_YELLOW : (layer == 1 ? LIGHT_GOLD : GOLD);
-                float alpha = animProgress < 0.8f ? 1.0f : (1.0f - (animProgress - 0.8f) / 0.2f);
-                float size = PARTICLE_SIZE * 1.2f * alpha; // Larger particles for impact
+                    Vec3 layerPos = arcCenter
+                            .add(right.scale(layerX))
+                            .add(forward.scale(layerZ))
+                            .add(up.scale(heightVariation + hOffset));
 
-                DustParticleOptions dustOptions = new DustParticleOptions(color, size);
-                level.sendParticles(dustOptions, layerPos.x, layerPos.y, layerPos.z, 1, 0.0, 0.0, 0.0, 0.0);
+                    // Outer layers are brightest
+                    Vector3f color;
+                    if (layer == 0) {
+                        color = BRIGHT_YELLOW;
+                    } else if (layer == 1) {
+                        color = LIGHT_GOLD;
+                    } else {
+                        color = GOLD;
+                    }
+
+                    float alpha = animProgress < 0.8f ? 1.0f : (1.0f - (animProgress - 0.8f) / 0.2f);
+                    float size = PARTICLE_SIZE * 1.3f * alpha; // Larger particles for AOE impact
+
+                    DustParticleOptions dustOptions = new DustParticleOptions(color, size);
+                    level.sendParticles(dustOptions, layerPos.x, layerPos.y, layerPos.z,
+                            1, 0.0, 0.0, 0.0, 0.0);
+                }
             }
         }
     }
@@ -290,12 +327,12 @@ public class SlashRenderer {
             case SHORT_ANGLED_RIGHT -> {
                 double heightRise = progress * radius * 0.35; // Slightly less rise
                 yield basePos
-                        .add(right.scale(-arcSweep * 0.8)) // Shorter arc
+                        .add(right.scale(arcSweep * 0.8)) // Shorter arc
                         .add(forward.scale(arcForward * 0.8))
                         .add(up.scale(heightRise + verticalLayerOffset));
             }
             case SHORT_ANGLED_LEFT -> {
-                double heightRise = (1.0 - progress) * radius * 0.35;
+                double heightRise = (1 - progress) * radius * 0.35;
                 yield basePos
                         .add(right.scale(-arcSweep * 0.8))
                         .add(forward.scale(arcForward * 0.8))
@@ -306,7 +343,7 @@ public class SlashRenderer {
             case LONG_RAISED_RIGHT -> {
                 double heightRise = progress * radius * 0.4;
                 yield basePos
-                        .add(right.scale(-arcSweep))
+                        .add(right.scale(arcSweep))
                         .add(forward.scale(arcForward))
                         .add(up.scale(heightRise + verticalLayerOffset));
             }
@@ -343,7 +380,7 @@ public class SlashRenderer {
             case CLAY_ANGLED_LEFT -> {
                 double heightRise = (1.0 - progress) * radius * 0.45;
                 yield basePos
-                        .add(right.scale(-arcSweep * 1.2))
+                        .add(right.scale(arcSweep * 1.2))
                         .add(forward.scale(arcForward * 1.1))
                         .add(up.scale(heightRise + verticalLayerOffset));
             }
