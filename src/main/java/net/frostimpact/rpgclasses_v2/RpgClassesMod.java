@@ -1,15 +1,20 @@
 package net.frostimpact.rpgclasses_v2;
 
+import net.frostimpact.rpgclasses_v2.client.ModKeybindings;
 import net.frostimpact.rpgclasses_v2.client.overlay.HealthBarOverlay;
 import net.frostimpact.rpgclasses_v2.client.overlay.ManaBarOverlay;
 import net.frostimpact.rpgclasses_v2.event.ServerEvents;
 import net.frostimpact.rpgclasses_v2.networking.ModMessages;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatsDropdownOverlay;
+import net.frostimpact.rpgclasses_v2.rpgclass.ClassRegistry;
+import net.frostimpact.rpgclasses_v2.skilltree.SkillTreeRegistry;
+import net.frostimpact.rpgclasses_v2.weapon.WeaponRegistry;
 import net.minecraft.client.gui.LayeredDraw;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.client.gui.VanillaGuiLayers;
 import net.neoforged.neoforge.common.NeoForge;
@@ -25,13 +30,26 @@ public class RpgClassesMod {
         // Register networking
         ModMessages.register(modEventBus);
         
-        // Register client-side overlays only on client
+        // Register common setup
+        modEventBus.addListener(this::commonSetup);
+        
+        // Register client-side overlays and keybindings only on client
         if (FMLEnvironment.dist == Dist.CLIENT) {
             modEventBus.addListener(this::registerOverlays);
+            modEventBus.addListener(this::registerKeybindings);
         }
 
         // Register server events
         NeoForge.EVENT_BUS.register(new ServerEvents());
+    }
+    
+    private void commonSetup(FMLCommonSetupEvent event) {
+        event.enqueueWork(() -> {
+            // Initialize all registries
+            WeaponRegistry.initializeDefaultWeapons();
+            SkillTreeRegistry.initializePlaceholderTrees();
+            ClassRegistry.initializePlaceholderClasses();
+        });
     }
 
     private void registerOverlays(net.neoforged.neoforge.client.event.RegisterGuiLayersEvent event) {
@@ -46,5 +64,9 @@ public class RpgClassesMod {
         event.registerAbove(VanillaGuiLayers.HOTBAR,
             net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, "stats_dropdown"),
             new StatsDropdownOverlay());
+    }
+    
+    private void registerKeybindings(net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event) {
+        event.register(ModKeybindings.TOGGLE_STATS);
     }
 }

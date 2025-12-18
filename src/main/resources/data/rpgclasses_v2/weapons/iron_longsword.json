@@ -1,0 +1,12 @@
+{
+  "weapon_id": "iron_longsword",
+  "weapon_type": "LONGSWORD",
+  "base_damage": 7,
+  "attack_speed": 1.4,
+  "critical_chance": 8,
+  "critical_damage": 150,
+  "reach": 3,
+  "mana_cost": 0,
+  "cooldown": 0,
+  "description": "A balanced weapon with good reach and damage"
+}
