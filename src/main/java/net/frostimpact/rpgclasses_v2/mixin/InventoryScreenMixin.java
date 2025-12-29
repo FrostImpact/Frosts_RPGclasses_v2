@@ -7,21 +7,27 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(InventoryScreen.class)
 public abstract class InventoryScreenMixin {
+    @Shadow
+    protected int width;
+    
+    @Shadow
+    protected int height;
+    
+    @Shadow
     protected abstract <T extends net.minecraft.client.gui.components.events.GuiEventListener & net.minecraft.client.gui.narration.NarratableEntry & net.minecraft.client.gui.components.Renderable> T addRenderableWidget(T widget);
 
     @Inject(method = "init", at = @At("TAIL"))
     private void addSkillTreeButton(CallbackInfo ci) {
-        InventoryScreen self = (InventoryScreen) (Object) this;
-
         // Position next to the recipe book button
-        int leftPos = self.width / 2 - 88;
-        int topPos = self.height / 2 - 83;
+        int leftPos = this.width / 2 - 88;
+        int topPos = this.height / 2 - 83;
 
         // Recipe book button is at leftPos - 4, topPos + 10
         // We'll place our button below the recipe book button
