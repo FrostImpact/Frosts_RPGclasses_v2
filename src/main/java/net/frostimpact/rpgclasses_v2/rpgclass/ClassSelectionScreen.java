@@ -200,7 +200,7 @@ public class ClassSelectionScreen extends Screen {
             int borderThickness = isHovered ? 4 : 2;
             for (int t = 0; t < borderThickness; t++) {
                 // Calculate alpha for glow effect (more transparent as distance increases)
-                int alpha = isHovered ? (int)(255 * (1.0 - (float)t / borderThickness)) : 255;
+                int alpha = isHovered && borderThickness > 0 ? (int)(255 * (1.0 - (float)t / borderThickness)) : 255;
                 int glowBorderColor = (borderColor & 0x00FFFFFF) | (alpha << 24);
                 
                 // Top
