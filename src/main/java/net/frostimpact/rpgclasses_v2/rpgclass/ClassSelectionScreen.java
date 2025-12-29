@@ -1,5 +1,8 @@
 package net.frostimpact.rpgclasses_v2.rpgclass;
 
+import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
+import net.frostimpact.rpgclasses_v2.rpg.PlayerRPGData;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -15,26 +18,15 @@ import java.util.List;
  */
 public class ClassSelectionScreen extends Screen {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClassSelectionScreen.class);
-    private static final int PANEL_WIDTH = 400;
-    private static final int PANEL_HEIGHT = 350;
-    private static final int PANEL_Y_OFFSET = 20;
-    private static final int CARD_WIDTH = 180;
-    private static final int CARD_HEIGHT = 80;
-    private static final int CARD_SPACING = 10;
-    private static final int GRID_COLUMNS = 2;
-    private static final int GRID_START_Y = 80;
-    private static final int CORNER_SIZE = 10;
-    private static final int CORNER_COLOR = 0xFFFFDD00;
-    private static final int CONFIRM_BUTTON_WIDTH = 150;
-    private static final int CONFIRM_BUTTON_HEIGHT = 25;
-    private static final int CONFIRM_BUTTON_BOTTOM_OFFSET = 60;
-    private static final int CLOSE_BUTTON_WIDTH = 100;
-    private static final int CLOSE_BUTTON_HEIGHT = 20;
-    private static final int CLOSE_BUTTON_BOTTOM_OFFSET = 30;
-    private static final int INFO_PANEL_BOTTOM_OFFSET = 120;
+    private static final int CARD_WIDTH = 120;
+    private static final int CARD_HEIGHT = 140;
+    private static final int CARD_SPACING = 15;
+    private static final int GRID_COLUMNS = 3;
+    private static final int GRID_START_Y = 100;
     
     private final List<RPGClass> availableClasses;
     private RPGClass selectedClass;
+    private RPGClass hoveredClass;
     
     public ClassSelectionScreen() {
         super(Component.literal("Select Your Class"));
@@ -45,20 +37,20 @@ public class ClassSelectionScreen extends Screen {
     protected void init() {
         super.init();
         
-        // Load available classes
+        // Load only main classes (not subclasses)
         availableClasses.clear();
-        for (String classId : ClassRegistry.getAllClassIds()) {
-            ClassRegistry.getClass(classId).ifPresent(availableClasses::add);
-        }
+        availableClasses.addAll(ClassRegistry.getMainClasses());
         
-        LOGGER.debug("Initialized class selection screen with {} classes", availableClasses.size());
+        LOGGER.debug("Initialized class selection screen with {} main classes", availableClasses.size());
         
         // Calculate grid layout
         int cols = GRID_COLUMNS;
-        int startX = (this.width - (cols * CARD_WIDTH + (cols - 1) * CARD_SPACING)) / 2;
+        int rows = (int) Math.ceil((double) availableClasses.size() / cols);
+        int gridWidth = cols * CARD_WIDTH + (cols - 1) * CARD_SPACING;
+        int startX = (this.width - gridWidth) / 2;
         int startY = GRID_START_Y;
         
-        // Add buttons for each class in a grid layout
+        // Add buttons for each main class in a grid layout
         for (int i = 0; i < availableClasses.size(); i++) {
             final RPGClass rpgClass = availableClasses.get(i);
             int col = i % cols;
@@ -69,33 +61,42 @@ public class ClassSelectionScreen extends Screen {
             
             this.addRenderableWidget(Button.builder(
                 Component.literal(rpgClass.getName()),
-                button -> onClassSelected(rpgClass)
+                button -> onClassClicked(rpgClass)
             ).bounds(buttonX, buttonY, CARD_WIDTH, CARD_HEIGHT).build());
         }
         
-        // Add confirm button
-        this.addRenderableWidget(Button.builder(
-            Component.literal("Confirm Selection"),
-            button -> confirmSelection()
-        ).bounds((this.width - CONFIRM_BUTTON_WIDTH) / 2, this.height - CONFIRM_BUTTON_BOTTOM_OFFSET, 
-                CONFIRM_BUTTON_WIDTH, CONFIRM_BUTTON_HEIGHT).build());
-        
-        // Add close button
+        // Add close button at bottom
         this.addRenderableWidget(Button.builder(
             Component.literal("Close"),
             button -> this.onClose()
-        ).bounds((this.width - CLOSE_BUTTON_WIDTH) / 2, this.height - CLOSE_BUTTON_BOTTOM_OFFSET, 
-                CLOSE_BUTTON_WIDTH, CLOSE_BUTTON_HEIGHT).build());
+        ).bounds((this.width - 100) / 2, this.height - 30, 100, 20).build());
     }
     
-    private void onClassSelected(RPGClass rpgClass) {
+    private void onClassClicked(RPGClass rpgClass) {
         this.selectedClass = rpgClass;
-        LOGGER.info("Selected class: {}", rpgClass.getName());
+        LOGGER.info("Clicked on class: {}", rpgClass.getName());
+        
+        // Get player's class level
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            PlayerRPGData rpgData = mc.player.getData(ModAttachments.PLAYER_RPG);
+            int classLevel = rpgData.getClassLevel();
+            
+            // Check if this class has subclasses
+            List<RPGClass> subclasses = ClassRegistry.getSubclasses(rpgClass.getId());
+            if (!subclasses.isEmpty()) {
+                // Open subclass selection screen
+                mc.setScreen(new SubclassSelectionScreen(rpgClass.getId(), classLevel));
+            } else {
+                // Direct selection if no subclasses
+                confirmSelection(rpgClass);
+            }
+        }
     }
     
-    private void confirmSelection() {
-        if (selectedClass != null) {
-            LOGGER.info("Confirmed class selection: {}", selectedClass.getName());
+    private void confirmSelection(RPGClass rpgClass) {
+        if (rpgClass != null) {
+            LOGGER.info("Confirmed class selection: {}", rpgClass.getName());
             // TODO: Apply class to player via packet
             this.onClose();
         }
@@ -103,115 +104,187 @@ public class ClassSelectionScreen extends Screen {
     
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // Render dark background
+        // Render dark background with gradient
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
         
-        // Draw main panel background
-        int panelX = (this.width - PANEL_WIDTH) / 2;
-        int panelY = PANEL_Y_OFFSET;
-        
-        // Panel background with gradient effect
-        guiGraphics.fill(panelX, panelY, 
-                       panelX + PANEL_WIDTH, panelY + PANEL_HEIGHT, 0xDD000000);
-        
-        // Panel border with glow effect
-        guiGraphics.fill(panelX - 2, panelY - 2, 
-                       panelX + PANEL_WIDTH + 2, panelY, 0xFF4488FF); // Top
-        guiGraphics.fill(panelX - 2, panelY - 2, 
-                       panelX, panelY + PANEL_HEIGHT + 2, 0xFF4488FF); // Left
-        guiGraphics.fill(panelX + PANEL_WIDTH, panelY - 2, 
-                       panelX + PANEL_WIDTH + 2, panelY + PANEL_HEIGHT + 2, 0xFF2244AA); // Right
-        guiGraphics.fill(panelX - 2, panelY + PANEL_HEIGHT, 
-                       panelX + PANEL_WIDTH + 2, panelY + PANEL_HEIGHT + 2, 0xFF2244AA); // Bottom
-        
-        super.render(guiGraphics, mouseX, mouseY, partialTick);
-        
-        // Draw fancy title with shadow
-        String title = "SELECT YOUR CLASS";
+        // Draw fancy title with glow effect
+        String title = "⚔ SELECT YOUR CLASS ⚔";
         int titleWidth = this.font.width(title);
         int titleX = (this.width - titleWidth) / 2;
         int titleY = 30;
         
-        // Title shadow
-        guiGraphics.drawString(this.font, title, titleX + 2, titleY + 2, 0xFF000000);
-        // Title text with gradient color
+        // Title glow/shadow layers
+        guiGraphics.drawString(this.font, title, titleX + 3, titleY + 3, 0x88000000);
+        guiGraphics.drawString(this.font, title, titleX + 2, titleY + 2, 0xCC000000);
+        guiGraphics.drawString(this.font, title, titleX + 1, titleY + 1, 0xFF222222);
+        // Main title with gradient-like effect
         guiGraphics.drawString(this.font, title, titleX, titleY, 0xFFFFDD00);
         
         // Draw subtitle
-        String subtitle = "Choose wisely, for this will shape your destiny";
+        String subtitle = "Choose your path and forge your destiny";
         int subtitleWidth = this.font.width(subtitle);
         guiGraphics.drawString(this.font, subtitle, 
-            (this.width - subtitleWidth) / 2, 50, 0xFFAAAAAA);
+            (this.width - subtitleWidth) / 2, 55, 0xFFCCCCCC);
         
-        // Draw selected class info panel
-        if (selectedClass != null) {
-            int infoStartY = this.height - INFO_PANEL_BOTTOM_OFFSET;
-            int infoPanelWidth = 380;
-            int infoPanelHeight = 50;
-            int infoPanelX = (this.width - infoPanelWidth) / 2;
+        // Draw fancy class cards
+        int cols = GRID_COLUMNS;
+        int gridWidth = cols * CARD_WIDTH + (cols - 1) * CARD_SPACING;
+        int startX = (this.width - gridWidth) / 2;
+        int startY = GRID_START_Y;
+        
+        for (int i = 0; i < availableClasses.size(); i++) {
+            RPGClass rpgClass = availableClasses.get(i);
+            int col = i % cols;
+            int row = i / cols;
             
-            // Info panel background
-            guiGraphics.fill(infoPanelX, infoStartY - 5, 
-                           infoPanelX + infoPanelWidth, infoStartY + infoPanelHeight, 0xEE000000);
+            int cardX = startX + col * (CARD_WIDTH + CARD_SPACING);
+            int cardY = startY + row * (CARD_HEIGHT + CARD_SPACING);
             
-            // Info panel border
-            guiGraphics.fill(infoPanelX, infoStartY - 5, 
-                           infoPanelX + infoPanelWidth, infoStartY - 4, 0xFF55FF55); // Top
-            guiGraphics.fill(infoPanelX, infoStartY - 5, 
-                           infoPanelX + 1, infoStartY + infoPanelHeight, 0xFF55FF55); // Left
-            guiGraphics.fill(infoPanelX + infoPanelWidth - 1, infoStartY - 5, 
-                           infoPanelX + infoPanelWidth, infoStartY + infoPanelHeight, 0xFF33AA33); // Right
-            guiGraphics.fill(infoPanelX, infoStartY + infoPanelHeight - 1, 
-                           infoPanelX + infoPanelWidth, infoStartY + infoPanelHeight, 0xFF33AA33); // Bottom
+            // Check if mouse is hovering over this card
+            boolean isHovered = mouseX >= cardX && mouseX < cardX + CARD_WIDTH &&
+                               mouseY >= cardY && mouseY < cardY + CARD_HEIGHT;
             
-            // Selected class name with icon
-            String className = selectedClass.getName() != null ? selectedClass.getName() : "Unknown";
-            String selectedText = "Selected: " + className;
-            int selectedWidth = this.font.width(selectedText);
-            guiGraphics.drawString(this.font, selectedText, 
-                (this.width - selectedWidth) / 2, infoStartY + 5, 0xFF55FF55);
-            
-            // Class description
-            String desc = selectedClass.getDescription();
-            if (desc != null && !desc.isEmpty()) {
-                int descWidth = this.font.width(desc);
-                guiGraphics.drawString(this.font, desc, 
-                    (this.width - descWidth) / 2, infoStartY + 20, 0xFFCCCCCC);
+            if (isHovered) {
+                hoveredClass = rpgClass;
             }
             
-            // Additional flavor text
-            String flavorText = "\"Forge your legend as a " + className + "\"";
-            int flavorWidth = this.font.width(flavorText);
-            guiGraphics.drawString(this.font, flavorText, 
-                (this.width - flavorWidth) / 2, infoStartY + 35, 0xFF888888);
-        } else {
-            // Draw hint when no class selected
-            String hint = "Select a class to view details";
-            int hintWidth = this.font.width(hint);
-            guiGraphics.drawString(this.font, hint, 
-                (this.width - hintWidth) / 2, this.height - 100, 0xFF888888);
+            // Draw fancy card background based on class type
+            int cardColor = getClassColor(rpgClass.getId());
+            int borderColor = isHovered ? 0xFFFFFFFF : cardColor;
+            
+            // Card shadow
+            guiGraphics.fill(cardX + 3, cardY + 3, 
+                           cardX + CARD_WIDTH + 3, cardY + CARD_HEIGHT + 3, 0x88000000);
+            
+            // Card background with gradient effect (darker at bottom)
+            guiGraphics.fill(cardX, cardY, 
+                           cardX + CARD_WIDTH, cardY + CARD_HEIGHT / 2, 
+                           0xEE000000 | (cardColor & 0x00FFFFFF) >> 2);
+            guiGraphics.fill(cardX, cardY + CARD_HEIGHT / 2, 
+                           cardX + CARD_WIDTH, cardY + CARD_HEIGHT, 0xCC000000);
+            
+            // Card border (thicker if hovered)
+            int borderThickness = isHovered ? 3 : 2;
+            for (int t = 0; t < borderThickness; t++) {
+                // Top
+                guiGraphics.fill(cardX - t, cardY - t, 
+                               cardX + CARD_WIDTH + t, cardY - t + 1, borderColor);
+                // Bottom
+                guiGraphics.fill(cardX - t, cardY + CARD_HEIGHT + t - 1, 
+                               cardX + CARD_WIDTH + t, cardY + CARD_HEIGHT + t, borderColor);
+                // Left
+                guiGraphics.fill(cardX - t, cardY - t, 
+                               cardX - t + 1, cardY + CARD_HEIGHT + t, borderColor);
+                // Right
+                guiGraphics.fill(cardX + CARD_WIDTH + t - 1, cardY - t, 
+                               cardX + CARD_WIDTH + t, cardY + CARD_HEIGHT + t, borderColor);
+            }
+            
+            // Draw class icon placeholder (colored square)
+            int iconSize = 48;
+            int iconX = cardX + (CARD_WIDTH - iconSize) / 2;
+            int iconY = cardY + 15;
+            guiGraphics.fill(iconX, iconY, iconX + iconSize, iconY + iconSize, cardColor);
+            guiGraphics.fill(iconX, iconY, iconX + iconSize, iconY + 2, 0xFFFFFFFF);
+            guiGraphics.fill(iconX, iconY, iconX + 2, iconY + iconSize, 0xFFFFFFFF);
+            
+            // Draw class name
+            String className = rpgClass.getName();
+            int nameWidth = this.font.width(className);
+            int nameX = cardX + (CARD_WIDTH - nameWidth) / 2;
+            int nameY = cardY + 75;
+            guiGraphics.drawString(this.font, className, nameX + 1, nameY + 1, 0xFF000000);
+            guiGraphics.drawString(this.font, className, nameX, nameY, 0xFFFFFFFF);
+            
+            // Draw subclass indicator
+            int subclassCount = ClassRegistry.getSubclasses(rpgClass.getId()).size();
+            if (subclassCount > 0) {
+                String subclassText = "+" + subclassCount + " specs";
+                int subWidth = this.font.width(subclassText);
+                int subX = cardX + (CARD_WIDTH - subWidth) / 2;
+                guiGraphics.drawString(this.font, subclassText, subX, cardY + 95, 0xFFAAAAAA);
+            }
+            
+            // Draw hover effect symbol
+            if (isHovered) {
+                String hoverSymbol = "▶";
+                guiGraphics.drawString(this.font, hoverSymbol, cardX + 5, cardY + 5, 0xFFFFDD00);
+            }
         }
         
-        // Draw decorative corners
-        drawDecorativeCorners(guiGraphics, panelX, panelY, PANEL_WIDTH, PANEL_HEIGHT);
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+        
+        // Draw hovered class info panel at bottom
+        if (hoveredClass != null) {
+            int panelY = this.height - 80;
+            int panelWidth = 500;
+            int panelHeight = 45;
+            int panelX = (this.width - panelWidth) / 2;
+            
+            // Panel background
+            guiGraphics.fill(panelX, panelY, 
+                           panelX + panelWidth, panelY + panelHeight, 0xEE000000);
+            
+            // Panel border
+            int panelBorderColor = getClassColor(hoveredClass.getId());
+            guiGraphics.fill(panelX, panelY, 
+                           panelX + panelWidth, panelY + 2, panelBorderColor);
+            guiGraphics.fill(panelX, panelY, 
+                           panelX + 2, panelY + panelHeight, panelBorderColor);
+            guiGraphics.fill(panelX + panelWidth - 2, panelY, 
+                           panelX + panelWidth, panelY + panelHeight, panelBorderColor);
+            guiGraphics.fill(panelX, panelY + panelHeight - 2, 
+                           panelX + panelWidth, panelY + panelHeight, panelBorderColor);
+            
+            // Class description
+            String desc = hoveredClass.getDescription();
+            if (desc != null && !desc.isEmpty()) {
+                // Word wrap the description if needed
+                List<String> lines = new ArrayList<>();
+                String[] words = desc.split(" ");
+                StringBuilder currentLine = new StringBuilder();
+                int maxWidth = panelWidth - 20;
+                
+                for (String word : words) {
+                    String testLine = currentLine.length() == 0 ? word : currentLine + " " + word;
+                    if (this.font.width(testLine) <= maxWidth) {
+                        if (currentLine.length() > 0) currentLine.append(" ");
+                        currentLine.append(word);
+                    } else {
+                        if (currentLine.length() > 0) {
+                            lines.add(currentLine.toString());
+                            currentLine = new StringBuilder(word);
+                        }
+                    }
+                }
+                if (currentLine.length() > 0) {
+                    lines.add(currentLine.toString());
+                }
+                
+                // Draw description lines
+                int textY = panelY + 10;
+                for (String line : lines) {
+                    int textX = panelX + 10;
+                    guiGraphics.drawString(this.font, line, textX, textY, 0xFFFFFFFF);
+                    textY += 12;
+                    if (textY > panelY + panelHeight - 10) break; // Don't overflow
+                }
+            }
+        }
+        
+        hoveredClass = null; // Reset for next frame
     }
     
-    private void drawDecorativeCorners(GuiGraphics guiGraphics, int x, int y, int width, int height) {
-        // Top-left corner
-        guiGraphics.fill(x, y, x + CORNER_SIZE, y + 1, CORNER_COLOR);
-        guiGraphics.fill(x, y, x + 1, y + CORNER_SIZE, CORNER_COLOR);
-        
-        // Top-right corner
-        guiGraphics.fill(x + width - CORNER_SIZE, y, x + width, y + 1, CORNER_COLOR);
-        guiGraphics.fill(x + width - 1, y, x + width, y + CORNER_SIZE, CORNER_COLOR);
-        
-        // Bottom-left corner
-        guiGraphics.fill(x, y + height - 1, x + CORNER_SIZE, y + height, CORNER_COLOR);
-        guiGraphics.fill(x, y + height - CORNER_SIZE, x + 1, y + height, CORNER_COLOR);
-        
-        // Bottom-right corner
-        guiGraphics.fill(x + width - CORNER_SIZE, y + height - 1, x + width, y + height, CORNER_COLOR);
-        guiGraphics.fill(x + width - 1, y + height - CORNER_SIZE, x + width, y + height, CORNER_COLOR);
+    private int getClassColor(String classId) {
+        return switch (classId.toLowerCase()) {
+            case "warrior" -> 0xFFDD4444;
+            case "mage" -> 0xFF4444DD;
+            case "rogue" -> 0xFF44DD44;
+            case "ranger" -> 0xFF44DD44;
+            case "tank" -> 0xFFDDDD44;
+            case "priest" -> 0xFFFFFFAA;
+            default -> 0xFFAAAAAA;
+        };
     }
     
     @Override
