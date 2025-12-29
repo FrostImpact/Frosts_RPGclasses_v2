@@ -5,22 +5,24 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.PauseScreen;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(PauseScreen.class)
 public abstract class PauseScreenMixin {
+    @Unique
     private static final int BUTTON_WIDTH = 20;
+    @Unique
     private static final int BUTTON_HEIGHT = 20;
+    @Unique
     private static final int BUTTON_MARGIN_RIGHT = 25;
+    @Unique
     private static final int BUTTON_MARGIN_TOP = 5;
     
-    @Shadow
     protected int width;
     
-    @Shadow
     protected abstract <T extends net.minecraft.client.gui.components.events.GuiEventListener & net.minecraft.client.gui.narration.NarratableEntry & net.minecraft.client.gui.components.Renderable> T addRenderableWidget(T widget);
 
     @Inject(method = "init", at = @At("TAIL"))
