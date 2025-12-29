@@ -113,7 +113,7 @@ public class SkillTreeScreen extends Screen {
         // Draw title without blur
         String title = skillTree.getName() + " - Level " + classLevel;
         int titleWidth = this.font.width(title);
-        guiGraphics.drawString(this.font, title, titleWidth + 2, 22, 0xFF000000);
+        guiGraphics.drawString(this.font, title, (this.width - titleWidth) / 2 + 2, 22, 0xFF000000);
         guiGraphics.drawString(this.font, title, (this.width - titleWidth) / 2, 20, 0xFFFFDD00);
         
         // Draw description without blur
