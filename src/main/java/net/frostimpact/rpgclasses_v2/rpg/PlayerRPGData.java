@@ -14,7 +14,9 @@ public class PlayerRPGData {
             Codec.unboundedMap(Codec.STRING, Codec.INT).fieldOf("cooldowns").forGetter(d -> d.cooldowns),
             Codec.STRING.fieldOf("currentClass").forGetter(d -> d.currentClass),
             Codec.INT.fieldOf("availableStatPoints").forGetter(d -> d.availableStatPoints),
-            Codec.INT.fieldOf("level").forGetter(d -> d.level)
+            Codec.INT.fieldOf("level").forGetter(d -> d.level),
+            Codec.INT.fieldOf("classLevel").forGetter(d -> d.classLevel),
+            Codec.INT.fieldOf("classExperience").forGetter(d -> d.classExperience)
         ).apply(instance, PlayerRPGData::new)
     );
 
@@ -24,6 +26,8 @@ public class PlayerRPGData {
     private String currentClass;
     private int availableStatPoints;
     private int level;
+    private int classLevel;
+    private int classExperience;
 
     public PlayerRPGData() {
         this.mana = 100;
@@ -32,15 +36,19 @@ public class PlayerRPGData {
         this.currentClass = "NONE";
         this.availableStatPoints = 0;
         this.level = 1;
+        this.classLevel = 1;
+        this.classExperience = 0;
     }
 
-    private PlayerRPGData(int mana, int maxMana, Map<String, Integer> cooldowns, String currentClass, int availableStatPoints, int level) {
+    private PlayerRPGData(int mana, int maxMana, Map<String, Integer> cooldowns, String currentClass, int availableStatPoints, int level, int classLevel, int classExperience) {
         this.mana = mana;
         this.maxMana = maxMana;
         this.cooldowns = new HashMap<>(cooldowns);
         this.currentClass = currentClass;
         this.availableStatPoints = availableStatPoints;
         this.level = level;
+        this.classLevel = classLevel;
+        this.classExperience = classExperience;
     }
 
     public int getMana() {
@@ -123,5 +131,32 @@ public class PlayerRPGData {
 
     public void setLevel(int level) {
         this.level = Math.max(1, level);
+    }
+    
+    public int getClassLevel() {
+        return classLevel;
+    }
+    
+    public void setClassLevel(int classLevel) {
+        this.classLevel = Math.max(1, classLevel);
+    }
+    
+    public int getClassExperience() {
+        return classExperience;
+    }
+    
+    public void setClassExperience(int classExperience) {
+        this.classExperience = Math.max(0, classExperience);
+    }
+    
+    public void addClassExperience(int amount) {
+        this.classExperience += amount;
+        // Check for level up (100 XP per level as example)
+        int xpNeeded = classLevel * 100;
+        while (classExperience >= xpNeeded) {
+            classExperience -= xpNeeded;
+            classLevel++;
+            xpNeeded = classLevel * 100;
+        }
     }
 }
