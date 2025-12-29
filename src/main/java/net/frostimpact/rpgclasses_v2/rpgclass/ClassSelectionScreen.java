@@ -317,7 +317,7 @@ public class ClassSelectionScreen extends Screen {
         return switch (classId.toLowerCase()) {
             case "warrior" -> new ItemStack(Items.IRON_SWORD);
             case "mage" -> new ItemStack(Items.BLAZE_ROD);
-            case "rogue" -> new ItemStack(Items.IRON_SWORD);  // Using iron sword for rogue
+            case "rogue" -> new ItemStack(Items.SHEARS);  // Using shears for rogue (backstab theme)
             case "ranger" -> new ItemStack(Items.BOW);
             case "tank" -> new ItemStack(Items.SHIELD);
             case "priest" -> new ItemStack(Items.GOLDEN_APPLE);
