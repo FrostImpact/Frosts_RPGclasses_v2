@@ -20,67 +20,69 @@ public class ModMessages {
         final PayloadRegistrar registrar = event.registrar("rpgclasses_v2");
 
         registrar.playToClient(
-            PacketSyncMana.TYPE,
-            PacketSyncMana.STREAM_CODEC,
-            (packet, context) -> {
-                context.enqueueWork(() -> {
-                    if (context.player() != null) {
-                        var rpgData = context.player().getData(ModAttachments.PLAYER_RPG);
-                        rpgData.setMana(packet.mana());
-                        rpgData.setMaxMana(packet.maxMana());
-                    }
-                });
-            }
+                PacketSyncMana.TYPE,
+                PacketSyncMana.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        if (context.player() != null) {
+                            var rpgData = context.player().getData(ModAttachments.PLAYER_RPG);
+                            rpgData.setMana(packet.mana());
+                            rpgData.setMaxMana(packet.maxMana());
+                        }
+                    });
+                }
         );
 
         registrar.playToClient(
-            PacketSyncStats.TYPE,
-            PacketSyncStats.STREAM_CODEC,
-            (packet, context) -> {
-                context.enqueueWork(() -> {
+                PacketSyncStats.TYPE,
+                PacketSyncStats.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
 
-                    if (context.player() != null) {
-                        var stats = context.player().getData(ModAttachments.PLAYER_STATS);
-                        stats.setModifiers(packet.modifiers());
-                    }
-                });
-            }
+                        if (context.player() != null) {
+                            var stats = context.player().getData(ModAttachments.PLAYER_STATS);
+                            stats.setModifiers(packet.modifiers());
+                        }
+                    });
+                }
         );
 
         registrar.playToServer(
-            PacketAllocateStatPoint.TYPE,
-            PacketAllocateStatPoint.STREAM_CODEC,
-            (packet, context) -> {
-                context.enqueueWork(() -> {
-                    if (context.player() instanceof ServerPlayer serverPlayer) {
-                        var rpgData = serverPlayer.getData(ModAttachments.PLAYER_RPG);
-                        var stats = serverPlayer.getData(ModAttachments.PLAYER_STATS);
-                        
-                        if (rpgData.useStatPoint()) {
-                            // Add 10 points to the selected stat
-                            int currentValue = 0;
-                            for (var modifier : stats.getModifiers()) {
-                                if (modifier.getStatType() == packet.statType() && 
-                                    modifier.getSourceId().equals("allocated")) {
-                                    currentValue = (int) modifier.getValue();
-                                    stats.removeModifier(modifier);
-                                    break;
+                PacketAllocateStatPoint.TYPE,
+                PacketAllocateStatPoint.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        if (context.player() instanceof ServerPlayer serverPlayer) {
+                            var rpgData = serverPlayer.getData(ModAttachments.PLAYER_RPG);
+                            var stats = serverPlayer.getData(ModAttachments.PLAYER_STATS);
+
+                            if (rpgData.useStatPoint()) {
+                                // Find existing allocated stat modifier for this stat type
+                                int currentValue = 0;
+                                for (var modifier : stats.getModifiers()) {
+                                    if (modifier.getStatType() == packet.statType() &&
+                                            modifier.getSource().equals("allocated")) {
+                                        currentValue = (int) modifier.getValue();
+                                        // Remove the old modifier
+                                        stats.removeModifier("allocated", packet.statType());
+                                        break;
+                                    }
                                 }
+
+                                // Add the updated modifier with +10 to the stat
+                                stats.addModifier(new StatModifier(
+                                        "allocated",
+                                        packet.statType(),
+                                        currentValue + 10,
+                                        -1
+                                ));
+
+                                // Sync back to client
+                                sendToPlayer(new PacketSyncStats(stats.getModifiers()), serverPlayer);
                             }
-                            
-                            stats.addModifier(new StatModifier(
-                                "allocated",
-                                packet.statType(),
-                                currentValue + 10,
-                                -1
-                            ));
-                            
-                            // Sync back to client
-                            sendToPlayer(new PacketSyncStats(stats.getModifiers()), serverPlayer);
                         }
-                    }
-                });
-            }
+                    });
+                }
         );
     }
 
