@@ -18,4 +18,12 @@ public class ModKeybindings {
         GLFW.GLFW_KEY_K,
         CATEGORY
     );
+
+    public static final KeyMapping OPEN_STAT_ALLOCATION = new KeyMapping(
+        "key.rpgclasses_v2.open_stat_allocation",
+        KeyConflictContext.IN_GAME,
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_P,
+        CATEGORY
+    );
 }

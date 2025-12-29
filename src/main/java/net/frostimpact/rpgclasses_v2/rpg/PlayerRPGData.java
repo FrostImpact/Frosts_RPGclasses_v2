@@ -12,7 +12,9 @@ public class PlayerRPGData {
             Codec.INT.fieldOf("mana").forGetter(d -> d.mana),
             Codec.INT.fieldOf("maxMana").forGetter(d -> d.maxMana),
             Codec.unboundedMap(Codec.STRING, Codec.INT).fieldOf("cooldowns").forGetter(d -> d.cooldowns),
-            Codec.STRING.fieldOf("currentClass").forGetter(d -> d.currentClass)
+            Codec.STRING.fieldOf("currentClass").forGetter(d -> d.currentClass),
+            Codec.INT.fieldOf("availableStatPoints").forGetter(d -> d.availableStatPoints),
+            Codec.INT.fieldOf("level").forGetter(d -> d.level)
         ).apply(instance, PlayerRPGData::new)
     );
 
@@ -20,19 +22,25 @@ public class PlayerRPGData {
     private int maxMana;
     private Map<String, Integer> cooldowns;
     private String currentClass;
+    private int availableStatPoints;
+    private int level;
 
     public PlayerRPGData() {
         this.mana = 100;
         this.maxMana = 100;
         this.cooldowns = new HashMap<>();
         this.currentClass = "NONE";
+        this.availableStatPoints = 0;
+        this.level = 1;
     }
 
-    private PlayerRPGData(int mana, int maxMana, Map<String, Integer> cooldowns, String currentClass) {
+    private PlayerRPGData(int mana, int maxMana, Map<String, Integer> cooldowns, String currentClass, int availableStatPoints, int level) {
         this.mana = mana;
         this.maxMana = maxMana;
         this.cooldowns = new HashMap<>(cooldowns);
         this.currentClass = currentClass;
+        this.availableStatPoints = availableStatPoints;
+        this.level = level;
     }
 
     public int getMana() {
@@ -87,5 +95,33 @@ public class PlayerRPGData {
 
     public void setCurrentClass(String currentClass) {
         this.currentClass = currentClass;
+    }
+
+    public int getAvailableStatPoints() {
+        return availableStatPoints;
+    }
+
+    public void setAvailableStatPoints(int points) {
+        this.availableStatPoints = Math.max(0, points);
+    }
+
+    public void addStatPoints(int points) {
+        this.availableStatPoints += points;
+    }
+
+    public boolean useStatPoint() {
+        if (availableStatPoints > 0) {
+            availableStatPoints--;
+            return true;
+        }
+        return false;
+    }
+
+    public int getLevel() {
+        return level;
+    }
+
+    public void setLevel(int level) {
+        this.level = Math.max(1, level);
     }
 }

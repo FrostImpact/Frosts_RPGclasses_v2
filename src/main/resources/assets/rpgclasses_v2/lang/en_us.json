@@ -15,6 +15,9 @@
   "item.rpgclasses_v2.diamond_rpg_sword": "Diamond RPG Sword",
   "item.rpgclasses_v2.netherite_rpg_sword": "Netherite RPG Sword",
 
+  "item.rpgclasses_v2.class_selection_book": "Class Selection Book",
+
   "key.categories.rpgclasses_v2": "RPG Classes",
-  "key.rpgclasses_v2.toggle_stats": "Toggle Stats Panel"
+  "key.rpgclasses_v2.toggle_stats": "Toggle Stats Panel",
+  "key.rpgclasses_v2.open_stat_allocation": "Open Stat Allocation"
 }
