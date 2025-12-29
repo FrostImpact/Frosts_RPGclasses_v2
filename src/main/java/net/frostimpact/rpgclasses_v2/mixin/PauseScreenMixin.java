@@ -3,6 +3,7 @@ package net.frostimpact.rpgclasses_v2.mixin;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatsDropdownOverlay;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -11,7 +12,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(PauseScreen.class)
-public abstract class PauseScreenMixin {
+public abstract class PauseScreenMixin extends Screen {
     @Unique
     private static final int BUTTON_WIDTH = 20;
     @Unique
@@ -20,22 +21,22 @@ public abstract class PauseScreenMixin {
     private static final int BUTTON_MARGIN_RIGHT = 25;
     @Unique
     private static final int BUTTON_MARGIN_TOP = 5;
-    
-    protected int width;
-    
-    protected abstract <T extends net.minecraft.client.gui.components.events.GuiEventListener & net.minecraft.client.gui.narration.NarratableEntry & net.minecraft.client.gui.components.Renderable> T addRenderableWidget(T widget);
+
+    protected PauseScreenMixin(Component title) {
+        super(title);
+    }
 
     @Inject(method = "init", at = @At("TAIL"))
     private void addStatsButton(CallbackInfo ci) {
         // Add stats toggle button in the top-right corner
         int buttonX = this.width - BUTTON_MARGIN_RIGHT;
         int buttonY = BUTTON_MARGIN_TOP;
-        
+
         Button statsButton = Button.builder(
                 Component.literal("S"), // Stats button
                 button -> StatsDropdownOverlay.toggleDropdown()
         ).bounds(buttonX, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT).build();
-        
+
         this.addRenderableWidget(statsButton);
     }
 }

@@ -4,6 +4,7 @@ import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.skilltree.SkillTreeScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
@@ -12,12 +13,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(InventoryScreen.class)
-public abstract class InventoryScreenMixin {
-    protected int width;
-    
-    protected int height;
-    
-    protected abstract <T extends net.minecraft.client.gui.components.events.GuiEventListener & net.minecraft.client.gui.narration.NarratableEntry & net.minecraft.client.gui.components.Renderable> T addRenderableWidget(T widget);
+public abstract class InventoryScreenMixin extends Screen {
+
+    protected InventoryScreenMixin(Component title) {
+        super(title);
+    }
 
     @Inject(method = "init", at = @At("TAIL"))
     private void addSkillTreeButton(CallbackInfo ci) {
