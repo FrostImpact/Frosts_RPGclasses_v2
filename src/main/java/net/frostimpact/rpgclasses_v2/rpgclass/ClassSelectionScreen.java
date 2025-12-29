@@ -165,19 +165,22 @@ public class ClassSelectionScreen extends Screen {
                            infoPanelX + infoPanelWidth, infoStartY + infoPanelHeight, 0xFF33AA33); // Bottom
             
             // Selected class name with icon
-            String selectedText = "Selected: " + selectedClass.getName();
+            String className = selectedClass.getName() != null ? selectedClass.getName() : "Unknown";
+            String selectedText = "Selected: " + className;
             int selectedWidth = this.font.width(selectedText);
             guiGraphics.drawString(this.font, selectedText, 
                 (this.width - selectedWidth) / 2, infoStartY + 5, 0xFF55FF55);
             
             // Class description
             String desc = selectedClass.getDescription();
-            int descWidth = this.font.width(desc);
-            guiGraphics.drawString(this.font, desc, 
-                (this.width - descWidth) / 2, infoStartY + 20, 0xFFCCCCCC);
+            if (desc != null && !desc.isEmpty()) {
+                int descWidth = this.font.width(desc);
+                guiGraphics.drawString(this.font, desc, 
+                    (this.width - descWidth) / 2, infoStartY + 20, 0xFFCCCCCC);
+            }
             
             // Additional flavor text
-            String flavorText = "\"Forge your legend as a " + selectedClass.getName() + "\"";
+            String flavorText = "\"Forge your legend as a " + className + "\"";
             int flavorWidth = this.font.width(flavorText);
             guiGraphics.drawString(this.font, flavorText, 
                 (this.width - flavorWidth) / 2, infoStartY + 35, 0xFF888888);
