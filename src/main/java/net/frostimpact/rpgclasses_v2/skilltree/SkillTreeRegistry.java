@@ -181,6 +181,236 @@ public class SkillTreeRegistry {
         
         register(priestTree);
         
+        // ===== SUBCLASS SKILL TREES =====
+        
+        // Berserker skill tree (Warrior subclass)
+        SkillTree berserkerTree = new SkillTree("berserker", "Berserker Skills", "Rage-fueled combat skills");
+        
+        SkillNode rageStrike = new SkillNode("rage_strike", "Rage Strike", 
+            "Increases damage by 15% per level when below 50% health", 5, 1, 1, 2, 0, "");
+        berserkerTree.addNode(rageStrike);
+        
+        SkillNode bloodFrenzy = new SkillNode("blood_frenzy", "Blood Frenzy", 
+            "Gain attack speed when hitting enemies", 3, 1, 3, 1, 1, "");
+        bloodFrenzy.addRequirement("rage_strike");
+        berserkerTree.addNode(bloodFrenzy);
+        
+        SkillNode berserkerRage = new SkillNode("berserker_rage", "Berserker Rage", 
+            "Unleash devastating attacks at the cost of defense", 1, 2, 5, 3, 1, "");
+        berserkerRage.addRequirement("rage_strike");
+        berserkerTree.addNode(berserkerRage);
+        
+        register(berserkerTree);
+        
+        // Paladin skill tree (Warrior subclass)
+        SkillTree paladinTree = new SkillTree("paladin", "Paladin Skills", "Holy warrior skills");
+        
+        SkillNode holySmite = new SkillNode("holy_smite", "Holy Smite", 
+            "Deal extra holy damage to undead enemies", 5, 1, 1, 2, 0, "");
+        paladinTree.addNode(holySmite);
+        
+        SkillNode divineShield = new SkillNode("divine_shield", "Divine Shield", 
+            "Increase defense and heal over time", 3, 1, 3, 1, 1, "");
+        divineShield.addRequirement("holy_smite");
+        paladinTree.addNode(divineShield);
+        
+        SkillNode consecration = new SkillNode("consecration", "Consecration", 
+            "Create a holy aura that damages enemies and heals allies", 1, 2, 5, 3, 1, "");
+        consecration.addRequirement("holy_smite");
+        paladinTree.addNode(consecration);
+        
+        register(paladinTree);
+        
+        // Pyromancer skill tree (Mage subclass)
+        SkillTree pyromancerTree = new SkillTree("pyromancer", "Pyromancer Skills", "Fire magic mastery");
+        
+        SkillNode ignite = new SkillNode("ignite", "Ignite", 
+            "Fire spells have a chance to set enemies on fire", 5, 1, 1, 2, 0, "");
+        pyromancerTree.addNode(ignite);
+        
+        SkillNode inferno = new SkillNode("inferno", "Inferno", 
+            "Increase fire damage by 20% per level", 3, 1, 3, 1, 1, "");
+        inferno.addRequirement("ignite");
+        pyromancerTree.addNode(inferno);
+        
+        SkillNode meteorStrike = new SkillNode("meteor_strike", "Meteor Strike", 
+            "Call down a devastating meteor from the sky", 1, 2, 5, 3, 1, "");
+        meteorStrike.addRequirement("ignite");
+        pyromancerTree.addNode(meteorStrike);
+        
+        register(pyromancerTree);
+        
+        // Frost Mage skill tree (Mage subclass)
+        SkillTree frostmageTree = new SkillTree("frostmage", "Frost Mage Skills", "Ice magic mastery");
+        
+        SkillNode frostbite = new SkillNode("frostbite", "Frostbite", 
+            "Ice spells slow enemies by 10% per level", 5, 1, 1, 2, 0, "");
+        frostmageTree.addNode(frostbite);
+        
+        SkillNode iceArmor = new SkillNode("ice_armor", "Ice Armor", 
+            "Surround yourself with protective ice", 3, 1, 3, 1, 1, "");
+        iceArmor.addRequirement("frostbite");
+        frostmageTree.addNode(iceArmor);
+        
+        SkillNode blizzard = new SkillNode("blizzard", "Blizzard", 
+            "Summon a freezing storm around you", 1, 2, 5, 3, 1, "");
+        blizzard.addRequirement("frostbite");
+        frostmageTree.addNode(blizzard);
+        
+        register(frostmageTree);
+        
+        // Assassin skill tree (Rogue subclass)
+        SkillTree assassinTree = new SkillTree("assassin", "Assassin Skills", "Deadly stealth attacks");
+        
+        SkillNode backstab = new SkillNode("backstab", "Backstab", 
+            "Deal 50% more damage when attacking from behind", 5, 1, 1, 2, 0, "");
+        assassinTree.addNode(backstab);
+        
+        SkillNode poisonBlade = new SkillNode("poison_blade", "Poison Blade", 
+            "Your attacks have a chance to poison enemies", 3, 1, 3, 1, 1, "");
+        poisonBlade.addRequirement("backstab");
+        assassinTree.addNode(poisonBlade);
+        
+        SkillNode deathMark = new SkillNode("death_mark", "Death Mark", 
+            "Mark an enemy for death, increasing damage taken", 1, 2, 5, 3, 1, "");
+        deathMark.addRequirement("backstab");
+        assassinTree.addNode(deathMark);
+        
+        register(assassinTree);
+        
+        // Shadow Dancer skill tree (Rogue subclass)
+        SkillTree shadowdancerTree = new SkillTree("shadowdancer", "Shadow Dancer Skills", "Shadow manipulation");
+        
+        SkillNode shadowMeld = new SkillNode("shadow_meld", "Shadow Meld", 
+            "Become harder to detect in darkness", 5, 1, 1, 2, 0, "");
+        shadowdancerTree.addNode(shadowMeld);
+        
+        SkillNode darkBlink = new SkillNode("dark_blink", "Dark Blink", 
+            "Teleport short distances through shadows", 3, 1, 3, 1, 1, "");
+        darkBlink.addRequirement("shadow_meld");
+        shadowdancerTree.addNode(darkBlink);
+        
+        SkillNode shadowClones = new SkillNode("shadow_clones", "Shadow Clones", 
+            "Create shadow duplicates to confuse enemies", 1, 2, 5, 3, 1, "");
+        shadowClones.addRequirement("shadow_meld");
+        shadowdancerTree.addNode(shadowClones);
+        
+        register(shadowdancerTree);
+        
+        // Marksman skill tree (Ranger subclass)
+        SkillTree marksmanTree = new SkillTree("marksman", "Marksman Skills", "Precision archery");
+        
+        SkillNode steadyAim = new SkillNode("steady_aim", "Steady Aim", 
+            "Increase ranged accuracy and damage", 5, 1, 1, 2, 0, "");
+        marksmanTree.addNode(steadyAim);
+        
+        SkillNode piercingShot = new SkillNode("piercing_shot", "Piercing Shot", 
+            "Arrows pierce through multiple enemies", 3, 1, 3, 1, 1, "");
+        piercingShot.addRequirement("steady_aim");
+        marksmanTree.addNode(piercingShot);
+        
+        SkillNode headshot = new SkillNode("headshot", "Headshot", 
+            "Critical hits deal massive bonus damage", 1, 2, 5, 3, 1, "");
+        headshot.addRequirement("steady_aim");
+        marksmanTree.addNode(headshot);
+        
+        register(marksmanTree);
+        
+        // Beast Master skill tree (Ranger subclass)
+        SkillTree beastmasterTree = new SkillTree("beastmaster", "Beast Master Skills", "Animal companion abilities");
+        
+        SkillNode animalBond = new SkillNode("animal_bond", "Animal Bond", 
+            "Strengthen your connection with animal companions", 5, 1, 1, 2, 0, "");
+        beastmasterTree.addNode(animalBond);
+        
+        SkillNode packTactics = new SkillNode("pack_tactics", "Pack Tactics", 
+            "You and your companions deal bonus damage together", 3, 1, 3, 1, 1, "");
+        packTactics.addRequirement("animal_bond");
+        beastmasterTree.addNode(packTactics);
+        
+        SkillNode summonBeast = new SkillNode("summon_beast", "Summon Beast", 
+            "Call a powerful animal companion to fight", 1, 2, 5, 3, 1, "");
+        summonBeast.addRequirement("animal_bond");
+        beastmasterTree.addNode(summonBeast);
+        
+        register(beastmasterTree);
+        
+        // Guardian skill tree (Tank subclass)
+        SkillTree guardianTree = new SkillTree("guardian", "Guardian Skills", "Protective tank abilities");
+        
+        SkillNode bulwark = new SkillNode("bulwark", "Bulwark", 
+            "Increase shield effectiveness", 5, 1, 1, 2, 0, "");
+        guardianTree.addNode(bulwark);
+        
+        SkillNode protector = new SkillNode("protector", "Protector", 
+            "Redirect damage from nearby allies to yourself", 3, 1, 3, 1, 1, "");
+        protector.addRequirement("bulwark");
+        guardianTree.addNode(protector);
+        
+        SkillNode lastStand = new SkillNode("last_stand", "Last Stand", 
+            "Become invulnerable for a short time at low health", 1, 2, 5, 3, 1, "");
+        lastStand.addRequirement("bulwark");
+        guardianTree.addNode(lastStand);
+        
+        register(guardianTree);
+        
+        // Juggernaut skill tree (Tank subclass)
+        SkillTree juggernautTree = new SkillTree("juggernaut", "Juggernaut Skills", "Unstoppable force abilities");
+        
+        SkillNode unstoppable = new SkillNode("unstoppable", "Unstoppable", 
+            "Reduce knockback and slow effects", 5, 1, 1, 2, 0, "");
+        juggernautTree.addNode(unstoppable);
+        
+        SkillNode crush = new SkillNode("crush", "Crush", 
+            "Heavy attacks deal bonus damage and stun", 3, 1, 3, 1, 1, "");
+        crush.addRequirement("unstoppable");
+        juggernautTree.addNode(crush);
+        
+        SkillNode earthquake = new SkillNode("earthquake", "Earthquake", 
+            "Slam the ground to damage and knock down enemies", 1, 2, 5, 3, 1, "");
+        earthquake.addRequirement("unstoppable");
+        juggernautTree.addNode(earthquake);
+        
+        register(juggernautTree);
+        
+        // Cleric skill tree (Priest subclass)
+        SkillTree clericTree = new SkillTree("cleric", "Cleric Skills", "Advanced healing abilities");
+        
+        SkillNode healingTouch = new SkillNode("healing_touch", "Healing Touch", 
+            "Increase direct healing effectiveness", 5, 1, 1, 2, 0, "");
+        clericTree.addNode(healingTouch);
+        
+        SkillNode prayerOfMending = new SkillNode("prayer_of_mending", "Prayer of Mending", 
+            "Place a healing blessing that jumps between allies", 3, 1, 3, 1, 1, "");
+        prayerOfMending.addRequirement("healing_touch");
+        clericTree.addNode(prayerOfMending);
+        
+        SkillNode divineIntervention = new SkillNode("divine_intervention", "Divine Intervention", 
+            "Instantly heal all nearby allies", 1, 2, 5, 3, 1, "");
+        divineIntervention.addRequirement("healing_touch");
+        clericTree.addNode(divineIntervention);
+        
+        register(clericTree);
+        
+        // Templar skill tree (Priest subclass)
+        SkillTree templarTree = new SkillTree("templar", "Templar Skills", "Holy warrior priest abilities");
+        
+        SkillNode righteousFury = new SkillNode("righteous_fury", "Righteous Fury", 
+            "Deal holy damage with melee attacks", 5, 1, 1, 2, 0, "");
+        templarTree.addNode(righteousFury);
+        
+        SkillNode holyArmor = new SkillNode("holy_armor", "Holy Armor", 
+            "Gain bonus defense and reflect damage", 3, 1, 3, 1, 1, "");
+        holyArmor.addRequirement("righteous_fury");
+        templarTree.addNode(holyArmor);
+        
+        SkillNode divinePunishment = new SkillNode("divine_punishment", "Divine Punishment", 
+            "Smite enemies with holy wrath", 1, 2, 5, 3, 1, "");
+        divinePunishment.addRequirement("righteous_fury");
+        templarTree.addNode(divinePunishment);
+        
+        register(templarTree);
+        
         LOGGER.info("Initialized {} placeholder skill trees", skillTrees.size());
     }
 }
