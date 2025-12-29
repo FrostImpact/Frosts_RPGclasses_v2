@@ -154,24 +154,27 @@ public class CustomWeaponItem extends Item {
         tooltip.add(Component.empty());
         
         // Base stats
-        tooltip.add(Component.literal("§7Damage: §f" + customWeapon.getEffectiveDamage()));
-        tooltip.add(Component.literal("§7Attack Speed: §f" + String.format("%.1f", customWeapon.getAttackSpeed())));
-        tooltip.add(Component.literal("§7Critical Chance: §f" + customWeapon.getCriticalChance() + "%"));
-        tooltip.add(Component.literal("§7Critical Damage: §f" + customWeapon.getCriticalDamage() + "%"));
+        tooltip.add(Component.literal("Damage: ").withStyle(ChatFormatting.GRAY)
+            .append(Component.literal(String.valueOf(customWeapon.getEffectiveDamage())).withStyle(ChatFormatting.WHITE)));
+        tooltip.add(Component.literal("Attack Speed: ").withStyle(ChatFormatting.GRAY)
+            .append(Component.literal(String.format("%.1f", customWeapon.getAttackSpeed())).withStyle(ChatFormatting.WHITE)));
+        tooltip.add(Component.literal("Critical Chance: ").withStyle(ChatFormatting.GRAY)
+            .append(Component.literal(customWeapon.getCriticalChance() + "%").withStyle(ChatFormatting.WHITE)));
+        tooltip.add(Component.literal("Critical Damage: ").withStyle(ChatFormatting.GRAY)
+            .append(Component.literal(customWeapon.getCriticalDamage() + "%").withStyle(ChatFormatting.WHITE)));
         
         // Bonus stats
         if (!customWeapon.getBonusStats().isEmpty()) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("§6Bonus Stats:"));
+            tooltip.add(Component.literal("Bonus Stats:").withStyle(ChatFormatting.GOLD));
             for (var entry : customWeapon.getBonusStats().entrySet()) {
                 double effectiveValue = entry.getValue() * customWeapon.getRarity().getStatMultiplier();
                 String statName = formatStatName(entry.getKey());
                 String prefix = effectiveValue >= 0 ? "+" : "";
-                if (entry.getKey().isPercentage()) {
-                    tooltip.add(Component.literal("§a  " + prefix + String.format("%.0f", effectiveValue) + "% " + statName));
-                } else {
-                    tooltip.add(Component.literal("§a  " + prefix + String.format("%.0f", effectiveValue) + " " + statName));
-                }
+                String valueStr = entry.getKey().isPercentage() 
+                    ? prefix + String.format("%.0f", effectiveValue) + "% " + statName
+                    : prefix + String.format("%.0f", effectiveValue) + " " + statName;
+                tooltip.add(Component.literal("  " + valueStr).withStyle(ChatFormatting.GREEN));
             }
         }
         
@@ -179,31 +182,36 @@ public class CustomWeaponItem extends Item {
         if (customWeapon.hasAbility()) {
             WeaponAbility ability = customWeapon.getAbility();
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("§dAbility: " + ability.getName())
+            tooltip.add(Component.literal("Ability: " + ability.getName())
                 .withStyle(ChatFormatting.LIGHT_PURPLE));
-            tooltip.add(Component.literal("§7" + ability.getDescription()));
-            tooltip.add(Component.literal("§9Mana Cost: " + ability.getManaCost() + 
-                " | Cooldown: " + (ability.getCooldownTicks() / 20) + "s"));
+            tooltip.add(Component.literal(ability.getDescription())
+                .withStyle(ChatFormatting.GRAY));
+            tooltip.add(Component.literal("Mana Cost: " + ability.getManaCost() + 
+                " | Cooldown: " + (ability.getCooldownTicks() / 20) + "s")
+                .withStyle(ChatFormatting.BLUE));
         }
         
         // Passives
         if (customWeapon.hasPassives()) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("§ePassives:").withStyle(ChatFormatting.YELLOW));
+            tooltip.add(Component.literal("Passives:").withStyle(ChatFormatting.YELLOW));
             for (WeaponPassive passive : customWeapon.getPassives()) {
-                tooltip.add(Component.literal("§7• " + passive.getName() + ": " + passive.getDescription()));
+                tooltip.add(Component.literal("• " + passive.getName() + ": " + passive.getDescription())
+                    .withStyle(ChatFormatting.GRAY));
             }
         }
         
         // Description/Lore
         if (!customWeapon.getDescription().isEmpty()) {
             tooltip.add(Component.empty());
-            tooltip.add(Component.literal("§8§o" + customWeapon.getDescription()));
+            tooltip.add(Component.literal(customWeapon.getDescription())
+                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
         }
         
         // Additional lore lines
         for (String lore : customWeapon.getLoreLines()) {
-            tooltip.add(Component.literal("§8§o" + lore));
+            tooltip.add(Component.literal(lore)
+                .withStyle(ChatFormatting.DARK_GRAY, ChatFormatting.ITALIC));
         }
         
         super.appendHoverText(stack, context, tooltip, flag);

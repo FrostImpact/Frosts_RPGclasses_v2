@@ -1,12 +1,9 @@
 package net.frostimpact.rpgclasses_v2.entity;
 
 import net.frostimpact.rpgclasses_v2.RpgClassesMod;
-import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.neoforged.api.distmarker.Dist;
-import net.neoforged.api.distmarker.OnlyIn;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
@@ -28,8 +25,9 @@ public class HitEntityTracker {
     // Map of player UUID -> Set of entity UUIDs they have hit
     private static final Map<UUID, Set<UUID>> playerHitEntities = new ConcurrentHashMap<>();
     
-    // Client-side set of entities the local player has hit
-    private static Set<UUID> clientHitEntities = new HashSet<>();
+    // Client-side set of entities the local player has hit (this is accessed on both sides,
+    // the isClientSide check ensures only client adds to it)
+    private static final Set<UUID> clientHitEntities = ConcurrentHashMap.newKeySet();
     
     /**
      * Called when an entity takes damage
@@ -44,12 +42,13 @@ public class HitEntityTracker {
             UUID playerUUID = player.getUUID();
             UUID targetUUID = target.getUUID();
             
-            // Add to server-side tracking
-            playerHitEntities.computeIfAbsent(playerUUID, k -> new HashSet<>()).add(targetUUID);
-            
-            // If this is the client player, also add to client-side tracking
+            // Add to tracking based on which side we're on
             if (player.level().isClientSide()) {
+                // Client-side: add to client tracking
                 clientHitEntities.add(targetUUID);
+            } else {
+                // Server-side: add to server tracking
+                playerHitEntities.computeIfAbsent(playerUUID, k -> ConcurrentHashMap.newKeySet()).add(targetUUID);
             }
         }
     }

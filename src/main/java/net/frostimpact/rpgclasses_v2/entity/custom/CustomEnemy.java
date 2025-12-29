@@ -1,11 +1,10 @@
 package net.frostimpact.rpgclasses_v2.entity.custom;
 
-import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Represents a custom enemy definition with stats, abilities, and AI behavior.
@@ -25,6 +24,8 @@ import java.util.Map;
  * </pre>
  */
 public class CustomEnemy {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CustomEnemy.class);
+    
     private final String id;
     private final String displayName;
     private final String description;
@@ -245,7 +246,7 @@ public class CustomEnemy {
             // Validate: normal mobs should have 0-1 abilities
             if (!isBoss && abilities.size() > 1) {
                 // Log a warning but allow it
-                System.out.println("[CustomEnemy] Warning: Non-boss enemy '" + id + "' has more than 1 ability");
+                LOGGER.warn("Non-boss enemy '{}' has more than 1 ability", id);
             }
             return new CustomEnemy(this);
         }

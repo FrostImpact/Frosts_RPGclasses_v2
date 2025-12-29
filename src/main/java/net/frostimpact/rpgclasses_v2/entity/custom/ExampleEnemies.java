@@ -116,9 +116,7 @@ public class ExampleEnemies {
                 20, 0.5, 0.5, 0.5, 0.1);
             
             // Apply blindness to target briefly
-            if (target instanceof LivingEntity livingTarget) {
-                livingTarget.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 40, 0)); // 2 seconds
-            }
+            target.addEffect(new MobEffectInstance(MobEffects.BLINDNESS, 40, 0)); // 2 seconds
             
             // Deal bonus damage
             float bonusDamage = 8.0f;

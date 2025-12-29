@@ -9,6 +9,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Example custom armor set demonstrating the armor system.
  * 
@@ -206,7 +210,8 @@ public class ExampleArmor {
      * Shadow Strike 4-piece set bonus - bonus damage on first hit after not attacking
      */
     public static class ShadowStrikeSetBonus implements ArmorPassive {
-        private long lastAttackTime = 0;
+        // Per-player tracking of last attack time
+        private static final Map<UUID, Long> lastAttackTimes = new ConcurrentHashMap<>();
         private static final long CHARGE_TIME_MS = 3000; // 3 seconds
         
         @Override
@@ -227,10 +232,12 @@ public class ExampleArmor {
         @Override
         public float onDamageDealt(Player player, LivingEntity target, ItemStack armor, float damage) {
             long currentTime = System.currentTimeMillis();
+            UUID playerUUID = player.getUUID();
+            long lastAttackTime = lastAttackTimes.getOrDefault(playerUUID, 0L);
             
             if (currentTime - lastAttackTime >= CHARGE_TIME_MS) {
                 // Charged attack - deal bonus damage
-                lastAttackTime = currentTime;
+                lastAttackTimes.put(playerUUID, currentTime);
                 
                 // Visual feedback
                 if (player.level() instanceof ServerLevel serverLevel) {
@@ -242,7 +249,7 @@ public class ExampleArmor {
                 return damage * 1.5f; // 50% bonus damage
             }
             
-            lastAttackTime = currentTime;
+            lastAttackTimes.put(playerUUID, currentTime);
             return damage;
         }
     }
