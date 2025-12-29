@@ -99,9 +99,9 @@ public class SubclassSelectionScreen extends Screen {
         int panelX = (this.width - PANEL_WIDTH) / 2;
         int panelY = 20;
         
-        // Panel background
+        // Panel background (more opaque)
         guiGraphics.fill(panelX, panelY, 
-                       panelX + PANEL_WIDTH, panelY + PANEL_HEIGHT, 0xDD000000);
+                       panelX + PANEL_WIDTH, panelY + PANEL_HEIGHT, 0xEE000000);
         
         // Panel border
         guiGraphics.fill(panelX - 2, panelY - 2, 

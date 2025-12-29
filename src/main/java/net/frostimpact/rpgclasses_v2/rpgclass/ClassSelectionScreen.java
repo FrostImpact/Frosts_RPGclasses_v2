@@ -183,34 +183,38 @@ public class ClassSelectionScreen extends Screen {
                 hoveredClass = rpgClass;
             }
             
-            // Draw card with class-specific color background (no gray)
+            // Draw card with class-specific color background (more vibrant)
             int cardColor = getClassColor(rpgClass.getId());
-            int borderColor = isHovered ? 0xFFFFFFFF : cardColor;
+            int borderColor = isHovered ? 0xFFFFDD00 : cardColor;
             
             // Card shadow
             guiGraphics.fill(cardX + 3, cardY + 3, 
                            cardX + CARD_WIDTH + 3, cardY + CARD_HEIGHT + 3, 0x88000000);
             
-            // Card background - use semi-transparent class color throughout
-            int transparentCardColor = (cardColor & 0x00FFFFFF) | 0x44000000;
+            // Card background - use more vibrant class color (increased opacity)
+            int transparentCardColor = (cardColor & 0x00FFFFFF) | 0x88000000;
             guiGraphics.fill(cardX, cardY, 
                            cardX + CARD_WIDTH, cardY + CARD_HEIGHT, transparentCardColor);
             
-            // Card border (thicker if hovered)
-            int borderThickness = isHovered ? 3 : 2;
+            // Card border (thicker if hovered, with glow effect)
+            int borderThickness = isHovered ? 4 : 2;
             for (int t = 0; t < borderThickness; t++) {
+                // Calculate alpha for glow effect (more transparent as distance increases)
+                int alpha = isHovered && borderThickness > 0 ? (int)(255 * (1.0 - (float)t / borderThickness)) : 255;
+                int glowBorderColor = (borderColor & 0x00FFFFFF) | (alpha << 24);
+                
                 // Top
                 guiGraphics.fill(cardX - t, cardY - t, 
-                               cardX + CARD_WIDTH + t, cardY - t + 1, borderColor);
+                               cardX + CARD_WIDTH + t, cardY - t + 1, glowBorderColor);
                 // Bottom
                 guiGraphics.fill(cardX - t, cardY + CARD_HEIGHT + t - 1, 
-                               cardX + CARD_WIDTH + t, cardY + CARD_HEIGHT + t, borderColor);
+                               cardX + CARD_WIDTH + t, cardY + CARD_HEIGHT + t, glowBorderColor);
                 // Left
                 guiGraphics.fill(cardX - t, cardY - t, 
-                               cardX - t + 1, cardY + CARD_HEIGHT + t, borderColor);
+                               cardX - t + 1, cardY + CARD_HEIGHT + t, glowBorderColor);
                 // Right
                 guiGraphics.fill(cardX + CARD_WIDTH + t - 1, cardY - t, 
-                               cardX + CARD_WIDTH + t, cardY + CARD_HEIGHT + t, borderColor);
+                               cardX + CARD_WIDTH + t, cardY + CARD_HEIGHT + t, glowBorderColor);
             }
             
             // Draw class icon using Minecraft items (48x48 rendered at 3x scale)
@@ -243,10 +247,13 @@ public class ClassSelectionScreen extends Screen {
                 guiGraphics.drawString(this.font, subclassText, subX, cardY + 95, 0xFFAAAAAA);
             }
             
-            // Draw hover effect symbol
+            // Draw hover effect symbol (more prominent)
             if (isHovered) {
                 String hoverSymbol = "▶";
                 guiGraphics.drawString(this.font, hoverSymbol, cardX + 5, cardY + 5, 0xFFFFDD00);
+                // Add a glow effect by drawing multiple times with slight offsets
+                guiGraphics.drawString(this.font, hoverSymbol, cardX + 4, cardY + 5, 0x44FFDD00);
+                guiGraphics.drawString(this.font, hoverSymbol, cardX + 6, cardY + 5, 0x44FFDD00);
             }
         }
         

@@ -114,7 +114,7 @@ public class SkillTreeScreen extends Screen {
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // Render solid black background
+        // Render solid black background - no blur effect applied
         guiGraphics.fill(0, 0, this.width, this.height, 0xFF000000);
 
         if (skillTree == null) {
