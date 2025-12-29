@@ -83,7 +83,7 @@ public class ClassRegistry {
     public static void initializePlaceholderClasses() {
         // ===== WARRIOR CLASS =====
         RPGClass warrior = new RPGClass("warrior", "Warrior",
-                "A strong melee fighter with high health and damage", "warrior", 
+                "Melee fighters with high health and damage", "warrior",
                 "rpgclasses_v2:textures/gui/icons/warrior.png", false, "", 1);
         warrior.addBaseStat(StatType.MAX_HEALTH, new StatModifier("warrior_health", StatType.MAX_HEALTH, 20.0, -1));
         warrior.addBaseStat(StatType.DAMAGE, new StatModifier("warrior_damage", StatType.DAMAGE, 5.0, -1));
@@ -107,7 +107,7 @@ public class ClassRegistry {
 
         // ===== MAGE CLASS =====
         RPGClass mage = new RPGClass("mage", "Mage",
-                "A powerful spellcaster with high mana and magical abilities", "mage",
+                "Spellcasters with high mana and magical abilities", "mage",
                 "rpgclasses_v2:textures/gui/icons/mage.png", false, "", 1);
         mage.addBaseStat(StatType.MAX_MANA, new StatModifier("mage_mana", StatType.MAX_MANA, 50.0, -1));
         mage.addBaseStat(StatType.MANA_REGEN, new StatModifier("mage_regen", StatType.MANA_REGEN, 2.0, -1));
@@ -129,7 +129,7 @@ public class ClassRegistry {
 
         // ===== ROGUE CLASS =====
         RPGClass rogue = new RPGClass("rogue", "Rogue",
-                "A swift and agile fighter with high speed and critical hits", "rogue",
+                "Fighters with high speed and critical hits", "rogue",
                 "rpgclasses_v2:textures/gui/icons/rogue.png", false, "", 1);
         rogue.addBaseStat(StatType.MOVE_SPEED, new StatModifier("rogue_speed", StatType.MOVE_SPEED, 15.0, -1));
         rogue.addBaseStat(StatType.ATTACK_SPEED, new StatModifier("rogue_attack", StatType.ATTACK_SPEED, 20.0, -1));
@@ -138,7 +138,7 @@ public class ClassRegistry {
         
         // Rogue subclasses
         RPGClass assassin = new RPGClass("assassin", "Assassin",
-                "A deadly rogue focused on critical strikes and stealth", "rogue",
+                "A assassin focused on critical strikes and stealth", "rogue",
                 "rpgclasses_v2:textures/gui/icons/assassin.png", true, "rogue", 10);
         assassin.addBaseStat(StatType.DAMAGE, new StatModifier("assassin_damage", StatType.DAMAGE, 8.0, -1));
         register(assassin);
@@ -151,7 +151,7 @@ public class ClassRegistry {
 
         // ===== RANGER CLASS =====
         RPGClass ranger = new RPGClass("ranger", "Ranger",
-                "A skilled archer who excels at ranged combat", "ranger",
+                "Archers who excels at ranged combat", "ranger",
                 "rpgclasses_v2:textures/gui/icons/ranger.png", false, "", 1);
         ranger.addBaseStat(StatType.DAMAGE, new StatModifier("ranger_damage", StatType.DAMAGE, 4.0, -1));
         ranger.addBaseStat(StatType.ATTACK_SPEED, new StatModifier("ranger_attack", StatType.ATTACK_SPEED, 15.0, -1));
@@ -173,7 +173,7 @@ public class ClassRegistry {
 
         // ===== TANK CLASS =====
         RPGClass tank = new RPGClass("tank", "Tank",
-                "A heavily armored defender with high health and defense", "tank",
+                "Defenders with high health and defense", "tank",
                 "rpgclasses_v2:textures/gui/icons/tank.png", false, "", 1);
         tank.addBaseStat(StatType.MAX_HEALTH, new StatModifier("tank_health", StatType.MAX_HEALTH, 30.0, -1));
         tank.addBaseStat(StatType.DEFENSE, new StatModifier("tank_defense", StatType.DEFENSE, 5.0, -1));
@@ -194,7 +194,7 @@ public class ClassRegistry {
 
         // ===== PRIEST CLASS =====
         RPGClass priest = new RPGClass("priest", "Priest",
-                "A holy healer with powerful support abilities", "priest",
+                "Healers with powerful support abilities", "priest",
                 "rpgclasses_v2:textures/gui/icons/priest.png", false, "", 1);
         priest.addBaseStat(StatType.MAX_MANA, new StatModifier("priest_mana", StatType.MAX_MANA, 40.0, -1));
         priest.addBaseStat(StatType.MANA_REGEN, new StatModifier("priest_regen", StatType.MANA_REGEN, 3.0, -1));
