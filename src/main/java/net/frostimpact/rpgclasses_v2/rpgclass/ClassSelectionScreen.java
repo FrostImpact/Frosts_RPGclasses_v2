@@ -17,12 +17,21 @@ public class ClassSelectionScreen extends Screen {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClassSelectionScreen.class);
     private static final int PANEL_WIDTH = 400;
     private static final int PANEL_HEIGHT = 350;
+    private static final int PANEL_Y_OFFSET = 20;
     private static final int CARD_WIDTH = 180;
     private static final int CARD_HEIGHT = 80;
     private static final int CARD_SPACING = 10;
     private static final int GRID_COLUMNS = 2;
+    private static final int GRID_START_Y = 80;
     private static final int CORNER_SIZE = 10;
     private static final int CORNER_COLOR = 0xFFFFDD00;
+    private static final int CONFIRM_BUTTON_WIDTH = 150;
+    private static final int CONFIRM_BUTTON_HEIGHT = 25;
+    private static final int CONFIRM_BUTTON_BOTTOM_OFFSET = 60;
+    private static final int CLOSE_BUTTON_WIDTH = 100;
+    private static final int CLOSE_BUTTON_HEIGHT = 20;
+    private static final int CLOSE_BUTTON_BOTTOM_OFFSET = 30;
+    private static final int INFO_PANEL_BOTTOM_OFFSET = 120;
     
     private final List<RPGClass> availableClasses;
     private RPGClass selectedClass;
@@ -47,7 +56,7 @@ public class ClassSelectionScreen extends Screen {
         // Calculate grid layout
         int cols = GRID_COLUMNS;
         int startX = (this.width - (cols * CARD_WIDTH + (cols - 1) * CARD_SPACING)) / 2;
-        int startY = 80;
+        int startY = GRID_START_Y;
         
         // Add buttons for each class in a grid layout
         for (int i = 0; i < availableClasses.size(); i++) {
@@ -68,13 +77,15 @@ public class ClassSelectionScreen extends Screen {
         this.addRenderableWidget(Button.builder(
             Component.literal("Confirm Selection"),
             button -> confirmSelection()
-        ).bounds((this.width - 150) / 2, this.height - 60, 150, 25).build());
+        ).bounds((this.width - CONFIRM_BUTTON_WIDTH) / 2, this.height - CONFIRM_BUTTON_BOTTOM_OFFSET, 
+                CONFIRM_BUTTON_WIDTH, CONFIRM_BUTTON_HEIGHT).build());
         
         // Add close button
         this.addRenderableWidget(Button.builder(
             Component.literal("Close"),
             button -> this.onClose()
-        ).bounds((this.width - 100) / 2, this.height - 30, 100, 20).build());
+        ).bounds((this.width - CLOSE_BUTTON_WIDTH) / 2, this.height - CLOSE_BUTTON_BOTTOM_OFFSET, 
+                CLOSE_BUTTON_WIDTH, CLOSE_BUTTON_HEIGHT).build());
     }
     
     private void onClassSelected(RPGClass rpgClass) {
@@ -97,7 +108,7 @@ public class ClassSelectionScreen extends Screen {
         
         // Draw main panel background
         int panelX = (this.width - PANEL_WIDTH) / 2;
-        int panelY = 20;
+        int panelY = PANEL_Y_OFFSET;
         
         // Panel background with gradient effect
         guiGraphics.fill(panelX, panelY, 
@@ -134,7 +145,7 @@ public class ClassSelectionScreen extends Screen {
         
         // Draw selected class info panel
         if (selectedClass != null) {
-            int infoStartY = this.height - 120;
+            int infoStartY = this.height - INFO_PANEL_BOTTOM_OFFSET;
             int infoPanelWidth = 380;
             int infoPanelHeight = 50;
             int infoPanelX = (this.width - infoPanelWidth) / 2;
