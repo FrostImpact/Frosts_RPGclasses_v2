@@ -2,6 +2,7 @@ package net.frostimpact.rpgclasses_v2.client.event;
 
 import net.frostimpact.rpgclasses_v2.RpgClassesMod;
 import net.frostimpact.rpgclasses_v2.client.ModKeybindings;
+import net.frostimpact.rpgclasses_v2.rpg.stats.StatAllocationScreen;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatsDropdownOverlay;
 import net.minecraft.client.Minecraft;
 import net.neoforged.api.distmarker.Dist;
@@ -28,6 +29,11 @@ public class ClientEvents {
         if (ModKeybindings.TOGGLE_STATS.consumeClick()) {
             LOGGER.debug("Stats keybind pressed");
             StatsDropdownOverlay.toggleDropdown();
+        }
+        
+        if (ModKeybindings.OPEN_STAT_ALLOCATION.consumeClick()) {
+            LOGGER.debug("Stat allocation keybind pressed");
+            mc.setScreen(new StatAllocationScreen());
         }
     }
 }

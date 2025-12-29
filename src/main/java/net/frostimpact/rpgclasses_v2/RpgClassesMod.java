@@ -4,6 +4,7 @@ import net.frostimpact.rpgclasses_v2.client.ModKeybindings;
 import net.frostimpact.rpgclasses_v2.client.overlay.HealthBarOverlay;
 import net.frostimpact.rpgclasses_v2.client.overlay.ManaBarOverlay;
 import net.frostimpact.rpgclasses_v2.event.ServerEvents;
+import net.frostimpact.rpgclasses_v2.item.ModItems;
 import net.frostimpact.rpgclasses_v2.networking.ModMessages;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatsDropdownOverlay;
@@ -24,6 +25,9 @@ public class RpgClassesMod {
     public static final String MOD_ID = "rpgclasses_v2";
 
     public RpgClassesMod(IEventBus modEventBus) {
+        // Register items
+        ModItems.register(modEventBus);
+
         // Register attachments
         ModAttachments.register(modEventBus);
 
@@ -68,5 +72,6 @@ public class RpgClassesMod {
     
     private void registerKeybindings(net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event) {
         event.register(ModKeybindings.TOGGLE_STATS);
+        event.register(ModKeybindings.OPEN_STAT_ALLOCATION);
     }
 }
