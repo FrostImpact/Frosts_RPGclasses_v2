@@ -154,7 +154,7 @@ public class ClassSelectionScreen extends Screen {
         guiGraphics.drawString(this.font, title, titleX, titleY, 0xFFFFDD00);
         
         // Draw subtitle without blur
-        String subtitle = "Left-click to select - Right-click for specializations";
+        String subtitle = "Left-click to select - Right-click for specializations (if available)";
         int subtitleWidth = this.font.width(subtitle);
         guiGraphics.drawString(this.font, subtitle, 
             (this.width - subtitleWidth) / 2, 55, 0xFFCCCCCC);

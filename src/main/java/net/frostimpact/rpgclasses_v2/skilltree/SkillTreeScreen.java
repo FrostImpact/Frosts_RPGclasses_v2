@@ -21,6 +21,7 @@ public class SkillTreeScreen extends Screen {
     private static final int NODE_SPACING = 80;
     private static final int LINE_COLOR = 0xFF888888;
     private static final int LINE_ACTIVE_COLOR = 0xFFFFDD00;
+    private static final int TITLE_SPACE = 50;
     
     private final String skillTreeId;
     private SkillTree skillTree;
@@ -85,7 +86,7 @@ public class SkillTreeScreen extends Screen {
         
         // Center on screen
         offsetX = (this.width - treeWidth) / 2.0f - minX * NODE_SPACING;
-        offsetY = (this.height - treeHeight) / 2.0f - minY * NODE_SPACING + 50; // +50 for title space
+        offsetY = (this.height - treeHeight) / 2.0f - minY * NODE_SPACING + TITLE_SPACE;
     }
     
     @Override
@@ -216,10 +217,10 @@ public class SkillTreeScreen extends Screen {
         
         // Draw controls info
         String zoomInfo = String.format("Zoom: %.1fx (Scroll to zoom)", zoom);
-        guiGraphics.drawString(this.font, zoomInfo, 10, this.height - 30, 0xFFFFDD00);
+        guiGraphics.drawString(this.font, zoomInfo, 10, this.height - 40, 0xFFFFDD00);
         
         String levelInfo = "Class Level: " + classLevel;
-        guiGraphics.drawString(this.font, levelInfo, 10, this.height - 20, 0xFFFFDD00);
+        guiGraphics.drawString(this.font, levelInfo, 10, this.height - 25, 0xFFFFDD00);
         
         // Draw instructions
         String instructions = "Hover over nodes to see details";
