@@ -24,7 +24,6 @@ public class ClassSelectionScreen extends Screen {
     
     private final List<RPGClass> availableClasses;
     private RPGClass selectedClass;
-    private RPGClass hoveredClass;
     
     public ClassSelectionScreen() {
         super(Component.literal("Select Your Class"));

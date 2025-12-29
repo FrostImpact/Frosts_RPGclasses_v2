@@ -25,11 +25,11 @@
 
 **Solution:**
 - Created a new `PauseScreenMixin` class that injects a button into the pause screen
-- Added a stats button with the "📊" emoji icon in the top-right corner
+- Added a stats button with the "S" label in the top-right corner
 - Button toggles the stats dropdown overlay when clicked
 - Registered the new mixin in `rpgclasses_v2.mixins.json`
 
-**Expected Result:** When players press ESC, they'll see a "📊" button in the top-right corner that toggles the stats display.
+**Expected Result:** When players press ESC, they'll see an "S" button in the top-right corner that toggles the stats display.
 
 ---
 
@@ -50,9 +50,9 @@
    - Better spacing between elements
 
 3. **Enhanced Typography & Styling:**
-   - Fancy title: "⚔ SELECT YOUR CLASS ⚔" with shadow effect
+   - Fancy title: "SELECT YOUR CLASS" with shadow effect
    - Subtitle with lore text: "Choose wisely, for this will shape your destiny"
-   - Selected class display with checkmark icons: "✦ Selected: [Class] ✦"
+   - Selected class display: "Selected: [Class]"
    - Added flavor text: "Forge your legend as a [Class]"
 
 4. **Added Visual Feedback:**
@@ -84,7 +84,7 @@
 ## Testing Recommendations
 
 1. **Inventory Test:** Open player inventory (E key) - should not crash
-2. **Stats Button Test:** Press ESC to open pause menu - look for 📊 button in top-right
+2. **Stats Button Test:** Press ESC to open pause menu - look for "S" button in top-right
 3. **Class Selection Test:** Use class selection book item - should see fancy new GUI with panels, borders, and styled text
 
 ## Technical Notes
@@ -93,3 +93,4 @@
 - Compatible with Minecraft 1.21 / NeoForge 21.0.167
 - No breaking changes to existing functionality
 - Maintains compatibility with existing PlayerStats and RPGClass systems
+- Plain text used instead of emoji characters for cross-platform compatibility and reliable rendering across all font configurations
