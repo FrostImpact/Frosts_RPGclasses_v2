@@ -344,16 +344,6 @@ public class SkillTreeScreen extends Screen {
         return lines;
     }
     
-    private int getSkillIconColor(String skillId) {
-        // Return different colors for different skill types
-        return switch (skillId.toLowerCase()) {
-            case "power_strike", "whirlwind", "critical_eye", "shadow_step" -> 0xFFDD4444;
-            case "toughness", "agility" -> 0xFF44DD44;
-            case "mana_pool", "spell_power", "fireball" -> 0xFF4444DD;
-            default -> 0xFFAA44AA;
-        };
-    }
-    
     /**
      * Get emoji icon for skill node
      */
@@ -375,7 +365,7 @@ public class SkillTreeScreen extends Screen {
             case "rapid_fire" -> "🏹";
             case "tracking" -> "🔍";
             case "iron_skin" -> "🛡";
-            case "shield_wall" -> "🛡";
+            case "shield_wall" -> "🏰";
             case "taunt" -> "😠";
             case "divine_blessing" -> "✝";
             case "holy_light" -> "☀";

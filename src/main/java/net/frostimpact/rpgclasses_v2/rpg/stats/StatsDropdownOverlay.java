@@ -97,7 +97,7 @@ public class StatsDropdownOverlay implements LayeredDraw.Layer {
         
         // Attack Speed (percentage)
         double attackSpeedBonus = stats.getPercentageStatValue(StatType.ATTACK_SPEED);
-        String attackSpeedText = String.format("⚡ Attack Speed: +%.1f%%", attackSpeedBonus);
+        String attackSpeedText = String.format("🗡 Attack Speed: +%.1f%%", attackSpeedBonus);
         guiGraphics.drawString(mc.font, attackSpeedText, textStartX, currentY, 0xFFFF55FF);
         currentY += LINE_HEIGHT;
         
