@@ -13,20 +13,26 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Enhanced skill tree GUI with tree-like structure, icons, and tooltips
+ * Enhanced skill tree GUI with tree-like structure, icons, tooltips, and zoom functionality
  */
 public class SkillTreeScreen extends Screen {
     private static final Logger LOGGER = LoggerFactory.getLogger(SkillTreeScreen.class);
     private static final int NODE_SIZE = 40;
     private static final int NODE_SPACING = 80;
-    private static final int START_X = 100;
-    private static final int START_Y = 100;
     private static final int LINE_COLOR = 0xFF888888;
     private static final int LINE_ACTIVE_COLOR = 0xFFFFDD00;
     
     private final String skillTreeId;
     private SkillTree skillTree;
     private SkillNode hoveredNode;
+    
+    // Pan and zoom support
+    private float offsetX = 0;
+    private float offsetY = 0;
+    private float zoom = 1.0f;
+    private static final float MIN_ZOOM = 0.5f;
+    private static final float MAX_ZOOM = 2.0f;
+    private static final float ZOOM_STEP = 0.1f;
     
     public SkillTreeScreen(String skillTreeId) {
         super(Component.literal("Skill Tree"));
@@ -45,12 +51,46 @@ public class SkillTreeScreen extends Screen {
             return;
         }
         
+        // Center the tree on screen
+        centerTree();
+        
         LOGGER.debug("Initialized skill tree screen for: {}", skillTree.getName());
+    }
+    
+    /**
+     * Center the skill tree on the screen
+     */
+    private void centerTree() {
+        if (skillTree == null) return;
+        
+        List<SkillNode> allNodes = skillTree.getAllNodes();
+        if (allNodes.isEmpty()) return;
+        
+        // Find bounds of the tree
+        int minX = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int maxY = Integer.MIN_VALUE;
+        
+        for (SkillNode node : allNodes) {
+            minX = Math.min(minX, node.getX());
+            maxX = Math.max(maxX, node.getX());
+            minY = Math.min(minY, node.getY());
+            maxY = Math.max(maxY, node.getY());
+        }
+        
+        // Calculate tree dimensions
+        int treeWidth = (maxX - minX) * NODE_SPACING + NODE_SIZE;
+        int treeHeight = (maxY - minY) * NODE_SPACING + NODE_SIZE;
+        
+        // Center on screen
+        offsetX = (this.width - treeWidth) / 2.0f - minX * NODE_SPACING;
+        offsetY = (this.height - treeHeight) / 2.0f - minY * NODE_SPACING + 50; // +50 for title space
     }
     
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // Render solid black background
+        // Render solid black background (no blur)
         guiGraphics.fill(0, 0, this.width, this.height, 0xFF000000);
         
         if (skillTree == null) {
@@ -70,27 +110,32 @@ public class SkillTreeScreen extends Screen {
             classLevel = rpgData.getClassLevel();
         }
         
-        // Draw title with class level
+        // Draw title without blur
         String title = skillTree.getName() + " - Level " + classLevel;
         int titleWidth = this.font.width(title);
         guiGraphics.drawString(this.font, title, titleWidth + 2, 22, 0xFF000000);
         guiGraphics.drawString(this.font, title, (this.width - titleWidth) / 2, 20, 0xFFFFDD00);
         
-        // Draw description
+        // Draw description without blur
         String desc = skillTree.getDescription();
         int descWidth = this.font.width(desc);
         guiGraphics.drawString(this.font, desc, 
             (this.width - descWidth) / 2, 40, 0xFFCCCCCC);
+        
+        // Save graphics state for zoom/pan
+        guiGraphics.pose().pushPose();
+        guiGraphics.pose().translate(offsetX, offsetY, 0);
+        guiGraphics.pose().scale(zoom, zoom, 1.0f);
         
         // Draw connection lines between nodes first (so they appear behind nodes)
         List<SkillNode> allNodes = skillTree.getAllNodes();
         for (SkillNode node : allNodes) {
             for (String reqId : node.getRequirements()) {
                 skillTree.getNode(reqId).ifPresent(reqNode -> {
-                    int x1 = START_X + reqNode.getX() * NODE_SPACING + NODE_SIZE / 2;
-                    int y1 = START_Y + reqNode.getY() * NODE_SPACING + NODE_SIZE / 2;
-                    int x2 = START_X + node.getX() * NODE_SPACING + NODE_SIZE / 2;
-                    int y2 = START_Y + node.getY() * NODE_SPACING + NODE_SIZE / 2;
+                    int x1 = reqNode.getX() * NODE_SPACING + NODE_SIZE / 2;
+                    int y1 = reqNode.getY() * NODE_SPACING + NODE_SIZE / 2;
+                    int x2 = node.getX() * NODE_SPACING + NODE_SIZE / 2;
+                    int y2 = node.getY() * NODE_SPACING + NODE_SIZE / 2;
                     
                     // Draw line
                     drawLine(guiGraphics, x1, y1, x2, y2, LINE_COLOR);
@@ -101,14 +146,18 @@ public class SkillTreeScreen extends Screen {
         // Reset hovered node
         hoveredNode = null;
         
-        // Draw skill nodes
+        // Draw skill nodes with emoji icons
         for (SkillNode node : allNodes) {
-            int nodeX = START_X + node.getX() * NODE_SPACING;
-            int nodeY = START_Y + node.getY() * NODE_SPACING;
+            int nodeX = node.getX() * NODE_SPACING;
+            int nodeY = node.getY() * NODE_SPACING;
+            
+            // Transform mouse coordinates for zoom/pan
+            float transformedMouseX = (mouseX - offsetX) / zoom;
+            float transformedMouseY = (mouseY - offsetY) / zoom;
             
             // Check if mouse is hovering over this node
-            boolean isHovered = mouseX >= nodeX && mouseX < nodeX + NODE_SIZE &&
-                               mouseY >= nodeY && mouseY < nodeY + NODE_SIZE;
+            boolean isHovered = transformedMouseX >= nodeX && transformedMouseX < nodeX + NODE_SIZE &&
+                               transformedMouseY >= nodeY && transformedMouseY < nodeY + NODE_SIZE;
             
             if (isHovered) {
                 hoveredNode = node;
@@ -140,17 +189,11 @@ public class SkillTreeScreen extends Screen {
                                nodeX + NODE_SIZE + t, nodeY + NODE_SIZE + t, borderColor);
             }
             
-            // Draw icon placeholder (simple colored pattern)
-            int iconSize = NODE_SIZE - 8;
-            int iconX = nodeX + 4;
-            int iconY = nodeY + 4;
-            int iconColor = getSkillIconColor(node.getId());
-            guiGraphics.fill(iconX, iconY, iconX + iconSize, iconY + iconSize, iconColor);
-            // Add simple pattern to icon
-            guiGraphics.fill(iconX, iconY, iconX + iconSize, iconY + 2, 0xFFFFFFFF);
-            guiGraphics.fill(iconX, iconY, iconX + 2, iconY + iconSize, 0xFFFFFFFF);
-            guiGraphics.fill(iconX + iconSize / 2 - 1, iconY + iconSize / 2 - 1,
-                           iconX + iconSize / 2 + 1, iconY + iconSize / 2 + 1, 0xFFFFFFFF);
+            // Draw emoji icon for the skill node
+            String emoji = getSkillEmoji(node.getId());
+            int emojiX = nodeX + (NODE_SIZE - this.font.width(emoji)) / 2;
+            int emojiY = nodeY + (NODE_SIZE - 8) / 2;
+            guiGraphics.drawString(this.font, emoji, emojiX, emojiY, 0xFFFFFFFF);
             
             // Draw level indicator
             if (node.getMaxLevel() > 1) {
@@ -161,14 +204,20 @@ public class SkillTreeScreen extends Screen {
             }
         }
         
+        // Restore graphics state
+        guiGraphics.pose().popPose();
+        
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         
-        // Draw tooltip for hovered node
+        // Draw tooltip for hovered node (outside zoom transform)
         if (hoveredNode != null) {
             drawNodeTooltip(guiGraphics, hoveredNode, mouseX, mouseY);
         }
         
-        // Draw class level info in corner
+        // Draw controls info
+        String zoomInfo = String.format("Zoom: %.1fx (Scroll to zoom)", zoom);
+        guiGraphics.drawString(this.font, zoomInfo, 10, this.height - 30, 0xFFFFDD00);
+        
         String levelInfo = "Class Level: " + classLevel;
         guiGraphics.drawString(this.font, levelInfo, 10, this.height - 20, 0xFFFFDD00);
         
@@ -303,6 +352,51 @@ public class SkillTreeScreen extends Screen {
             case "mana_pool", "spell_power", "fireball" -> 0xFF4444DD;
             default -> 0xFFAA44AA;
         };
+    }
+    
+    /**
+     * Get emoji icon for skill node
+     */
+    private String getSkillEmoji(String skillId) {
+        return switch (skillId.toLowerCase()) {
+            case "power_strike" -> "⚔";
+            case "whirlwind" -> "🌪";
+            case "critical_eye" -> "👁";
+            case "shadow_step" -> "👤";
+            case "toughness" -> "🛡";
+            case "agility" -> "👟";
+            case "mana_pool" -> "💙";
+            case "spell_power" -> "✨";
+            case "fireball" -> "🔥";
+            case "battle_cry" -> "📢";
+            case "mana_regen" -> "💫";
+            case "evasion" -> "💨";
+            case "precision" -> "🎯";
+            case "rapid_fire" -> "🏹";
+            case "tracking" -> "🔍";
+            case "iron_skin" -> "🛡";
+            case "shield_wall" -> "🛡";
+            case "taunt" -> "😠";
+            case "divine_blessing" -> "✝";
+            case "holy_light" -> "☀";
+            case "resurrection" -> "🕊";
+            default -> "⭐";
+        };
+    }
+    
+    /**
+     * Handle mouse scroll for zoom
+     */
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (scrollY > 0) {
+            // Zoom in
+            zoom = Math.min(zoom + ZOOM_STEP, MAX_ZOOM);
+        } else if (scrollY < 0) {
+            // Zoom out
+            zoom = Math.max(zoom - ZOOM_STEP, MIN_ZOOM);
+        }
+        return true;
     }
     
     @Override

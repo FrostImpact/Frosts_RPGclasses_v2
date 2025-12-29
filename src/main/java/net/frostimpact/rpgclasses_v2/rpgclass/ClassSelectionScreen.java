@@ -76,22 +76,57 @@ public class ClassSelectionScreen extends Screen {
         this.selectedClass = rpgClass;
         LOGGER.info("Clicked on class: {}", rpgClass.getName());
         
-        // Get player's class level
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) {
-            PlayerRPGData rpgData = mc.player.getData(ModAttachments.PLAYER_RPG);
-            int classLevel = rpgData.getClassLevel();
+        // Left-click selects the base class directly
+        confirmSelection(rpgClass);
+    }
+    
+    /**
+     * Handle mouse clicks to support left-click for selection and right-click for specializations
+     */
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // Check if clicking on a class card
+        int cols = GRID_COLUMNS;
+        int gridWidth = cols * CARD_WIDTH + (cols - 1) * CARD_SPACING;
+        int startX = (this.width - gridWidth) / 2;
+        int startY = GRID_START_Y;
+        
+        for (int i = 0; i < availableClasses.size(); i++) {
+            RPGClass rpgClass = availableClasses.get(i);
+            int col = i % cols;
+            int row = i / cols;
             
-            // Check if this class has subclasses
-            List<RPGClass> subclasses = ClassRegistry.getSubclasses(rpgClass.getId());
-            if (!subclasses.isEmpty()) {
-                // Open subclass selection screen
-                mc.setScreen(new SubclassSelectionScreen(rpgClass.getId(), classLevel));
-            } else {
-                // Direct selection if no subclasses
-                confirmSelection(rpgClass);
+            int cardX = startX + col * (CARD_WIDTH + CARD_SPACING);
+            int cardY = startY + row * (CARD_HEIGHT + CARD_SPACING);
+            
+            boolean isOnCard = mouseX >= cardX && mouseX < cardX + CARD_WIDTH &&
+                              mouseY >= cardY && mouseY < cardY + CARD_HEIGHT;
+            
+            if (isOnCard) {
+                if (button == 0) {
+                    // Left-click: Select base class directly
+                    confirmSelection(rpgClass);
+                    return true;
+                } else if (button == 1) {
+                    // Right-click: Open specialization screen
+                    Minecraft mc = Minecraft.getInstance();
+                    if (mc.player != null) {
+                        PlayerRPGData rpgData = mc.player.getData(ModAttachments.PLAYER_RPG);
+                        int classLevel = rpgData.getClassLevel();
+                        
+                        // Check if this class has subclasses
+                        List<RPGClass> subclasses = ClassRegistry.getSubclasses(rpgClass.getId());
+                        if (!subclasses.isEmpty()) {
+                            // Open subclass selection screen
+                            mc.setScreen(new SubclassSelectionScreen(rpgClass.getId(), classLevel));
+                        }
+                    }
+                    return true;
+                }
             }
         }
+        
+        return super.mouseClicked(mouseX, mouseY, button);
     }
     
     private void confirmSelection(RPGClass rpgClass) {
@@ -104,29 +139,27 @@ public class ClassSelectionScreen extends Screen {
     
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // Render dark background with gradient
-        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+        // Render solid black background without blur
+        guiGraphics.fill(0, 0, this.width, this.height, 0xFF000000);
         
-        // Draw fancy title with glow effect
+        // Draw title without blur
         String title = "⚔ SELECT YOUR CLASS ⚔";
         int titleWidth = this.font.width(title);
         int titleX = (this.width - titleWidth) / 2;
         int titleY = 30;
         
-        // Title glow/shadow layers
-        guiGraphics.drawString(this.font, title, titleX + 3, titleY + 3, 0x88000000);
-        guiGraphics.drawString(this.font, title, titleX + 2, titleY + 2, 0xCC000000);
-        guiGraphics.drawString(this.font, title, titleX + 1, titleY + 1, 0xFF222222);
-        // Main title with gradient-like effect
+        // Title shadow (single layer, no blur)
+        guiGraphics.drawString(this.font, title, titleX + 2, titleY + 2, 0xFF000000);
+        // Main title
         guiGraphics.drawString(this.font, title, titleX, titleY, 0xFFFFDD00);
         
-        // Draw subtitle
-        String subtitle = "Choose your path and forge your destiny";
+        // Draw subtitle without blur
+        String subtitle = "Left-click to select • Right-click for specializations";
         int subtitleWidth = this.font.width(subtitle);
         guiGraphics.drawString(this.font, subtitle, 
             (this.width - subtitleWidth) / 2, 55, 0xFFCCCCCC);
         
-        // Draw fancy class cards
+        // Draw class cards without gray boxes
         int cols = GRID_COLUMNS;
         int gridWidth = cols * CARD_WIDTH + (cols - 1) * CARD_SPACING;
         int startX = (this.width - gridWidth) / 2;
@@ -148,7 +181,7 @@ public class ClassSelectionScreen extends Screen {
                 hoveredClass = rpgClass;
             }
             
-            // Draw fancy card background based on class type
+            // Draw card with class-specific color background (no gray)
             int cardColor = getClassColor(rpgClass.getId());
             int borderColor = isHovered ? 0xFFFFFFFF : cardColor;
             
@@ -156,12 +189,10 @@ public class ClassSelectionScreen extends Screen {
             guiGraphics.fill(cardX + 3, cardY + 3, 
                            cardX + CARD_WIDTH + 3, cardY + CARD_HEIGHT + 3, 0x88000000);
             
-            // Card background with gradient effect (darker at bottom)
+            // Card background - use semi-transparent class color throughout
+            int transparentCardColor = (cardColor & 0x00FFFFFF) | 0x44000000;
             guiGraphics.fill(cardX, cardY, 
-                           cardX + CARD_WIDTH, cardY + CARD_HEIGHT / 2, 
-                           0xEE000000 | (cardColor & 0x00FFFFFF) >> 2);
-            guiGraphics.fill(cardX, cardY + CARD_HEIGHT / 2, 
-                           cardX + CARD_WIDTH, cardY + CARD_HEIGHT, 0xCC000000);
+                           cardX + CARD_WIDTH, cardY + CARD_HEIGHT, transparentCardColor);
             
             // Card border (thicker if hovered)
             int borderThickness = isHovered ? 3 : 2;
@@ -180,7 +211,7 @@ public class ClassSelectionScreen extends Screen {
                                cardX + CARD_WIDTH + t, cardY + CARD_HEIGHT + t, borderColor);
             }
             
-            // Draw class icon placeholder (colored square)
+            // Draw class icon placeholder (colored square with white border)
             int iconSize = 48;
             int iconX = cardX + (CARD_WIDTH - iconSize) / 2;
             int iconY = cardY + 15;
@@ -188,7 +219,7 @@ public class ClassSelectionScreen extends Screen {
             guiGraphics.fill(iconX, iconY, iconX + iconSize, iconY + 2, 0xFFFFFFFF);
             guiGraphics.fill(iconX, iconY, iconX + 2, iconY + iconSize, 0xFFFFFFFF);
             
-            // Draw class name
+            // Draw class name with shadow (no blur)
             String className = rpgClass.getName();
             int nameWidth = this.font.width(className);
             int nameX = cardX + (CARD_WIDTH - nameWidth) / 2;
