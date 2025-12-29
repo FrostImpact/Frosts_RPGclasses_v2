@@ -81,7 +81,7 @@ public class ClassSelectionScreen extends Screen {
         // Left-click selects the base class directly
         confirmSelection(rpgClass);
     }
-    
+        
     /**
      * Handle mouse clicks to support left-click for selection and right-click for specializations
      */
