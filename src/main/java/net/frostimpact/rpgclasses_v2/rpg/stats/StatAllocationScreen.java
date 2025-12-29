@@ -111,37 +111,37 @@ public class StatAllocationScreen extends Screen {
         
         // Max Health
         int maxHealthBonus = stats.getIntStatValue(StatType.MAX_HEALTH);
-        String healthText = String.format("Max Health: +%d", maxHealthBonus);
+        String healthText = String.format("❤ Max Health: +%d", maxHealthBonus);
         guiGraphics.drawString(mc.font, healthText, textStartX, currentY, 0xFFFF5555);
         currentY += LINE_HEIGHT;
         
         // Max Mana
         int maxManaBonus = stats.getIntStatValue(StatType.MAX_MANA);
-        String manaText = String.format("Max Mana: +%d", maxManaBonus);
+        String manaText = String.format("⚡ Max Mana: +%d", maxManaBonus);
         guiGraphics.drawString(mc.font, manaText, textStartX, currentY, 0xFF55FFFF);
         currentY += LINE_HEIGHT;
         
         // Damage
         int damageBonus = stats.getIntStatValue(StatType.DAMAGE);
-        String damageText = String.format("Damage: +%d", damageBonus);
+        String damageText = String.format("⚔ Damage: +%d", damageBonus);
         guiGraphics.drawString(mc.font, damageText, textStartX, currentY, 0xFFFFAA00);
         currentY += LINE_HEIGHT;
         
         // Defense
         int defenseBonus = stats.getIntStatValue(StatType.DEFENSE);
-        String defenseText = String.format("Defense: +%d", defenseBonus);
+        String defenseText = String.format("🛡 Defense: +%d", defenseBonus);
         guiGraphics.drawString(mc.font, defenseText, textStartX, currentY, 0xFF00AAFF);
         currentY += LINE_HEIGHT;
         
         // Move Speed
         double moveSpeedBonus = stats.getPercentageStatValue(StatType.MOVE_SPEED);
-        String moveSpeedText = String.format("Move Speed: +%.1f%%", moveSpeedBonus);
+        String moveSpeedText = String.format("👟 Move Speed: +%.1f%%", moveSpeedBonus);
         guiGraphics.drawString(mc.font, moveSpeedText, textStartX, currentY, 0xFF55FF55);
         currentY += LINE_HEIGHT;
         
         // Attack Speed
         double attackSpeedBonus = stats.getPercentageStatValue(StatType.ATTACK_SPEED);
-        String attackSpeedText = String.format("Attack Speed: +%.1f%%", attackSpeedBonus);
+        String attackSpeedText = String.format("🗡 Attack Speed: +%.1f%%", attackSpeedBonus);
         guiGraphics.drawString(mc.font, attackSpeedText, textStartX, currentY, 0xFFFF55FF);
     }
     
