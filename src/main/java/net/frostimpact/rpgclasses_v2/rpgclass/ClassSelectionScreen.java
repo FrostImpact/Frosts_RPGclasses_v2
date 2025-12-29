@@ -20,6 +20,9 @@ public class ClassSelectionScreen extends Screen {
     private static final int CARD_WIDTH = 180;
     private static final int CARD_HEIGHT = 80;
     private static final int CARD_SPACING = 10;
+    private static final int GRID_COLUMNS = 2;
+    private static final int CORNER_SIZE = 10;
+    private static final int CORNER_COLOR = 0xFFFFDD00;
     
     private final List<RPGClass> availableClasses;
     private RPGClass selectedClass;
@@ -42,7 +45,7 @@ public class ClassSelectionScreen extends Screen {
         LOGGER.debug("Initialized class selection screen with {} classes", availableClasses.size());
         
         // Calculate grid layout
-        int cols = 2;
+        int cols = GRID_COLUMNS;
         int startX = (this.width - (cols * CARD_WIDTH + (cols - 1) * CARD_SPACING)) / 2;
         int startY = 80;
         
@@ -180,24 +183,21 @@ public class ClassSelectionScreen extends Screen {
     }
     
     private void drawDecorativeCorners(GuiGraphics guiGraphics, int x, int y, int width, int height) {
-        int cornerSize = 10;
-        int color = 0xFFFFDD00;
-        
         // Top-left corner
-        guiGraphics.fill(x, y, x + cornerSize, y + 1, color);
-        guiGraphics.fill(x, y, x + 1, y + cornerSize, color);
+        guiGraphics.fill(x, y, x + CORNER_SIZE, y + 1, CORNER_COLOR);
+        guiGraphics.fill(x, y, x + 1, y + CORNER_SIZE, CORNER_COLOR);
         
         // Top-right corner
-        guiGraphics.fill(x + width - cornerSize, y, x + width, y + 1, color);
-        guiGraphics.fill(x + width - 1, y, x + width, y + cornerSize, color);
+        guiGraphics.fill(x + width - CORNER_SIZE, y, x + width, y + 1, CORNER_COLOR);
+        guiGraphics.fill(x + width - 1, y, x + width, y + CORNER_SIZE, CORNER_COLOR);
         
         // Bottom-left corner
-        guiGraphics.fill(x, y + height - 1, x + cornerSize, y + height, color);
-        guiGraphics.fill(x, y + height - cornerSize, x + 1, y + height, color);
+        guiGraphics.fill(x, y + height - 1, x + CORNER_SIZE, y + height, CORNER_COLOR);
+        guiGraphics.fill(x, y + height - CORNER_SIZE, x + 1, y + height, CORNER_COLOR);
         
         // Bottom-right corner
-        guiGraphics.fill(x + width - cornerSize, y + height - 1, x + width, y + height, color);
-        guiGraphics.fill(x + width - 1, y + height - cornerSize, x + width, y + height, color);
+        guiGraphics.fill(x + width - CORNER_SIZE, y + height - 1, x + width, y + height, CORNER_COLOR);
+        guiGraphics.fill(x + width - 1, y + height - CORNER_SIZE, x + width, y + height, CORNER_COLOR);
     }
     
     @Override

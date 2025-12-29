@@ -12,6 +12,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(PauseScreen.class)
 public abstract class PauseScreenMixin {
+    private static final int BUTTON_WIDTH = 20;
+    private static final int BUTTON_HEIGHT = 20;
+    private static final int BUTTON_MARGIN_RIGHT = 25;
+    private static final int BUTTON_MARGIN_TOP = 5;
+    
     @Shadow
     protected abstract <T extends net.minecraft.client.gui.components.events.GuiEventListener & net.minecraft.client.gui.narration.NarratableEntry & net.minecraft.client.gui.components.Renderable> T addRenderableWidget(T widget);
 
@@ -20,13 +25,13 @@ public abstract class PauseScreenMixin {
         PauseScreen self = (PauseScreen) (Object) this;
         
         // Add stats toggle button in the top-right corner
-        int buttonX = self.width - 25;
-        int buttonY = 5;
+        int buttonX = self.width - BUTTON_MARGIN_RIGHT;
+        int buttonY = BUTTON_MARGIN_TOP;
         
         Button statsButton = Button.builder(
                 Component.literal("S"), // Stats button
                 button -> StatsDropdownOverlay.toggleDropdown()
-        ).bounds(buttonX, buttonY, 20, 20).build();
+        ).bounds(buttonX, buttonY, BUTTON_WIDTH, BUTTON_HEIGHT).build();
         
         this.addRenderableWidget(statsButton);
     }
