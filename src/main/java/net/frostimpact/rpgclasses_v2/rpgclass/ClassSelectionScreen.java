@@ -117,7 +117,7 @@ public class ClassSelectionScreen extends Screen {
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         
         // Draw fancy title with shadow
-        String title = "⚔ SELECT YOUR CLASS ⚔";
+        String title = "SELECT YOUR CLASS";
         int titleWidth = this.font.width(title);
         int titleX = (this.width - titleWidth) / 2;
         int titleY = 30;
@@ -155,7 +155,7 @@ public class ClassSelectionScreen extends Screen {
                            infoPanelX + infoPanelWidth, infoStartY + infoPanelHeight, 0xFF33AA33); // Bottom
             
             // Selected class name with icon
-            String selectedText = "✦ Selected: " + selectedClass.getName() + " ✦";
+            String selectedText = "Selected: " + selectedClass.getName();
             int selectedWidth = this.font.width(selectedText);
             guiGraphics.drawString(this.font, selectedText, 
                 (this.width - selectedWidth) / 2, infoStartY + 5, 0xFF55FF55);

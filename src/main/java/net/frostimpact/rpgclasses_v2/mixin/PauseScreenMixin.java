@@ -24,7 +24,7 @@ public abstract class PauseScreenMixin {
         int buttonY = 5;
         
         Button statsButton = Button.builder(
-                Component.literal("📊"), // Stats icon
+                Component.literal("S"), // Stats button
                 button -> StatsDropdownOverlay.toggleDropdown()
         ).bounds(buttonX, buttonY, 20, 20).build();
         
