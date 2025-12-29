@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
@@ -27,9 +28,19 @@ public class EntityHealthBar {
         if (entity instanceof net.minecraft.world.entity.decoration.ArmorStand) {
             return;
         }
+        
+        // Don't show health bars for other players
+        if (entity instanceof Player) {
+            return;
+        }
 
         Minecraft mc = Minecraft.getInstance();
         if (entity == mc.player || (mc.player != null && mc.player.distanceTo(entity) > 32.0)) {
+            return;
+        }
+        
+        // Only show health bar if the player has hit this entity
+        if (!HitEntityTracker.hasLocalPlayerHitEntity(entity.getUUID())) {
             return;
         }
 
