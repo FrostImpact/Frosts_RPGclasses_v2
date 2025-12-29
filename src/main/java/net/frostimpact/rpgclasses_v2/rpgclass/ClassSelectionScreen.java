@@ -7,6 +7,8 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -211,13 +213,18 @@ public class ClassSelectionScreen extends Screen {
                                cardX + CARD_WIDTH + t, cardY + CARD_HEIGHT + t, borderColor);
             }
             
-            // Draw class icon placeholder (colored square with white border)
+            // Draw class icon using Minecraft items (48x48 rendered at 3x scale)
+            ItemStack classIcon = getClassIcon(rpgClass.getId());
             int iconSize = 48;
             int iconX = cardX + (CARD_WIDTH - iconSize) / 2;
             int iconY = cardY + 15;
-            guiGraphics.fill(iconX, iconY, iconX + iconSize, iconY + iconSize, cardColor);
-            guiGraphics.fill(iconX, iconY, iconX + iconSize, iconY + 2, 0xFFFFFFFF);
-            guiGraphics.fill(iconX, iconY, iconX + 2, iconY + iconSize, 0xFFFFFFFF);
+            
+            // Render the item at 3x scale (16x16 -> 48x48)
+            guiGraphics.pose().pushPose();
+            guiGraphics.pose().translate(iconX, iconY, 0);
+            guiGraphics.pose().scale(3.0f, 3.0f, 1.0f);
+            guiGraphics.renderItem(classIcon, 0, 0);
+            guiGraphics.pose().popPose();
             
             // Draw class name with shadow (no blur)
             String className = rpgClass.getName();
@@ -304,6 +311,18 @@ public class ClassSelectionScreen extends Screen {
         }
         
         hoveredClass = null; // Reset for next frame
+    }
+    
+    private ItemStack getClassIcon(String classId) {
+        return switch (classId.toLowerCase()) {
+            case "warrior" -> new ItemStack(Items.IRON_SWORD);
+            case "mage" -> new ItemStack(Items.BLAZE_ROD);
+            case "rogue" -> new ItemStack(Items.IRON_SWORD);  // Using iron sword for rogue
+            case "ranger" -> new ItemStack(Items.BOW);
+            case "tank" -> new ItemStack(Items.SHIELD);
+            case "priest" -> new ItemStack(Items.GOLDEN_APPLE);
+            default -> new ItemStack(Items.NETHER_STAR);
+        };
     }
     
     private int getClassColor(String classId) {

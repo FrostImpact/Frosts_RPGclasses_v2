@@ -92,8 +92,8 @@ public class SubclassSelectionScreen extends Screen {
     
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
-        // Render dark background
-        this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
+        // Render solid black background without blur
+        guiGraphics.fill(0, 0, this.width, this.height, 0xFF000000);
         
         // Draw main panel background
         int panelX = (this.width - PANEL_WIDTH) / 2;

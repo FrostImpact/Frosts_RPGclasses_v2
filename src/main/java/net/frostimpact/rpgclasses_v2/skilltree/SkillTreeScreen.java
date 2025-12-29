@@ -6,6 +6,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -190,11 +192,11 @@ public class SkillTreeScreen extends Screen {
                                nodeX + NODE_SIZE + t, nodeY + NODE_SIZE + t, borderColor);
             }
             
-            // Draw emoji icon for the skill node
-            String emoji = getSkillEmoji(node.getId());
-            int emojiX = nodeX + (NODE_SIZE - this.font.width(emoji)) / 2;
-            int emojiY = nodeY + (NODE_SIZE - 8) / 2;
-            guiGraphics.drawString(this.font, emoji, emojiX, emojiY, 0xFFFFFFFF);
+            // Draw Minecraft item icon for the skill node
+            ItemStack skillItem = getSkillItem(node.getId());
+            int iconX = nodeX + (NODE_SIZE - 16) / 2;  // Item icons are 16x16
+            int iconY = nodeY + (NODE_SIZE - 16) / 2;
+            guiGraphics.renderItem(skillItem, iconX, iconY);
             
             // Draw level indicator
             if (node.getMaxLevel() > 1) {
@@ -346,32 +348,43 @@ public class SkillTreeScreen extends Screen {
     }
     
     /**
-     * Get emoji icon for skill node
+     * Get Minecraft item icon for skill node based on skill type
      */
-    private String getSkillEmoji(String skillId) {
+    private ItemStack getSkillItem(String skillId) {
         return switch (skillId.toLowerCase()) {
-            case "power_strike" -> "⚔";
-            case "whirlwind" -> "🌪";
-            case "critical_eye" -> "👁";
-            case "shadow_step" -> "👤";
-            case "toughness" -> "💪";
-            case "agility" -> "👟";
-            case "mana_pool" -> "💙";
-            case "spell_power" -> "✨";
-            case "fireball" -> "🔥";
-            case "battle_cry" -> "📢";
-            case "mana_regen" -> "💫";
-            case "evasion" -> "💨";
-            case "precision" -> "🎯";
-            case "rapid_fire" -> "🏹";
-            case "tracking" -> "🔍";
-            case "iron_skin" -> "🛡";
-            case "shield_wall" -> "🏰";
-            case "taunt" -> "😠";
-            case "divine_blessing" -> "✝";
-            case "holy_light" -> "☀";
-            case "resurrection" -> "🕊";
-            default -> "⭐";
+            // Combat/Attack Skills
+            case "power_strike" -> new ItemStack(Items.DIAMOND_SWORD);
+            case "whirlwind" -> new ItemStack(Items.IRON_AXE);
+            case "critical_eye" -> new ItemStack(Items.SPYGLASS);
+            case "shadow_step" -> new ItemStack(Items.ENDER_PEARL);
+            case "battle_cry" -> new ItemStack(Items.GOAT_HORN);
+            case "precision" -> new ItemStack(Items.ARROW);
+            case "rapid_fire" -> new ItemStack(Items.BOW);
+            case "tracking" -> new ItemStack(Items.COMPASS);
+            
+            // Defense Skills
+            case "toughness" -> new ItemStack(Items.IRON_CHESTPLATE);
+            case "iron_skin" -> new ItemStack(Items.IRON_INGOT);
+            case "shield_wall" -> new ItemStack(Items.SHIELD);
+            case "taunt" -> new ItemStack(Items.BELL);
+            case "evasion" -> new ItemStack(Items.LEATHER_BOOTS);
+            
+            // Magic Skills
+            case "mana_pool" -> new ItemStack(Items.LAPIS_LAZULI);
+            case "spell_power" -> new ItemStack(Items.ENCHANTED_BOOK);
+            case "fireball" -> new ItemStack(Items.FIRE_CHARGE);
+            case "mana_regen" -> new ItemStack(Items.GLOWSTONE_DUST);
+            
+            // Support/Healing Skills
+            case "divine_blessing" -> new ItemStack(Items.GOLDEN_APPLE);
+            case "holy_light" -> new ItemStack(Items.GLOWSTONE);
+            case "resurrection" -> new ItemStack(Items.TOTEM_OF_UNDYING);
+            
+            // Movement/Utility Skills
+            case "agility" -> new ItemStack(Items.SUGAR);
+            
+            // Default
+            default -> new ItemStack(Items.NETHER_STAR);
         };
     }
     
