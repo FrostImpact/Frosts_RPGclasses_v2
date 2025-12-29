@@ -1,6 +1,5 @@
 package net.frostimpact.rpgclasses_v2.rpgclass;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -93,8 +92,6 @@ public class ClassSelectionScreen extends Screen {
         // Render dark background
         this.renderBackground(guiGraphics, mouseX, mouseY, partialTick);
         
-        RenderSystem.enableBlend();
-        
         // Draw main panel background
         int panelX = (this.width - PANEL_WIDTH) / 2;
         int panelY = 20;
@@ -180,8 +177,6 @@ public class ClassSelectionScreen extends Screen {
         
         // Draw decorative corners
         drawDecorativeCorners(guiGraphics, panelX, panelY, PANEL_WIDTH, PANEL_HEIGHT);
-        
-        RenderSystem.disableBlend();
     }
     
     private void drawDecorativeCorners(GuiGraphics guiGraphics, int x, int y, int width, int height) {
