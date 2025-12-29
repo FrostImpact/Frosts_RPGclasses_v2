@@ -353,7 +353,7 @@ public class SkillTreeScreen extends Screen {
             case "whirlwind" -> "🌪";
             case "critical_eye" -> "👁";
             case "shadow_step" -> "👤";
-            case "toughness" -> "🛡";
+            case "toughness" -> "💪";
             case "agility" -> "👟";
             case "mana_pool" -> "💙";
             case "spell_power" -> "✨";
