@@ -143,7 +143,7 @@ public class CooldownOverlay implements LayeredDraw.Layer {
             case "ranger" -> switch (slot) {
                 case 1 -> "🎯"; // Precise Shot
                 case 2 -> "🏹"; // Multi-Shot
-                case 3 -> "⚠"; // Trap
+                case 3 -> "💨"; // Escape
                 case 4 -> "☔"; // Rain of Arrows
                 default -> "⭐";
             };
@@ -166,6 +166,20 @@ public class CooldownOverlay implements LayeredDraw.Layer {
                 case 2 -> "↑"; // Updraft
                 case 3 -> "➤"; // Vault
                 case 4 -> "◎"; // Seekers
+                default -> "⭐";
+            };
+            case "marksman" -> switch (slot) {
+                case 1 -> "⊙"; // Steady Shot
+                case 2 -> "↠"; // Piercing Shot
+                case 3 -> "✖"; // Mark Target
+                case 4 -> "☠"; // Headshot
+                default -> "⭐";
+            };
+            case "beastmaster" -> switch (slot) {
+                case 1 -> "🐺"; // Wolf Pack
+                case 2 -> "🐻"; // Bear Strength
+                case 3 -> "🦅"; // Eagle Eye
+                case 4 -> "🐗"; // Stampede
                 default -> "⭐";
             };
             default -> "⭐";

@@ -25,6 +25,7 @@ import java.util.UUID;
 public class ServerEvents {
     private static final Logger LOGGER = LoggerFactory.getLogger(ServerEvents.class);
     private static final int MANA_REGEN_INTERVAL = 20; // Regen every second (20 ticks)
+    private static final int SEEKER_CHARGE_INTERVAL = 40; // Gain seeker charge every 2 seconds while airborne
     private int tickCounter = 0;
 
     // Track last known stats for each player to avoid recalculating every tick
@@ -36,10 +37,16 @@ public class ServerEvents {
     
     // Track last known player level for stat point awards
     private final Map<UUID, Integer> lastPlayerLevels = new HashMap<>();
+    
+    // Track airborne ticks for seeker charge restoration
+    private final Map<UUID, Integer> airborneTickCounter = new HashMap<>();
 
     @SubscribeEvent
     public void onServerTick(ServerTickEvent.Pre event) {
         tickCounter++;
+        
+        // Tick timed ability effects (Rain of Arrows, Seeker projectiles)
+        ModMessages.tickTimedEffects();
 
         event.getServer().getPlayerList().getPlayers().forEach(player -> {
             // Tick cooldowns
@@ -49,6 +56,32 @@ public class ServerEvents {
             // Tick stat modifiers
             var stats = player.getData(ModAttachments.PLAYER_STATS);
             stats.tick();
+            
+            // HAWKEYE AERIAL AFFINITY: Restore seeker charges while mid-air
+            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("hawkeye")) {
+                if (!player.onGround() && !player.isInWater() && !player.isInLava()) {
+                    // Player is airborne
+                    int airTicks = airborneTickCounter.getOrDefault(player.getUUID(), 0) + 1;
+                    airborneTickCounter.put(player.getUUID(), airTicks);
+                    
+                    // Every SEEKER_CHARGE_INTERVAL ticks while airborne, add a seeker charge
+                    if (airTicks % SEEKER_CHARGE_INTERVAL == 0) {
+                        int oldCharges = rpgData.getSeekerCharges();
+                        rpgData.addSeekerCharge();
+                        int newCharges = rpgData.getSeekerCharges();
+                        
+                        if (newCharges > oldCharges) {
+                            // Sync to client
+                            ModMessages.sendToPlayer(new PacketSyncSeekerCharges(newCharges), player);
+                            LOGGER.debug("Hawkeye {} gained aerial seeker charge, now has {}", 
+                                    player.getName().getString(), newCharges);
+                        }
+                    }
+                } else {
+                    // Player is grounded - reset counter
+                    airborneTickCounter.put(player.getUUID(), 0);
+                }
+            }
 
             // Mana regeneration and cooldown sync
             if (tickCounter % MANA_REGEN_INTERVAL == 0) {
@@ -124,6 +157,9 @@ public class ServerEvents {
             lastDefenseStats.remove(playerUUID);
             lastDamageStats.remove(playerUUID);
             lastPlayerLevels.remove(playerUUID);
+            airborneTickCounter.remove(playerUUID);
+            // Clean up any active Rain of Arrows effects for this player
+            ModMessages.getActiveRainEffects().remove(playerUUID);
         }
     }
     
