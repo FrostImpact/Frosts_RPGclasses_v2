@@ -3328,10 +3328,10 @@ public class ModMessages {
     /**
      * Deal damage to enemies in a cone
      */
-    private static void dealDamageInCone(ServerPlayer player, float damage, Vec3 direction, double range, double angleDegreees) {
+    private static void dealDamageInCone(ServerPlayer player, float damage, Vec3 direction, double range, double angleDegrees) {
         Vec3 playerPos = player.position().add(0, player.getEyeHeight(), 0);
         Vec3 normalizedDir = new Vec3(direction.x, 0, direction.z).normalize();
-        double cosAngle = Math.cos(Math.toRadians(angleDegreees / 2));
+        double cosAngle = Math.cos(Math.toRadians(angleDegrees / 2));
         
         AABB searchBox = player.getBoundingBox().inflate(range);
         List<Entity> entities = player.level().getEntities(player, searchBox,
