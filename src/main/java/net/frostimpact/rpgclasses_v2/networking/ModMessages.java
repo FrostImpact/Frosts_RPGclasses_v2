@@ -6,6 +6,7 @@ import net.frostimpact.rpgclasses_v2.networking.packet.PacketSelectClass;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncCooldowns;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMana;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncRPGData;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncSeekerCharges;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncStats;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketUseAbility;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketResetStats;
@@ -83,6 +84,19 @@ public class ModMessages {
                         if (context.player() != null) {
                             var rpgData = context.player().getData(ModAttachments.PLAYER_RPG);
                             rpgData.setAllCooldowns(packet.cooldowns());
+                        }
+                    });
+                }
+        );
+        
+        registrar.playToClient(
+                PacketSyncSeekerCharges.TYPE,
+                PacketSyncSeekerCharges.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        if (context.player() != null) {
+                            var rpgData = context.player().getData(ModAttachments.PLAYER_RPG);
+                            rpgData.setSeekerCharges(packet.seekerCharges());
                         }
                     });
                 }
@@ -314,6 +328,10 @@ public class ModMessages {
     public static void sendToPlayer(PacketSyncCooldowns packet, ServerPlayer player) {
         PacketDistributor.sendToPlayer(player, packet);
     }
+    
+    public static void sendToPlayer(PacketSyncSeekerCharges packet, ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
 
     public static void sendToServer(PacketAllocateStatPoint packet) {
         PacketDistributor.sendToServer(packet);
@@ -539,6 +557,8 @@ public class ModMessages {
                         player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 60, 0));
                         // Add a seeker charge (aerial affinity)
                         rpgData.addSeekerCharge();
+                        // Sync seeker charges to client
+                        sendToPlayer(new PacketSyncSeekerCharges(rpgData.getSeekerCharges()), player);
                         // Updraft visual - particles going up
                         spawnUpdraftEffect(level, playerPos);
                     }
@@ -552,6 +572,8 @@ public class ModMessages {
                         spawnVaultProjectile(player, level, 1.5f, 4.0f + damageBonus * 0.5f);
                         // Add a seeker charge
                         rpgData.addSeekerCharge();
+                        // Sync seeker charges to client
+                        sendToPlayer(new PacketSyncSeekerCharges(rpgData.getSeekerCharges()), player);
                         // Vault visual - directional particles
                         spawnVaultEffect(level, playerPos, lookVec);
                     }
@@ -562,6 +584,8 @@ public class ModMessages {
                             spawnSeekerProjectiles(player, level, charges, 5.0f + damageBonus * 0.5f);
                             // Seeker visual
                             spawnSeekerEffect(level, playerPos, charges);
+                            // Sync seeker charges to client (now 0)
+                            sendToPlayer(new PacketSyncSeekerCharges(rpgData.getSeekerCharges()), player);
                         } else {
                             player.displayClientMessage(Component.literal("§eNo Seeker charges! Gain charges while airborne."), true);
                         }
@@ -979,96 +1003,238 @@ public class ModMessages {
     // ===== NEW Ranger Particle-Based Ability Methods =====
     
     /**
-     * Spawn a massive particle arrow effect for Precise Shot
-     * The arrow is made of particles with pulsing vertical circles around it
+     * Spawn a massive dramatic particle arrow effect for Precise Shot
+     * The arrow is made entirely of dust particles shaped like a real arrow
+     * It moves slower with radiating particle circles around the projectile
      */
     private static void spawnPreciseShotParticleArrow(ServerLevel level, Vec3 start, Vec3 direction) {
         Vec3 normalizedDir = direction.normalize();
-        double arrowLength = 30.0; // How far the arrow travels
+        double arrowLength = 35.0; // Extended range for more drama
         
-        // Green color for Ranger theme
-        float r = 0.2f, g = 0.8f, b = 0.3f;
+        // Primary green color for Ranger theme
+        float r = 0.15f, g = 0.85f, b = 0.25f;
+        // Secondary brighter green for highlights
+        float r2 = 0.3f, g2 = 1.0f, b2 = 0.4f;
         
-        // Main arrow body - a thick line of particles
-        for (int i = 0; i < 60; i++) {
-            double progress = (double) i / 60.0 * arrowLength;
-            Vec3 pos = start.add(normalizedDir.scale(progress));
-            
-            // Arrow core particles (bright green)
-            float size = 0.6f + RANDOM.nextFloat() * 0.2f;
-            level.sendParticles(createDustParticle(r, g, b, size), 
-                    pos.x, pos.y, pos.z, 1, 0.05, 0.05, 0.05, 0);
-            
-            // Glowing trail
-            level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
-                    pos.x, pos.y, pos.z, 1, 0.02, 0.02, 0.02, 0);
-        }
-        
-        // Pulsing vertical particle circles along the arrow path
-        for (int ring = 0; ring < 8; ring++) {
-            double ringProgress = (double) ring / 8.0 * arrowLength;
-            Vec3 ringCenter = start.add(normalizedDir.scale(ringProgress));
-            
-            // Create vertical circle perpendicular to arrow direction
-            Vec3 perpVec1 = getPerpendicular(normalizedDir);
-            Vec3 perpVec2 = normalizedDir.cross(perpVec1).normalize();
-            
-            double ringRadius = 0.3 + (ring % 2) * 0.2; // Alternating sizes for "pulsing" effect
-            int circlePoints = 12;
-            for (int p = 0; p < circlePoints; p++) {
-                double angle = (double) p / circlePoints * 2 * Math.PI;
-                double offsetX = Math.cos(angle) * ringRadius;
-                double offsetY = Math.sin(angle) * ringRadius;
-                Vec3 circlePos = ringCenter.add(perpVec1.scale(offsetX)).add(perpVec2.scale(offsetY));
+        // ===== ARROW SHAFT - Dense dust particle core =====
+        // Create the arrow shaft with layered particles for depth
+        for (int layer = 0; layer < 3; layer++) {
+            double layerOffset = layer * 0.08;
+            for (int i = 0; i < 100; i++) {
+                double progress = (double) i / 100.0 * (arrowLength - 3.0); // Leave room for arrowhead
+                Vec3 pos = start.add(normalizedDir.scale(progress));
                 
-                float circleSize = 0.4f + RANDOM.nextFloat() * 0.15f;
-                level.sendParticles(createDustParticle(0.3f, 1.0f, 0.4f, circleSize),
-                        circlePos.x, circlePos.y, circlePos.z, 1, 0, 0, 0, 0);
+                // Vary particle positions slightly for thickness
+                double offsetX = (RANDOM.nextDouble() - 0.5) * (0.15 + layerOffset);
+                double offsetY = (RANDOM.nextDouble() - 0.5) * (0.15 + layerOffset);
+                double offsetZ = (RANDOM.nextDouble() - 0.5) * (0.15 + layerOffset);
+                
+                // Arrow core particles (bright green dust)
+                float size = 0.7f + RANDOM.nextFloat() * 0.25f;
+                level.sendParticles(createDustParticle(r, g, b, size), 
+                        pos.x + offsetX, pos.y + offsetY, pos.z + offsetZ, 1, 0.02, 0.02, 0.02, 0);
             }
         }
         
-        // Arrow head - larger particles at the front
-        Vec3 arrowTip = start.add(normalizedDir.scale(arrowLength));
-        for (int i = 0; i < 15; i++) {
-            level.sendParticles(createDustParticle(0.4f, 1.0f, 0.5f, 0.8f),
-                    arrowTip.x + (RANDOM.nextDouble() - 0.5) * 0.3,
-                    arrowTip.y + (RANDOM.nextDouble() - 0.5) * 0.3,
-                    arrowTip.z + (RANDOM.nextDouble() - 0.5) * 0.3,
-                    1, 0, 0, 0, 0);
+        // ===== ARROW HEAD - Triangle/diamond shape made of particles =====
+        Vec3 headStart = start.add(normalizedDir.scale(arrowLength - 3.0));
+        Vec3 perpVec1 = getPerpendicular(normalizedDir);
+        Vec3 perpVec2 = normalizedDir.cross(perpVec1).normalize();
+        
+        // Create triangular arrowhead
+        double headLength = 3.0;
+        for (int slice = 0; slice < 30; slice++) {
+            double sliceProgress = (double) slice / 30.0;
+            Vec3 sliceCenter = headStart.add(normalizedDir.scale(sliceProgress * headLength));
+            double sliceRadius = (1.0 - sliceProgress) * 0.5; // Decreasing radius toward tip
+            
+            // Draw diamond cross-section at this slice
+            int points = 8;
+            for (int p = 0; p < points; p++) {
+                double angle = (double) p / points * 2 * Math.PI;
+                double ox = Math.cos(angle) * sliceRadius;
+                double oy = Math.sin(angle) * sliceRadius;
+                Vec3 particlePos = sliceCenter.add(perpVec1.scale(ox)).add(perpVec2.scale(oy));
+                
+                float size = 0.8f - (float) sliceProgress * 0.3f;
+                level.sendParticles(createDustParticle(r2, g2, b2, size),
+                        particlePos.x, particlePos.y, particlePos.z, 1, 0.01, 0.01, 0.01, 0);
+            }
         }
+        
+        // Arrow tip flash
+        Vec3 arrowTip = start.add(normalizedDir.scale(arrowLength));
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
                 arrowTip.x, arrowTip.y, arrowTip.z, 1, 0, 0, 0, 0);
+        level.sendParticles(createDustParticle(0.5f, 1.0f, 0.6f, 1.2f),
+                arrowTip.x, arrowTip.y, arrowTip.z, 5, 0.1, 0.1, 0.1, 0);
+        
+        // ===== FLETCHING (Arrow feathers at back) =====
+        Vec3 fletchStart = start;
+        for (int feather = 0; feather < 4; feather++) {
+            double featherAngle = (double) feather / 4.0 * 2 * Math.PI + Math.PI / 4;
+            for (int i = 0; i < 10; i++) {
+                double featherLength = 0.6 - (double) i / 10 * 0.4;
+                Vec3 featherPos = fletchStart.add(normalizedDir.scale(i * 0.1));
+                double ox = Math.cos(featherAngle) * featherLength;
+                double oy = Math.sin(featherAngle) * featherLength;
+                Vec3 particlePos = featherPos.add(perpVec1.scale(ox)).add(perpVec2.scale(oy));
+                
+                level.sendParticles(createDustParticle(0.2f, 0.7f, 0.25f, 0.4f),
+                        particlePos.x, particlePos.y, particlePos.z, 1, 0, 0, 0, 0);
+            }
+        }
+        
+        // ===== RADIATING PARTICLE CIRCLES - Pulse outward along the path =====
+        for (int ring = 0; ring < 12; ring++) {
+            double ringProgress = (double) ring / 12.0 * arrowLength;
+            Vec3 ringCenter = start.add(normalizedDir.scale(ringProgress));
+            
+            // Expanding ring effect - radius grows based on position along arrow
+            double baseRadius = 0.4 + (ring % 3) * 0.25;
+            int circlePoints = 16;
+            for (int p = 0; p < circlePoints; p++) {
+                double angle = (double) p / circlePoints * 2 * Math.PI;
+                double ox = Math.cos(angle) * baseRadius;
+                double oy = Math.sin(angle) * baseRadius;
+                Vec3 circlePos = ringCenter.add(perpVec1.scale(ox)).add(perpVec2.scale(oy));
+                
+                float circleSize = 0.35f + RANDOM.nextFloat() * 0.15f;
+                // Alternating colors for pulsing effect
+                if (ring % 2 == 0) {
+                    level.sendParticles(createDustParticle(0.3f, 1.0f, 0.4f, circleSize),
+                            circlePos.x, circlePos.y, circlePos.z, 1, 0, 0, 0, 0);
+                } else {
+                    level.sendParticles(createDustParticle(0.2f, 0.8f, 0.3f, circleSize),
+                            circlePos.x, circlePos.y, circlePos.z, 1, 0, 0, 0, 0);
+                }
+            }
+            
+            // Add END_ROD particles at cardinal points for extra glow
+            for (int cardinal = 0; cardinal < 4; cardinal++) {
+                double cardAngle = cardinal * Math.PI / 2;
+                double ox = Math.cos(cardAngle) * baseRadius * 0.6;
+                double oy = Math.sin(cardAngle) * baseRadius * 0.6;
+                Vec3 glowPos = ringCenter.add(perpVec1.scale(ox)).add(perpVec2.scale(oy));
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                        glowPos.x, glowPos.y, glowPos.z, 1, 0.01, 0.01, 0.01, 0);
+            }
+        }
+        
+        // ===== TRAIL EFFECT - Lingering particles behind =====
+        for (int i = 0; i < 40; i++) {
+            double trailProgress = RANDOM.nextDouble() * arrowLength * 0.7;
+            Vec3 trailPos = start.add(normalizedDir.scale(trailProgress));
+            double spreadX = (RANDOM.nextDouble() - 0.5) * 0.3;
+            double spreadY = (RANDOM.nextDouble() - 0.5) * 0.3;
+            double spreadZ = (RANDOM.nextDouble() - 0.5) * 0.3;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
+                    trailPos.x + spreadX, trailPos.y + spreadY, trailPos.z + spreadZ,
+                    1, 0, 0.05, 0, 0.01);
+        }
+        
+        // Impact glow at end
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.GLOW,
+                arrowTip.x, arrowTip.y, arrowTip.z, 20, 0.3, 0.3, 0.3, 0.02);
     }
     
     /**
-     * Spawn the charging green aura effect around the player for Precise Shot
+     * Spawn the charging aura effect around the player for Precise Shot
+     * Creates a SHAPED aura (hexagonal barrier) instead of random particles
      */
     private static void spawnPreciseShotChargeAura(ServerLevel level, Vec3 center) {
-        // Swirling green particles around the player (charge-up visual)
+        // ===== HEXAGONAL SHAPED BARRIER =====
+        // Create rotating hexagonal rings at different heights
         for (int ring = 0; ring < 3; ring++) {
-            double ringY = center.y + 0.5 + ring * 0.7;
-            double radius = 1.0 + ring * 0.2;
-            int particleCount = 16;
-            for (int i = 0; i < particleCount; i++) {
-                double angle = (double) i / particleCount * 2 * Math.PI + ring * 0.5;
-                double x = center.x + Math.cos(angle) * radius;
-                double z = center.z + Math.sin(angle) * radius;
-                level.sendParticles(createDustParticle(0.2f, 0.9f, 0.3f, 0.5f),
-                        x, ringY, z, 1, 0.1, 0.1, 0.1, 0.02);
+            double ringY = center.y + 0.3 + ring * 0.8;
+            double radius = 1.2 - ring * 0.15;
+            double rotationOffset = ring * Math.PI / 6; // Offset each ring
+            
+            // Draw hexagon shape
+            int sides = 6;
+            for (int side = 0; side < sides; side++) {
+                double angle1 = (double) side / sides * 2 * Math.PI + rotationOffset;
+                double angle2 = (double) (side + 1) / sides * 2 * Math.PI + rotationOffset;
+                
+                double x1 = center.x + Math.cos(angle1) * radius;
+                double z1 = center.z + Math.sin(angle1) * radius;
+                double x2 = center.x + Math.cos(angle2) * radius;
+                double z2 = center.z + Math.sin(angle2) * radius;
+                
+                // Draw line between vertices
+                int lineParticles = 8;
+                for (int p = 0; p < lineParticles; p++) {
+                    double t = (double) p / lineParticles;
+                    double x = x1 + (x2 - x1) * t;
+                    double z = z1 + (z2 - z1) * t;
+                    
+                    level.sendParticles(createDustParticle(0.2f, 0.9f, 0.3f, 0.6f),
+                            x, ringY, z, 1, 0.02, 0.02, 0.02, 0);
+                }
+                
+                // Vertex glow
+                level.sendParticles(createDustParticle(0.4f, 1.0f, 0.5f, 0.8f),
+                        x1, ringY, z1, 2, 0.05, 0.05, 0.05, 0);
             }
         }
-        // Central glow
-        level.sendParticles(net.minecraft.core.particles.ParticleTypes.GLOW,
-                center.x, center.y + 1.0, center.z, 15, 0.3, 0.5, 0.3, 0.02);
-        // Enchant particles spiraling
-        for (int i = 0; i < 20; i++) {
-            double angle = (double) i / 20 * 4 * Math.PI;
-            double y = center.y + (double) i / 20 * 2;
-            double radius = 0.8;
+        
+        // ===== VERTICAL CONNECTING LINES =====
+        for (int v = 0; v < 6; v++) {
+            double angle = (double) v / 6 * 2 * Math.PI;
+            double x = center.x + Math.cos(angle) * 1.2;
+            double z = center.z + Math.sin(angle) * 1.2;
+            
+            for (int h = 0; h < 12; h++) {
+                double y = center.y + 0.3 + (double) h / 12 * 1.6;
+                level.sendParticles(createDustParticle(0.25f, 0.85f, 0.35f, 0.4f),
+                        x, y, z, 1, 0.01, 0.01, 0.01, 0);
+            }
+        }
+        
+        // ===== INNER DIAMOND SHAPE =====
+        double innerRadius = 0.6;
+        for (int side = 0; side < 4; side++) {
+            double angle1 = side * Math.PI / 2;
+            double angle2 = (side + 1) * Math.PI / 2;
+            double y = center.y + 1.0;
+            
+            double x1 = center.x + Math.cos(angle1) * innerRadius;
+            double z1 = center.z + Math.sin(angle1) * innerRadius;
+            double x2 = center.x + Math.cos(angle2) * innerRadius;
+            double z2 = center.z + Math.sin(angle2) * innerRadius;
+            
+            for (int p = 0; p < 6; p++) {
+                double t = (double) p / 6;
+                level.sendParticles(createDustParticle(0.35f, 1.0f, 0.45f, 0.5f),
+                        x1 + (x2 - x1) * t, y, z1 + (z2 - z1) * t, 1, 0.01, 0.01, 0.01, 0);
+            }
+        }
+        
+        // ===== CENTRAL POWER CORE =====
+        // Vertical beam in center
+        for (int i = 0; i < 15; i++) {
+            double y = center.y + (double) i / 15 * 2.5;
+            level.sendParticles(createDustParticle(0.4f, 1.0f, 0.5f, 0.7f),
+                    center.x, y, center.z, 1, 0.05, 0.05, 0.05, 0);
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                    center.x, y, center.z, 1, 0.03, 0.1, 0.03, 0);
+        }
+        
+        // Spiraling enchantment particles
+        for (int i = 0; i < 30; i++) {
+            double angle = (double) i / 30 * 6 * Math.PI;
+            double spiralRadius = 0.3 + (double) i / 30 * 0.5;
+            double y = center.y + (double) i / 30 * 2.5;
             level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
-                    center.x + Math.cos(angle) * radius, y, center.z + Math.sin(angle) * radius,
+                    center.x + Math.cos(angle) * spiralRadius, y, center.z + Math.sin(angle) * spiralRadius,
                     1, 0, 0, 0, 0);
         }
+        
+        // Top crown effect
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                center.x, center.y + 2.5, center.z, 1, 0, 0, 0, 0);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.GLOW,
+                center.x, center.y + 1.0, center.z, 25, 0.4, 0.7, 0.4, 0.02);
     }
     
     /**
@@ -1157,51 +1323,158 @@ public class ModMessages {
     }
     
     /**
-     * Spawn rain of particle arrows - visual effect only.
+     * Spawn rain of particle arrows - ULTIMATE ability visual effect
+     * Dramatically enhanced with massive coverage, impact waves, and afterglow
      * Damage is handled separately by dealDamageToNearbyEnemies in the calling method.
      */
     private static void spawnRainOfParticleArrowsEffect(ServerLevel level, Vec3 center, double radius, int arrowCount) {
-        // Green ranger theme
-        float r = 0.25f, g = 0.75f, b = 0.3f;
+        // Enhanced green ranger theme with brighter colors
+        float r = 0.2f, g = 0.85f, b = 0.25f;
+        float r2 = 0.35f, g2 = 1.0f, b2 = 0.4f;
         
-        // Spawn falling particle arrows
-        for (int arrow = 0; arrow < arrowCount; arrow++) {
+        // ===== SKYWARD ACTIVATION BURST =====
+        // Initial dramatic sky beam
+        for (int i = 0; i < 25; i++) {
+            double y = center.y + 5 + i * 0.5;
+            level.sendParticles(createDustParticle(r2, g2, b2, 0.9f),
+                    center.x, y, center.z, 3, 0.3, 0.1, 0.3, 0.01);
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                    center.x, y, center.z, 1, 0.1, 0, 0.1, 0);
+        }
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                center.x, center.y + 15, center.z, 3, 0.5, 0.5, 0.5, 0);
+        
+        // ===== TARGETING ZONE INDICATOR =====
+        // Expanding rings on ground showing damage area
+        for (int ring = 0; ring < 5; ring++) {
+            double ringRadius = radius * ((double) ring / 5);
+            int points = (int) (ringRadius * 10) + 12;
+            for (int p = 0; p < points; p++) {
+                double angle = (double) p / points * 2 * Math.PI;
+                double x = center.x + Math.cos(angle) * ringRadius;
+                double z = center.z + Math.sin(angle) * ringRadius;
+                level.sendParticles(createDustParticle(r, g, b, 0.5f),
+                        x, center.y + 0.05, z, 1, 0.05, 0, 0.05, 0);
+            }
+        }
+        
+        // Cross-hatch pattern on ground
+        for (int line = 0; line < 8; line++) {
+            double lineAngle = (double) line / 8 * Math.PI;
+            for (int p = 0; p < 20; p++) {
+                double dist = (double) p / 20 * radius;
+                double x1 = center.x + Math.cos(lineAngle) * dist;
+                double z1 = center.z + Math.sin(lineAngle) * dist;
+                double x2 = center.x - Math.cos(lineAngle) * dist;
+                double z2 = center.z - Math.sin(lineAngle) * dist;
+                level.sendParticles(createDustParticle(r, g, b, 0.35f),
+                        x1, center.y + 0.05, z1, 1, 0.02, 0, 0.02, 0);
+                level.sendParticles(createDustParticle(r, g, b, 0.35f),
+                        x2, center.y + 0.05, z2, 1, 0.02, 0, 0.02, 0);
+            }
+        }
+        
+        // ===== RAIN OF PARTICLE ARROWS - Dense coverage =====
+        // Triple the arrow count for ultimate effect
+        int totalArrows = arrowCount * 3;
+        for (int arrow = 0; arrow < totalArrows; arrow++) {
             double angle = RANDOM.nextDouble() * 2 * Math.PI;
             double dist = RANDOM.nextDouble() * radius;
             double startX = center.x + Math.cos(angle) * dist;
             double startZ = center.z + Math.sin(angle) * dist;
-            double startY = center.y + 6 + RANDOM.nextDouble() * 4;
+            double startY = center.y + 8 + RANDOM.nextDouble() * 6;
             
-            // Each arrow is a short vertical line of particles
-            for (int i = 0; i < 8; i++) {
-                double y = startY - i * 0.3;
-                float size = 0.3f + (1.0f - (float) i / 8) * 0.2f; // Larger at tip
+            // Slight angle variance for natural look
+            double tiltX = (RANDOM.nextDouble() - 0.5) * 0.15;
+            double tiltZ = (RANDOM.nextDouble() - 0.5) * 0.15;
+            
+            // Full arrow shape - shaft
+            for (int i = 0; i < 12; i++) {
+                double progress = (double) i / 12;
+                double y = startY - progress * 1.2;
+                double x = startX + tiltX * progress;
+                double z = startZ + tiltZ * progress;
+                
+                float size = 0.45f - (float) progress * 0.2f;
                 level.sendParticles(createDustParticle(r, g, b, size),
-                        startX + (RANDOM.nextDouble() - 0.5) * 0.1,
+                        x + (RANDOM.nextDouble() - 0.5) * 0.08,
                         y,
-                        startZ + (RANDOM.nextDouble() - 0.5) * 0.1,
-                        1, 0, -0.3, 0, 0.05);
+                        z + (RANDOM.nextDouble() - 0.5) * 0.08,
+                        1, 0, -0.4, 0, 0.08);
             }
             
-            // Arrow tip glow
-            level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
-                    startX, startY, startZ, 1, 0, -0.2, 0, 0.02);
+            // Arrow head - brighter/larger
+            level.sendParticles(createDustParticle(r2, g2, b2, 0.6f),
+                    startX, startY, startZ, 2, 0.05, 0.05, 0.05, 0);
+            
+            // Every 3rd arrow gets extra glow
+            if (arrow % 3 == 0) {
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                        startX, startY, startZ, 1, 0, -0.3, 0, 0.05);
+            }
         }
         
-        // Ground impact particles
-        for (int i = 0; i < 40; i++) {
+        // ===== IMPACT WAVES =====
+        // Multiple expanding shockwave rings
+        for (int wave = 0; wave < 4; wave++) {
+            double waveRadius = radius * 0.3 + wave * (radius * 0.2);
+            int wavePoints = (int) (waveRadius * 12);
+            for (int p = 0; p < wavePoints; p++) {
+                double angle = (double) p / wavePoints * 2 * Math.PI;
+                double x = center.x + Math.cos(angle) * waveRadius;
+                double z = center.z + Math.sin(angle) * waveRadius;
+                
+                level.sendParticles(createDustParticle(r2, g2, b2, 0.55f),
+                        x, center.y + 0.1 + wave * 0.3, z, 1, 0.08, 0.15, 0.08, 0.02);
+            }
+        }
+        
+        // ===== GROUND IMPACT PARTICLES =====
+        // Dense scattered impact effect
+        for (int i = 0; i < 80; i++) {
             double angle = RANDOM.nextDouble() * 2 * Math.PI;
             double dist = RANDOM.nextDouble() * radius;
             double x = center.x + Math.cos(angle) * dist;
             double z = center.z + Math.sin(angle) * dist;
-            level.sendParticles(createDustParticle(0.3f, 0.85f, 0.35f, 0.4f),
-                    x, center.y + 0.1, z, 1, 0.1, 0.05, 0.1, 0.01);
+            
+            // Impact spark
+            level.sendParticles(createDustParticle(0.35f, 0.95f, 0.4f, 0.5f),
+                    x, center.y + 0.1, z, 1, 0.15, 0.2, 0.15, 0.03);
+            
+            // Debris/dust kick-up
+            if (i % 3 == 0) {
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.POOF,
+                        x, center.y + 0.1, z, 1, 0.1, 0.05, 0.1, 0.01);
+            }
         }
         
-        // Central aura to show damage zone
-        spawnDustParticlesRing(level, center, radius * 0.8, 0.35f, 0.9f, 0.4f);
+        // ===== AFTERGLOW EFFECT =====
+        // Central pillar of light
+        for (int i = 0; i < 15; i++) {
+            double y = center.y + (double) i / 15 * 4;
+            double glowRadius = 0.5 - (double) i / 15 * 0.3;
+            level.sendParticles(createDustParticle(0.4f, 1.0f, 0.5f, 0.6f),
+                    center.x, y, center.z, 2, glowRadius, 0.1, glowRadius, 0.01);
+        }
+        
+        // Massive ambient glow
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.GLOW,
-                center.x, center.y + 1, center.z, 20, radius * 0.4, 0.5, radius * 0.4, 0.01);
+                center.x, center.y + 1.5, center.z, 50, radius * 0.5, 1.0, radius * 0.5, 0.02);
+        
+        // Enchantment particles for magical feel
+        for (int i = 0; i < 30; i++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double dist = RANDOM.nextDouble() * radius * 0.8;
+            double x = center.x + Math.cos(angle) * dist;
+            double z = center.z + Math.sin(angle) * dist;
+            double y = center.y + RANDOM.nextDouble() * 2;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
+                    x, y, z, 2, 0.1, 0.2, 0.1, 0.02);
+        }
+        
+        // Final outer boundary ring
+        spawnDustParticlesRing(level, center, radius, 0.4f, 1.0f, 0.5f);
+        spawnDustParticlesRing(level, center, radius * 0.7, 0.3f, 0.9f, 0.4f);
     }
     
     /**
@@ -1255,65 +1528,192 @@ public class ModMessages {
     // ===== Hawkeye Ability Helper Methods =====
     
     /**
-     * Spawn glide visual effect - wind particles swirling around player
+     * Spawn glide visual effect - ENHANCED wind particles with feather trail
      */
     private static void spawnGlideEffect(ServerLevel level, Vec3 center) {
-        // Cloud/wind particles spiraling around player
-        for (int i = 0; i < 20; i++) {
-            double angle = (double) i / 20 * 2 * Math.PI;
-            double yOffset = (double) i / 20 * 2;
-            double x = center.x + Math.cos(angle) * 0.8;
-            double z = center.z + Math.sin(angle) * 0.8;
-            level.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
-                    x, center.y + yOffset, z, 1, 0.1, 0.1, 0.1, 0.02);
+        // Cyan/white color theme for wind
+        float r = 0.7f, g = 0.9f, b = 1.0f;
+        
+        // ===== WING FORMATION - Feather-like spread =====
+        for (int wing = 0; wing < 2; wing++) {
+            double wingAngle = wing == 0 ? -Math.PI / 4 : Math.PI / 4;
+            for (int feather = 0; feather < 12; feather++) {
+                double featherAngle = wingAngle + (feather - 6) * 0.08;
+                double featherLength = 1.5 - Math.abs(feather - 6) * 0.1;
+                
+                for (int p = 0; p < 8; p++) {
+                    double dist = (double) p / 8 * featherLength;
+                    double x = center.x + Math.cos(featherAngle) * dist;
+                    double z = center.z + Math.sin(featherAngle) * dist;
+                    double y = center.y + 1.2 - (double) p / 8 * 0.3;
+                    
+                    level.sendParticles(createDustParticle(r, g, b, 0.4f),
+                            x, y, z, 1, 0.02, 0.02, 0.02, 0);
+                }
+            }
         }
-        // Wind/sweep particles
+        
+        // ===== SPIRALING WIND CURRENTS =====
+        for (int spiral = 0; spiral < 3; spiral++) {
+            for (int i = 0; i < 25; i++) {
+                double angle = (double) i / 25 * 4 * Math.PI + spiral * Math.PI * 2 / 3;
+                double radius = 0.6 + (double) i / 25 * 0.5;
+                double yOffset = (double) i / 25 * 2.5;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
+                        x, center.y + yOffset, z, 1, 0.05, 0.1, 0.05, 0.02);
+            }
+        }
+        
+        // ===== WIND STREAMS =====
+        for (int stream = 0; stream < 8; stream++) {
+            double streamAngle = (double) stream / 8 * 2 * Math.PI;
+            for (int p = 0; p < 6; p++) {
+                double dist = 0.8 + (double) p / 6 * 1.0;
+                double x = center.x + Math.cos(streamAngle) * dist;
+                double z = center.z + Math.sin(streamAngle) * dist;
+                
+                level.sendParticles(createDustParticle(0.8f, 0.95f, 1.0f, 0.35f),
+                        x, center.y + 0.8, z, 1, 0.1, 0.1, 0.1, 0.01);
+            }
+        }
+        
+        // Sweep attacks for wind effect
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
-                center.x, center.y + 1, center.z, 3, 0.5, 0.5, 0.5, 0);
+                center.x, center.y + 1, center.z, 5, 0.6, 0.4, 0.6, 0);
+        
+        // Central glow
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                center.x, center.y + 1.2, center.z, 10, 0.3, 0.4, 0.3, 0.01);
     }
     
     /**
-     * Spawn updraft visual effect - upward wind particles
+     * Spawn updraft visual effect - ENHANCED dramatic vertical launch
      */
     private static void spawnUpdraftEffect(ServerLevel level, Vec3 center) {
-        // Vertical column of particles
-        for (int i = 0; i < 30; i++) {
-            double yOffset = (double) i / 10;
-            double xOffset = (RANDOM.nextDouble() - 0.5) * 0.5;
-            double zOffset = (RANDOM.nextDouble() - 0.5) * 0.5;
-            level.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
-                    center.x + xOffset, center.y + yOffset, center.z + zOffset,
-                    1, 0, 0.3, 0, 0.05);
+        // Light blue wind theme
+        float r = 0.6f, g = 0.85f, b = 1.0f;
+        
+        // ===== CENTRAL VORTEX COLUMN =====
+        for (int ring = 0; ring < 8; ring++) {
+            double ringY = center.y + ring * 0.6;
+            double ringRadius = 1.0 - ring * 0.08;
+            int points = 16;
+            double rotation = ring * 0.4; // Each ring rotated
+            
+            for (int p = 0; p < points; p++) {
+                double angle = (double) p / points * 2 * Math.PI + rotation;
+                double x = center.x + Math.cos(angle) * ringRadius;
+                double z = center.z + Math.sin(angle) * ringRadius;
+                
+                level.sendParticles(createDustParticle(r, g, b, 0.5f),
+                        x, ringY, z, 1, 0.05, 0.2, 0.05, 0.02);
+            }
         }
-        // Ground burst effect
-        for (int i = 0; i < 15; i++) {
-            double angle = (double) i / 15 * 2 * Math.PI;
-            level.sendParticles(net.minecraft.core.particles.ParticleTypes.POOF,
-                    center.x + Math.cos(angle) * 0.5, center.y + 0.2, center.z + Math.sin(angle) * 0.5,
-                    1, 0, 0.1, 0, 0.02);
+        
+        // ===== VERTICAL STREAMS =====
+        for (int stream = 0; stream < 6; stream++) {
+            double streamAngle = (double) stream / 6 * 2 * Math.PI;
+            double streamRadius = 0.4;
+            
+            for (int i = 0; i < 20; i++) {
+                double y = center.y + (double) i / 20 * 5;
+                double spiralAngle = streamAngle + (double) i / 20 * Math.PI;
+                double x = center.x + Math.cos(spiralAngle) * streamRadius;
+                double z = center.z + Math.sin(spiralAngle) * streamRadius;
+                
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
+                        x, y, z, 1, 0.03, 0.15, 0.03, 0.05);
+            }
         }
+        
+        // ===== GROUND EXPLOSION =====
+        // Expanding ring at base
+        for (int ring = 0; ring < 3; ring++) {
+            double radius = 0.5 + ring * 0.5;
+            int points = (int) (radius * 12);
+            for (int p = 0; p < points; p++) {
+                double angle = (double) p / points * 2 * Math.PI;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.POOF,
+                        x, center.y + 0.15, z, 2, 0.1, 0.05, 0.1, 0.02);
+                level.sendParticles(createDustParticle(0.7f, 0.9f, 1.0f, 0.4f),
+                        x, center.y + 0.2 + ring * 0.2, z, 1, 0.05, 0.1, 0.05, 0.01);
+            }
+        }
+        
+        // ===== TOP BURST =====
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                center.x, center.y + 4, center.z, 1, 0, 0, 0, 0);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                center.x, center.y + 3, center.z, 15, 0.3, 0.5, 0.3, 0.03);
+        
+        // Sweep effect at launch
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
+                center.x, center.y + 0.5, center.z, 4, 0.5, 0.2, 0.5, 0);
     }
     
     /**
-     * Spawn vault visual effect - directional dash particles
+     * Spawn vault visual effect - ENHANCED directional dash with trail
      */
     private static void spawnVaultEffect(ServerLevel level, Vec3 center, Vec3 direction) {
-        // Trail particles in dash direction
+        // Golden/yellow energy theme
+        float r = 1.0f, g = 0.85f, b = 0.4f;
+        
+        // ===== DASH TRAIL =====
+        Vec3 normalizedDir = direction.normalize();
+        for (int layer = 0; layer < 3; layer++) {
+            for (int i = 0; i < 25; i++) {
+                double progress = (double) i / 25;
+                double trailLength = 3.0;
+                Vec3 pos = center.add(normalizedDir.scale(progress * trailLength));
+                
+                // Spread based on layer
+                double spread = layer * 0.15;
+                double offsetX = (RANDOM.nextDouble() - 0.5) * spread;
+                double offsetY = (RANDOM.nextDouble() - 0.5) * spread;
+                double offsetZ = (RANDOM.nextDouble() - 0.5) * spread;
+                
+                float size = 0.5f - (float) progress * 0.3f;
+                level.sendParticles(createDustParticle(r, g, b, size),
+                        pos.x + offsetX, pos.y + 1 + offsetY, pos.z + offsetZ,
+                        1, 0.02, 0.02, 0.02, 0);
+            }
+        }
+        
+        // ===== END ROD STREAK =====
         for (int i = 0; i < 15; i++) {
             double progress = (double) i / 15;
-            double x = center.x + direction.x * progress * 2;
-            double y = center.y + 1 + direction.y * progress;
-            double z = center.z + direction.z * progress * 2;
+            Vec3 pos = center.add(normalizedDir.scale(progress * 2.5));
             level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
-                    x, y, z, 1, 0.1, 0.1, 0.1, 0);
+                    pos.x, pos.y + 1, pos.z, 1, 0.05, 0.05, 0.05, 0);
         }
-        // Burst at start
+        
+        // ===== LAUNCH BURST =====
+        // Ring at launch point
+        for (int p = 0; p < 16; p++) {
+            double angle = (double) p / 16 * 2 * Math.PI;
+            double x = center.x + Math.cos(angle) * 0.8;
+            double z = center.z + Math.sin(angle) * 0.8;
+            level.sendParticles(createDustParticle(1.0f, 0.9f, 0.5f, 0.5f),
+                    x, center.y + 0.8, z, 1, 0.05, 0.05, 0.05, 0);
+        }
+        
+        // Sweep effect
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
-                center.x, center.y + 1, center.z, 2, 0.3, 0.3, 0.3, 0);
+                center.x, center.y + 1, center.z, 3, 0.4, 0.3, 0.4, 0);
+        
+        // Flash at start
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                center.x, center.y + 1, center.z, 1, 0, 0, 0, 0);
     }
     
     /**
-     * Spawn vault projectile - lobbed arrow
+     * Spawn vault projectile - lobbed arrow with trailing particles
      */
     private static void spawnVaultProjectile(ServerPlayer player, ServerLevel level, float velocity, float damage) {
         Vec3 lookVec = player.getLookAngle();
@@ -1328,66 +1728,253 @@ public class ModMessages {
     }
     
     /**
-     * Spawn seeker visual effect
+     * Spawn seeker visual effect - ENHANCED dramatic seeker launch
      */
     private static void spawnSeekerEffect(ServerLevel level, Vec3 center, int charges) {
-        // Spiral of particles based on charge count
+        // Purple/magenta energy theme for seekers
+        float r = 0.7f, g = 0.3f, b = 1.0f;
+        
+        // ===== CHARGING RINGS - one per seeker =====
         for (int charge = 0; charge < charges; charge++) {
-            double angleOffset = (double) charge / charges * 2 * Math.PI;
-            for (int i = 0; i < 8; i++) {
-                double angle = angleOffset + (double) i / 8 * Math.PI;
-                double dist = 0.5 + (double) i / 8;
-                double x = center.x + Math.cos(angle) * dist;
-                double z = center.z + Math.sin(angle) * dist;
-                level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
-                        x, center.y + 1.5, z, 1, 0, 0, 0, 0);
+            double chargeAngle = (double) charge / charges * 2 * Math.PI;
+            double chargeRadius = 1.2;
+            double chargeX = center.x + Math.cos(chargeAngle) * chargeRadius;
+            double chargeZ = center.z + Math.sin(chargeAngle) * chargeRadius;
+            
+            // Each seeker charge as a small ring
+            for (int p = 0; p < 12; p++) {
+                double angle = (double) p / 12 * 2 * Math.PI;
+                double ringRadius = 0.3;
+                double x = chargeX + Math.cos(angle) * ringRadius;
+                double z = chargeZ + Math.sin(angle) * ringRadius;
+                
+                level.sendParticles(createDustParticle(r, g, b, 0.5f),
+                        x, center.y + 1.5, z, 1, 0.02, 0.02, 0.02, 0);
             }
+            
+            // Center glow for each charge
+            level.sendParticles(createDustParticle(0.9f, 0.5f, 1.0f, 0.7f),
+                    chargeX, center.y + 1.5, chargeZ, 3, 0.1, 0.1, 0.1, 0);
         }
-        // Center burst
+        
+        // ===== CENTRAL CONVERGENCE BURST =====
+        // All seekers launch from center
+        for (int i = 0; i < charges * 8; i++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double dist = RANDOM.nextDouble() * 0.5;
+            level.sendParticles(createDustParticle(0.8f, 0.4f, 1.0f, 0.6f),
+                    center.x + Math.cos(angle) * dist, center.y + 1.5,
+                    center.z + Math.sin(angle) * dist, 1, 0.15, 0.15, 0.15, 0.03);
+        }
+        
+        // ===== UPWARD SPIRAL =====
+        for (int i = 0; i < 30; i++) {
+            double angle = (double) i / 30 * 4 * Math.PI;
+            double radius = 0.4 + (double) i / 30 * 0.5;
+            double y = center.y + 1 + (double) i / 30 * 1.5;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
+                    center.x + Math.cos(angle) * radius, y, center.z + Math.sin(angle) * radius,
+                    2, 0, 0.1, 0, 0.02);
+        }
+        
+        // Witch particles burst
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.WITCH,
-                center.x, center.y + 1, center.z, charges * 3, 0.3, 0.3, 0.3, 0.05);
+                center.x, center.y + 1.5, center.z, charges * 5, 0.4, 0.4, 0.4, 0.08);
+        
+        // Flash
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                center.x, center.y + 2, center.z, 1, 0, 0, 0, 0);
     }
     
     /**
-     * Spawn seeker projectiles that home in on nearby enemies
+     * Spawn seeker projectiles - PARTICLE-BASED HOMING ENTITIES (not arrows!)
+     * Seekers are now visual particle formations that home in on enemies
      */
     private static void spawnSeekerProjectiles(ServerPlayer player, ServerLevel level, int chargeCount, float damage) {
         // Find nearby enemies
-        AABB searchBox = player.getBoundingBox().inflate(15.0);
+        AABB searchBox = player.getBoundingBox().inflate(20.0); // Extended range
         List<Entity> entities = player.level().getEntities(player, searchBox,
                 e -> e instanceof LivingEntity && e != player && isHostile(e));
         
         Vec3 playerPos = player.position().add(0, 1.5, 0);
         
+        // Purple/magenta seeker theme
+        float r = 0.75f, g = 0.35f, b = 1.0f;
+        
         if (entities.isEmpty()) {
-            // No enemies, fire in look direction
+            // No enemies - fire seeking orbs in look direction that spread out
             Vec3 lookVec = player.getLookAngle();
             for (int i = 0; i < chargeCount; i++) {
-                float yawOffset = (RANDOM.nextFloat() - 0.5f) * 10;
-                net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(level, player,
-                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
-                arrow.shootFromRotation(player, player.getXRot(), player.getYRot() + yawOffset, 0.0F, 2.0F, 1.0F);
-                arrow.setBaseDamage(damage);
-                arrow.setGlowingTag(true);
-                arrow.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
-                level.addFreshEntity(arrow);
+                // Calculate spread direction
+                float yawOffset = ((float) i / chargeCount - 0.5f) * 30f;
+                float pitchOffset = (RANDOM.nextFloat() - 0.5f) * 10f;
+                
+                double yawRad = Math.toRadians(-player.getYRot() - 90 + yawOffset);
+                double pitchRad = Math.toRadians(-player.getXRot() + pitchOffset);
+                Vec3 seekerDir = new Vec3(
+                        Math.cos(yawRad) * Math.cos(pitchRad),
+                        Math.sin(pitchRad),
+                        Math.sin(yawRad) * Math.cos(pitchRad)
+                ).normalize();
+                
+                // Spawn particle seeker projectile path
+                spawnParticleSeeker(level, playerPos, seekerDir, 20.0, r, g, b);
             }
         } else {
-            // Target enemies
+            // Target enemies with homing particle seekers
             for (int i = 0; i < chargeCount; i++) {
                 Entity target = entities.get(i % entities.size());
                 Vec3 targetPos = target.position().add(0, target.getBbHeight() * 0.5, 0);
-                Vec3 direction = targetPos.subtract(playerPos).normalize();
                 
-                net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(level, player,
-                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
-                arrow.setPos(playerPos.x, playerPos.y, playerPos.z);
-                arrow.shoot(direction.x, direction.y, direction.z, 2.0F, 0.5F);
-                arrow.setBaseDamage(damage);
-                arrow.setGlowingTag(true);
-                arrow.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
-                level.addFreshEntity(arrow);
+                // Calculate curved path to target
+                spawnHomingSeekerPath(player, level, playerPos, targetPos, target, damage, r, g, b);
             }
         }
+    }
+    
+    /**
+     * Spawn a particle-based seeker projectile traveling in a direction
+     */
+    private static void spawnParticleSeeker(ServerLevel level, Vec3 start, Vec3 direction, double range,
+            float r, float g, float b) {
+        Vec3 normalizedDir = direction.normalize();
+        Vec3 perpVec1 = getPerpendicular(normalizedDir);
+        Vec3 perpVec2 = normalizedDir.cross(perpVec1).normalize();
+        
+        // Seeker travels along the path
+        for (int step = 0; step < 40; step++) {
+            double progress = (double) step / 40.0;
+            double distance = progress * range;
+            Vec3 pos = start.add(normalizedDir.scale(distance));
+            
+            // ===== SEEKER CORE =====
+            // Central bright orb
+            level.sendParticles(createDustParticle(0.9f, 0.6f, 1.0f, 0.8f),
+                    pos.x, pos.y, pos.z, 2, 0.05, 0.05, 0.05, 0);
+            
+            // ===== ORBITAL RING =====
+            // Spinning particles around the core
+            double orbitAngle = step * 0.5;
+            for (int orbit = 0; orbit < 6; orbit++) {
+                double angle = orbitAngle + (double) orbit / 6 * 2 * Math.PI;
+                double orbitRadius = 0.25;
+                double ox = Math.cos(angle) * orbitRadius;
+                double oy = Math.sin(angle) * orbitRadius;
+                Vec3 orbitPos = pos.add(perpVec1.scale(ox)).add(perpVec2.scale(oy));
+                
+                level.sendParticles(createDustParticle(r, g, b, 0.4f),
+                        orbitPos.x, orbitPos.y, orbitPos.z, 1, 0, 0, 0, 0);
+            }
+            
+            // ===== TRAIL =====
+            if (step % 3 == 0) {
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.WITCH,
+                        pos.x, pos.y, pos.z, 1, 0.05, 0.05, 0.05, 0.01);
+            }
+            if (step % 5 == 0) {
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                        pos.x, pos.y, pos.z, 1, 0.02, 0.02, 0.02, 0);
+            }
+        }
+        
+        // End burst
+        Vec3 endPos = start.add(normalizedDir.scale(range));
+        level.sendParticles(createDustParticle(1.0f, 0.7f, 1.0f, 1.0f),
+                endPos.x, endPos.y, endPos.z, 8, 0.2, 0.2, 0.2, 0.05);
+    }
+    
+    /**
+     * Spawn a homing seeker path that curves toward the target and deals damage
+     */
+    private static void spawnHomingSeekerPath(ServerPlayer player, ServerLevel level, Vec3 start, Vec3 targetPos,
+            Entity target, float damage, float r, float g, float b) {
+        // Calculate curved path using quadratic bezier
+        Vec3 toTarget = targetPos.subtract(start);
+        double distance = toTarget.length();
+        
+        // Control point - offset to create arc
+        Vec3 midPoint = start.add(toTarget.scale(0.5));
+        double arcHeight = distance * 0.3 + 1.5;
+        double arcSide = (RANDOM.nextDouble() - 0.5) * distance * 0.4;
+        
+        // Get perpendicular vectors for arc
+        Vec3 forward = toTarget.normalize();
+        Vec3 up = new Vec3(0, 1, 0);
+        Vec3 side = forward.cross(up).normalize();
+        
+        Vec3 controlPoint = midPoint.add(0, arcHeight, 0).add(side.scale(arcSide));
+        
+        // Draw bezier curve path
+        Vec3 perpVec1 = getPerpendicular(forward);
+        Vec3 perpVec2 = forward.cross(perpVec1).normalize();
+        
+        for (int step = 0; step < 50; step++) {
+            double t = (double) step / 50.0;
+            
+            // Quadratic bezier: B(t) = (1-t)²P0 + 2(1-t)tP1 + t²P2
+            double oneMinusT = 1 - t;
+            Vec3 pos = start.scale(oneMinusT * oneMinusT)
+                    .add(controlPoint.scale(2 * oneMinusT * t))
+                    .add(targetPos.scale(t * t));
+            
+            // ===== SEEKER CORE =====
+            float coreSize = 0.7f + (float) Math.sin(t * Math.PI) * 0.3f; // Pulse
+            level.sendParticles(createDustParticle(0.95f, 0.6f, 1.0f, coreSize),
+                    pos.x, pos.y, pos.z, 2, 0.04, 0.04, 0.04, 0);
+            
+            // ===== SPINNING ORBITAL PARTICLES =====
+            double orbitAngle = step * 0.6;
+            for (int orbit = 0; orbit < 8; orbit++) {
+                double angle = orbitAngle + (double) orbit / 8 * 2 * Math.PI;
+                double orbitRadius = 0.2 + Math.sin(t * Math.PI * 2) * 0.1;
+                
+                // Calculate orbit position relative to current path direction
+                Vec3 tangent = calculateBezierTangent(start, controlPoint, targetPos, t);
+                Vec3 orbitPerp1 = getPerpendicular(tangent);
+                Vec3 orbitPerp2 = tangent.cross(orbitPerp1).normalize();
+                
+                double ox = Math.cos(angle) * orbitRadius;
+                double oy = Math.sin(angle) * orbitRadius;
+                Vec3 orbitPos = pos.add(orbitPerp1.scale(ox)).add(orbitPerp2.scale(oy));
+                
+                level.sendParticles(createDustParticle(r, g, b, 0.35f),
+                        orbitPos.x, orbitPos.y, orbitPos.z, 1, 0, 0, 0, 0);
+            }
+            
+            // ===== TRAIL PARTICLES =====
+            if (step % 2 == 0) {
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.WITCH,
+                        pos.x, pos.y, pos.z, 1, 0.03, 0.03, 0.03, 0.005);
+            }
+            if (step % 4 == 0) {
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                        pos.x, pos.y, pos.z, 1, 0.01, 0.01, 0.01, 0);
+            }
+        }
+        
+        // ===== IMPACT EFFECT =====
+        // Burst at target
+        level.sendParticles(createDustParticle(1.0f, 0.7f, 1.0f, 1.0f),
+                targetPos.x, targetPos.y, targetPos.z, 12, 0.3, 0.3, 0.3, 0.08);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
+                targetPos.x, targetPos.y, targetPos.z, 20, 0.4, 0.4, 0.4, 0.1);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                targetPos.x, targetPos.y, targetPos.z, 1, 0, 0, 0, 0);
+        
+        // Deal damage to target
+        if (target instanceof LivingEntity living) {
+            living.hurt(player.damageSources().playerAttack(player), damage);
+        }
+    }
+    
+    /**
+     * Calculate tangent vector for bezier curve at parameter t
+     */
+    private static Vec3 calculateBezierTangent(Vec3 p0, Vec3 p1, Vec3 p2, double t) {
+        // Derivative of quadratic bezier: B'(t) = 2(1-t)(P1-P0) + 2t(P2-P1)
+        double oneMinusT = 1 - t;
+        Vec3 tangent = p1.subtract(p0).scale(2 * oneMinusT)
+                .add(p2.subtract(p1).scale(2 * t));
+        return tangent.normalize();
     }
 }
