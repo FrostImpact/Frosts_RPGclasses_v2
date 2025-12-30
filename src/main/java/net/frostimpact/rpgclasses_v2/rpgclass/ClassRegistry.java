@@ -151,7 +151,7 @@ public class ClassRegistry {
 
         // ===== RANGER CLASS =====
         RPGClass ranger = new RPGClass("ranger", "Ranger",
-                "Archers who excels at ranged combat", "ranger",
+                "Archers who excel at ranged combat with bows and shortbows", "ranger",
                 "rpgclasses_v2:textures/gui/icons/ranger.png", false, "", 1);
         ranger.addBaseStat(StatType.DAMAGE, new StatModifier("ranger_damage", StatType.DAMAGE, 4.0, -1));
         ranger.addBaseStat(StatType.ATTACK_SPEED, new StatModifier("ranger_attack", StatType.ATTACK_SPEED, 15.0, -1));
@@ -159,14 +159,23 @@ public class ClassRegistry {
         register(ranger);
         
         // Ranger subclasses
+        RPGClass hawkeye = new RPGClass("hawkeye", "Hawkeye",
+                "An aerial ranger who excels with bows and shortbows. Gains GLIDE (Slow Falling I while midair), " +
+                "AERIAL AFFINITY (passive SEEKER charges while airborne), VAULT (launch forward with projectile), " +
+                "and UPDRAFT (launch upward)", "hawkeye",
+                "rpgclasses_v2:textures/gui/icons/hawkeye.png", true, "ranger", 10);
+        hawkeye.addBaseStat(StatType.DAMAGE, new StatModifier("hawkeye_damage", StatType.DAMAGE, 6.0, -1));
+        hawkeye.addBaseStat(StatType.MOVE_SPEED, new StatModifier("hawkeye_speed", StatType.MOVE_SPEED, 5.0, -1));
+        register(hawkeye);
+        
         RPGClass marksman = new RPGClass("marksman", "Marksman",
-                "A ranger with unmatched accuracy and precision", "ranger",
+                "A ranger with unmatched accuracy and precision", "marksman",
                 "rpgclasses_v2:textures/gui/icons/marksman.png", true, "ranger", 10);
         marksman.addBaseStat(StatType.DAMAGE, new StatModifier("marksman_damage", StatType.DAMAGE, 10.0, -1));
         register(marksman);
         
         RPGClass beastmaster = new RPGClass("beastmaster", "Beast Master",
-                "A ranger who commands animal companions", "ranger",
+                "A ranger who commands animal companions", "beastmaster",
                 "rpgclasses_v2:textures/gui/icons/beastmaster.png", true, "ranger", 10);
         beastmaster.addBaseStat(StatType.MAX_HEALTH, new StatModifier("beast_health", StatType.MAX_HEALTH, 10.0, -1));
         register(beastmaster);

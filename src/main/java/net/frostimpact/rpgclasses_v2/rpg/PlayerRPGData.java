@@ -14,9 +14,11 @@ public class PlayerRPGData {
             Codec.unboundedMap(Codec.STRING, Codec.INT).fieldOf("cooldowns").forGetter(d -> d.cooldowns),
             Codec.STRING.fieldOf("currentClass").forGetter(d -> d.currentClass),
             Codec.INT.fieldOf("availableStatPoints").forGetter(d -> d.availableStatPoints),
+            Codec.INT.fieldOf("availableSkillPoints").forGetter(d -> d.availableSkillPoints),
             Codec.INT.fieldOf("level").forGetter(d -> d.level),
             Codec.INT.fieldOf("classLevel").forGetter(d -> d.classLevel),
-            Codec.INT.fieldOf("classExperience").forGetter(d -> d.classExperience)
+            Codec.INT.fieldOf("classExperience").forGetter(d -> d.classExperience),
+            Codec.INT.fieldOf("seekerCharges").forGetter(d -> d.seekerCharges)
         ).apply(instance, PlayerRPGData::new)
     );
 
@@ -25,9 +27,11 @@ public class PlayerRPGData {
     private Map<String, Integer> cooldowns;
     private String currentClass;
     private int availableStatPoints;
+    private int availableSkillPoints;
     private int level;
     private int classLevel;
     private int classExperience;
+    private int seekerCharges; // For Hawkeye SEEKER ability
 
     public PlayerRPGData() {
         this.mana = 100;
@@ -35,20 +39,26 @@ public class PlayerRPGData {
         this.cooldowns = new HashMap<>();
         this.currentClass = "NONE";
         this.availableStatPoints = 0;
+        this.availableSkillPoints = 0;
         this.level = 1;
         this.classLevel = 1;
         this.classExperience = 0;
+        this.seekerCharges = 0;
     }
 
-    private PlayerRPGData(int mana, int maxMana, Map<String, Integer> cooldowns, String currentClass, int availableStatPoints, int level, int classLevel, int classExperience) {
+    private PlayerRPGData(int mana, int maxMana, Map<String, Integer> cooldowns, String currentClass, 
+                         int availableStatPoints, int availableSkillPoints, int level, int classLevel, 
+                         int classExperience, int seekerCharges) {
         this.mana = mana;
         this.maxMana = maxMana;
         this.cooldowns = new HashMap<>(cooldowns);
         this.currentClass = currentClass;
         this.availableStatPoints = availableStatPoints;
+        this.availableSkillPoints = availableSkillPoints;
         this.level = level;
         this.classLevel = classLevel;
         this.classExperience = classExperience;
+        this.seekerCharges = seekerCharges;
     }
 
     public int getMana() {
@@ -156,7 +166,49 @@ public class PlayerRPGData {
         while (classExperience >= xpNeeded) {
             classExperience -= xpNeeded;
             classLevel++;
+            // Award 1 skill point per level up
+            availableSkillPoints++;
             xpNeeded = classLevel * 100;
         }
+    }
+    
+    // Skill Points methods
+    public int getAvailableSkillPoints() {
+        return availableSkillPoints;
+    }
+    
+    public void setAvailableSkillPoints(int points) {
+        this.availableSkillPoints = Math.max(0, points);
+    }
+    
+    public void addSkillPoints(int points) {
+        this.availableSkillPoints += points;
+    }
+    
+    public boolean useSkillPoint() {
+        if (availableSkillPoints > 0) {
+            availableSkillPoints--;
+            return true;
+        }
+        return false;
+    }
+    
+    // Seeker Charges methods (for Hawkeye)
+    public int getSeekerCharges() {
+        return seekerCharges;
+    }
+    
+    public void setSeekerCharges(int charges) {
+        this.seekerCharges = Math.max(0, Math.min(charges, 5)); // Max 5 charges
+    }
+    
+    public void addSeekerCharge() {
+        this.seekerCharges = Math.min(5, this.seekerCharges + 1);
+    }
+    
+    public int consumeSeekerCharges() {
+        int charges = this.seekerCharges;
+        this.seekerCharges = 0;
+        return charges;
     }
 }
