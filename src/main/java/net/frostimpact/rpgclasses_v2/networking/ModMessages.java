@@ -41,6 +41,10 @@ public class ModMessages {
     private static final Logger LOGGER = LoggerFactory.getLogger(ModMessages.class);
     private static final Random RANDOM = new Random();
     
+    // Ability constants
+    private static final int ULTIMATE_ARROW_MULTIPLIER = 3;
+    private static final double SEEKER_SEARCH_RANGE = 20.0;
+    
     public static void register(IEventBus modEventBus) {
         modEventBus.addListener(ModMessages::onRegisterPayloadHandler);
     }
@@ -1376,7 +1380,7 @@ public class ModMessages {
         
         // ===== RAIN OF PARTICLE ARROWS - Dense coverage =====
         // Triple the arrow count for ultimate effect
-        int totalArrows = arrowCount * 3;
+        int totalArrows = arrowCount * ULTIMATE_ARROW_MULTIPLIER;
         for (int arrow = 0; arrow < totalArrows; arrow++) {
             double angle = RANDOM.nextDouble() * 2 * Math.PI;
             double dist = RANDOM.nextDouble() * radius;
@@ -1792,7 +1796,7 @@ public class ModMessages {
      */
     private static void spawnSeekerProjectiles(ServerPlayer player, ServerLevel level, int chargeCount, float damage) {
         // Find nearby enemies
-        AABB searchBox = player.getBoundingBox().inflate(20.0); // Extended range
+        AABB searchBox = player.getBoundingBox().inflate(SEEKER_SEARCH_RANGE);
         List<Entity> entities = player.level().getEntities(player, searchBox,
                 e -> e instanceof LivingEntity && e != player && isHostile(e));
         

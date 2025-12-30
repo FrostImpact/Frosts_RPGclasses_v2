@@ -14,7 +14,7 @@ import net.minecraft.world.entity.player.Player;
  * Shows circular orbs representing available seeker charges
  */
 public class SeekerChargeOverlay implements LayeredDraw.Layer {
-    private static final int MAX_CHARGES = 5;
+    private static final int MAX_CHARGES = PlayerRPGData.MAX_SEEKER_CHARGES;
     private static final int ORB_SIZE = 14;
     private static final int ORB_SPACING = 4;
     private static final int MARGIN_RIGHT = 10;
