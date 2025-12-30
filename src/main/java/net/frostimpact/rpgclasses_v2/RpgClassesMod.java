@@ -10,9 +10,6 @@ import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatsDropdownOverlay;
 import net.frostimpact.rpgclasses_v2.rpgclass.ClassRegistry;
 import net.frostimpact.rpgclasses_v2.skilltree.SkillTreeRegistry;
-import net.frostimpact.rpgclasses_v2.weapon.CustomWeaponRegistry;
-import net.frostimpact.rpgclasses_v2.weapon.WeaponRegistry;
-import net.frostimpact.rpgclasses_v2.armor.CustomArmorRegistry;
 import net.frostimpact.rpgclasses_v2.entity.custom.CustomEntityRegistry;
 import net.minecraft.client.gui.LayeredDraw;
 import net.neoforged.api.distmarker.Dist;
@@ -53,9 +50,6 @@ public class RpgClassesMod {
     private void commonSetup(FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             // Initialize all registries
-            WeaponRegistry.initializeDefaultWeapons();
-            CustomWeaponRegistry.initializeExampleWeapons();
-            CustomArmorRegistry.initializeExampleArmor();
             CustomEntityRegistry.initializeExampleEntities();
             SkillTreeRegistry.initializePlaceholderTrees();
             ClassRegistry.initializePlaceholderClasses();
