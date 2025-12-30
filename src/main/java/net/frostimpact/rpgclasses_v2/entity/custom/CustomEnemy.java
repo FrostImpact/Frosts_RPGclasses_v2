@@ -9,16 +9,28 @@ import java.util.List;
 /**
  * Represents a custom enemy definition with stats, abilities, and AI behavior.
  * 
+ * The AI behavior system supports the following target selection modes:
+ * - NORMAL: Targets closest player/target
+ * - RANGED: Keeps distance from targets
+ * - RANGED_ADVANCED: Keeps distance and flees when too close
+ * - FLANKER: Stays outside line of sight until in range
+ * - ASSASSIN: Targets lowest HP player/target
+ * - BRUTE: Targets highest HP player/target
+ * - COWARD: Runs away when below 20% HP
+ * - FAR_SIGHTED: Targets farthest player/target
+ * - CHAOTIC: Targets random player/target
+ * 
+ * Targets include players and armor stands with the "player" tag.
+ * 
  * Example usage:
  * <pre>
- * CustomEnemy shadowWraith = new CustomEnemy.Builder("shadow_wraith", "Shadow Wraith")
- *     .maxHealth(100)
- *     .damage(15)
- *     .defense(5)
- *     .moveSpeed(1.2)
- *     .aiPreset(AIPreset.AMBUSH)
- *     .ability(new ShadowStrikeAbility())
- *     .experienceReward(50)
+ * CustomEnemy grunt = new CustomEnemy.Builder("grunt", "Grunt")
+ *     .maxHealth(40)
+ *     .damage(6)
+ *     .defense(2)
+ *     .moveSpeed(1.0)
+ *     .aiPreset(AIPreset.NORMAL)
+ *     .experienceReward(10)
  *     .isBoss(false)
  *     .build();
  * </pre>
@@ -57,6 +69,12 @@ public class CustomEnemy {
     private final float scale;
     private final int glowColor; // -1 for no glow
     
+    // Base entity type (what vanilla mob to extend/base on)
+    private final String baseEntityType;
+    
+    // Summon command ID
+    private final String summonId;
+    
     private CustomEnemy(Builder builder) {
         this.id = builder.id;
         this.displayName = builder.displayName;
@@ -76,6 +94,8 @@ public class CustomEnemy {
         this.lootTableId = builder.lootTableId;
         this.scale = builder.scale;
         this.glowColor = builder.glowColor;
+        this.baseEntityType = builder.baseEntityType;
+        this.summonId = builder.summonId;
     }
     
     // Getters
@@ -96,6 +116,8 @@ public class CustomEnemy {
     public String getLootTableId() { return lootTableId; }
     public float getScale() { return scale; }
     public int getGlowColor() { return glowColor; }
+    public String getBaseEntityType() { return baseEntityType; }
+    public String getSummonId() { return summonId; }
     
     /**
      * Get the effective aggro range (custom if set, otherwise from AI preset)
@@ -128,6 +150,14 @@ public class CustomEnemy {
     }
     
     /**
+     * Get the summon command for this enemy
+     * @return The command to summon this enemy (without the slash)
+     */
+    public String getSummonCommand() {
+        return "summon rpgclasses_v2:" + summonId;
+    }
+    
+    /**
      * Builder class for creating CustomEnemy instances
      */
     public static class Builder {
@@ -144,16 +174,19 @@ public class CustomEnemy {
         private int experienceReward = 5;
         private boolean isBoss = false;
         private int bossPhases = 1;
-        private AIPreset aiPreset = AIPreset.AGGRESSIVE;
+        private AIPreset aiPreset = AIPreset.NORMAL;
         private double customAggroRange = -1;
         private List<EnemyAbility> abilities = new ArrayList<>();
         private String lootTableId = "";
         private float scale = 1.0f;
         private int glowColor = -1;
+        private String baseEntityType = "zombie";
+        private String summonId;
         
         public Builder(String id, String displayName) {
             this.id = id;
             this.displayName = displayName;
+            this.summonId = id; // Default summon ID is the same as ID
         }
         
         public Builder description(String description) {
@@ -239,6 +272,16 @@ public class CustomEnemy {
         
         public Builder glowColor(int glowColor) {
             this.glowColor = glowColor;
+            return this;
+        }
+        
+        public Builder baseEntityType(String baseEntityType) {
+            this.baseEntityType = baseEntityType;
+            return this;
+        }
+        
+        public Builder summonId(String summonId) {
+            this.summonId = summonId;
             return this;
         }
         

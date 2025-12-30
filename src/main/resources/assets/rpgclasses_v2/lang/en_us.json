@@ -1,23 +1,17 @@
 {
-  "item.rpgclasses_v2.iron_shortsword": "Iron Shortsword",
-  "item.rpgclasses_v2.diamond_shortsword": "Diamond Shortsword",
-  "item.rpgclasses_v2.netherite_shortsword": "Netherite Shortsword",
-
-  "item.rpgclasses_v2.iron_longsword": "Iron Longsword",
-  "item.rpgclasses_v2.diamond_longsword": "Diamond Longsword",
-  "item.rpgclasses_v2.netherite_longsword": "Netherite Longsword",
-
-  "item.rpgclasses_v2.iron_claymore": "Iron Claymore",
-  "item.rpgclasses_v2.diamond_claymore": "Diamond Claymore",
-  "item.rpgclasses_v2.netherite_claymore": "Netherite Claymore",
-
-  "item.rpgclasses_v2.iron_rpg_sword": "Iron RPG Sword",
-  "item.rpgclasses_v2.diamond_rpg_sword": "Diamond RPG Sword",
-  "item.rpgclasses_v2.netherite_rpg_sword": "Netherite RPG Sword",
-
   "item.rpgclasses_v2.class_selection_book": "Class Selection Book",
 
   "key.categories.rpgclasses_v2": "RPG Classes",
   "key.rpgclasses_v2.toggle_stats": "Toggle Stats Panel",
-  "key.rpgclasses_v2.open_stat_allocation": "Open Stat Allocation"
+  "key.rpgclasses_v2.open_stat_allocation": "Open Stat Allocation",
+
+  "entity.rpgclasses_v2.grunt": "Grunt",
+  "entity.rpgclasses_v2.skeleton_archer": "Skeleton Archer",
+  "entity.rpgclasses_v2.elite_marksman": "Elite Marksman",
+  "entity.rpgclasses_v2.shadow_stalker": "Shadow Stalker",
+  "entity.rpgclasses_v2.silent_blade": "Silent Blade",
+  "entity.rpgclasses_v2.iron_goliath": "Iron Goliath",
+  "entity.rpgclasses_v2.goblin_scout": "Goblin Scout",
+  "entity.rpgclasses_v2.eagle_eye": "Eagle Eye",
+  "entity.rpgclasses_v2.chaos_imp": "Chaos Imp"
 }
