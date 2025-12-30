@@ -16,6 +16,7 @@ public class LevelDisplayOverlay implements LayeredDraw.Layer {
     private static final int MARGIN = 5;
     private static final int PANEL_WIDTH = 120;
     private static final int LINE_HEIGHT = 12;
+    private static final int XP_PER_CLASS_LEVEL = 100; // Base XP required per class level
     
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
@@ -69,7 +70,7 @@ public class LevelDisplayOverlay implements LayeredDraw.Layer {
         // Class Level with progress bar
         int classLevel = rpgData.getClassLevel();
         int classXP = rpgData.getClassExperience();
-        int xpNeeded = classLevel * 100;
+        int xpNeeded = classLevel * XP_PER_CLASS_LEVEL;
         float progress = (float) classXP / xpNeeded;
         
         String classLevelText = "§bClass Lv. " + classLevel;
