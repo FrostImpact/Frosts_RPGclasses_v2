@@ -1,5 +1,7 @@
 package net.frostimpact.rpgclasses_v2.skilltree;
 
+import net.frostimpact.rpgclasses_v2.networking.ModMessages;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketAllocateSkillPoint;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.PlayerRPGData;
 import net.frostimpact.rpgclasses_v2.rpgclass.ClassRegistry;
@@ -12,7 +14,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Enhanced skill tree GUI with class selector and improved visuals
@@ -49,6 +53,9 @@ public class SkillTreeScreen extends Screen {
     private String switchMessage = null;
     private long switchMessageTime = 0;
     private static final long MESSAGE_DURATION = 2000; // 2 seconds
+    
+    // Skill allocations (client-side tracking for display - will sync with server)
+    private Map<String, Integer> allocatedSkillLevels = new HashMap<>();
 
     public SkillTreeScreen(String skillTreeId) {
         super(Component.literal("Skill Tree"));
@@ -238,8 +245,38 @@ public class SkillTreeScreen extends Screen {
 
     private void drawSkillNode(GuiGraphics guiGraphics, SkillNode node, int x, int y, boolean isHovered, int classLevel) {
         boolean isUnlocked = classLevel >= node.getRequiredLevel();
-        int nodeColor = isUnlocked ? 0xFF4488FF : 0xFF444444;
-        int borderColor = isHovered ? 0xFFFFFFFF : (isUnlocked ? 0xFF6699FF : 0xFF666666);
+        int currentLevel = getAllocatedLevel(node.getId());
+        boolean isMaxed = currentLevel >= node.getMaxLevel();
+        boolean canAllocate = isUnlocked && !isMaxed && hasAvailableSkillPoints() && meetsRequirements(node);
+        
+        // Determine node color based on state
+        int nodeColor;
+        if (isMaxed) {
+            nodeColor = 0xFF44AA44; // Green when maxed
+        } else if (currentLevel > 0) {
+            nodeColor = 0xFF5588DD; // Lighter blue when partially allocated
+        } else if (canAllocate) {
+            nodeColor = 0xFF4488FF; // Blue when can allocate
+        } else if (isUnlocked) {
+            nodeColor = 0xFF445588; // Darker blue when unlocked but can't allocate
+        } else {
+            nodeColor = 0xFF444444; // Gray when locked
+        }
+        
+        int borderColor;
+        if (isHovered && canAllocate) {
+            borderColor = 0xFFFFDD00; // Yellow when hoverable and can allocate
+        } else if (isHovered) {
+            borderColor = 0xFFFFFFFF; // White when hovered
+        } else if (isMaxed) {
+            borderColor = 0xFF66CC66; // Green border when maxed
+        } else if (currentLevel > 0) {
+            borderColor = 0xFF6699FF; // Light blue when has points
+        } else if (canAllocate) {
+            borderColor = 0xFF6699FF; // Blue border when can allocate
+        } else {
+            borderColor = 0xFF666666; // Gray border
+        }
 
         // Draw node shadow
         guiGraphics.fill(x + 2, y + 2, x + NODE_SIZE + 2, y + NODE_SIZE + 2, 0x88000000);
@@ -259,16 +296,106 @@ public class SkillTreeScreen extends Screen {
         // Draw emoji icon
         String emoji = getSkillEmoji(node.getId());
         int emojiX = x + (NODE_SIZE - this.font.width(emoji)) / 2;
-        int emojiY = y + (NODE_SIZE - 8) / 2;
-        guiGraphics.drawString(this.font, emoji, emojiX, emojiY, 0xFFFFFFFF, false);
+        int emojiY = y + (NODE_SIZE - 8) / 2 - 3;
+        int emojiColor = isUnlocked ? 0xFFFFFFFF : 0xFF888888;
+        guiGraphics.drawString(this.font, emoji, emojiX, emojiY, emojiColor, false);
 
-        // Draw level indicator
-        if (node.getMaxLevel() > 1) {
-            String levelText = "0/" + node.getMaxLevel();
-            int levelWidth = this.font.width(levelText);
-            guiGraphics.drawString(this.font, levelText,
-                    x + (NODE_SIZE - levelWidth) / 2, y + NODE_SIZE + 2, 0xFFFFFFFF, false);
+        // Draw level indicator (current/max)
+        String levelText = currentLevel + "/" + node.getMaxLevel();
+        int levelWidth = this.font.width(levelText);
+        int levelColor = isMaxed ? 0xFF55FF55 : (currentLevel > 0 ? 0xFFAADDFF : 0xFFCCCCCC);
+        guiGraphics.drawString(this.font, levelText,
+                x + (NODE_SIZE - levelWidth) / 2, y + NODE_SIZE - 10, levelColor, false);
+    }
+    
+    /**
+     * Get the allocated level for a skill node
+     */
+    private int getAllocatedLevel(String nodeId) {
+        String key = currentSkillTreeId + ":" + nodeId;
+        return allocatedSkillLevels.getOrDefault(key, 0);
+    }
+    
+    /**
+     * Set the allocated level for a skill node
+     */
+    private void setAllocatedLevel(String nodeId, int level) {
+        String key = currentSkillTreeId + ":" + nodeId;
+        allocatedSkillLevels.put(key, level);
+    }
+    
+    /**
+     * Check if player has available skill points
+     */
+    private boolean hasAvailableSkillPoints() {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return false;
+        PlayerRPGData rpgData = mc.player.getData(ModAttachments.PLAYER_RPG);
+        return rpgData.getAvailableSkillPoints() > 0;
+    }
+    
+    /**
+     * Check if node requirements are met (either no requirements or all required nodes have at least 1 point)
+     */
+    private boolean meetsRequirements(SkillNode node) {
+        for (String reqId : node.getRequirements()) {
+            if (getAllocatedLevel(reqId) < 1) {
+                return false;
+            }
         }
+        return true;
+    }
+    
+    /**
+     * Attempt to allocate a skill point to a node
+     */
+    private void tryAllocateSkillPoint(SkillNode node) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null) return;
+        
+        PlayerRPGData rpgData = mc.player.getData(ModAttachments.PLAYER_RPG);
+        int classLevel = rpgData.getClassLevel();
+        
+        // Check if can allocate
+        boolean isUnlocked = classLevel >= node.getRequiredLevel();
+        int currentLevel = getAllocatedLevel(node.getId());
+        boolean isMaxed = currentLevel >= node.getMaxLevel();
+        boolean hasPoints = rpgData.getAvailableSkillPoints() > 0;
+        boolean meetsReqs = meetsRequirements(node);
+        
+        if (!isUnlocked) {
+            showMessage("Requires class level " + node.getRequiredLevel());
+            return;
+        }
+        
+        if (isMaxed) {
+            showMessage("Skill already maxed out");
+            return;
+        }
+        
+        if (!hasPoints) {
+            showMessage("No skill points available");
+            return;
+        }
+        
+        if (!meetsReqs) {
+            showMessage("Prerequisites not met");
+            return;
+        }
+        
+        // Send packet to server
+        ModMessages.sendToServer(new PacketAllocateSkillPoint(currentSkillTreeId, node.getId()));
+        
+        // Optimistically update client-side
+        setAllocatedLevel(node.getId(), currentLevel + 1);
+        
+        showMessage("Allocated point to " + node.getName());
+        LOGGER.info("Allocating skill point to {} in tree {}", node.getId(), currentSkillTreeId);
+    }
+    
+    private void showMessage(String message) {
+        switchMessage = message;
+        switchMessageTime = System.currentTimeMillis();
     }
 
     private void drawClassPanel(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -399,6 +526,12 @@ public class SkillTreeScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        // First check if clicking on a skill node (left click only)
+        if (button == 0 && skillTree != null && hoveredNode != null) {
+            tryAllocateSkillPoint(hoveredNode);
+            return true;
+        }
+        
         int panelX = this.width - CLASS_PANEL_WIDTH - 10;
         int panelY = 60;
         int buttonY = panelY + 30;
@@ -480,28 +613,59 @@ public class SkillTreeScreen extends Screen {
 
     private void drawNodeTooltip(GuiGraphics guiGraphics, SkillNode node, int mouseX, int mouseY) {
         List<String> tooltipLines = new ArrayList<>();
+        
+        // Get current state
+        int currentLevel = getAllocatedLevel(node.getId());
+        Minecraft mc = Minecraft.getInstance();
+        int classLevel = 1;
+        int availablePoints = 0;
+        if (mc.player != null) {
+            PlayerRPGData rpgData = mc.player.getData(ModAttachments.PLAYER_RPG);
+            classLevel = rpgData.getClassLevel();
+            availablePoints = rpgData.getAvailableSkillPoints();
+        }
+        
+        boolean isUnlocked = classLevel >= node.getRequiredLevel();
+        boolean isMaxed = currentLevel >= node.getMaxLevel();
+        boolean meetsReqs = meetsRequirements(node);
 
         tooltipLines.add(node.getName());
         tooltipLines.add("");
         tooltipLines.addAll(wrapText(node.getDescription(), 200));
         tooltipLines.add("");
-        tooltipLines.add("Max Level: " + node.getMaxLevel());
+        tooltipLines.add("Level: " + currentLevel + "/" + node.getMaxLevel());
         tooltipLines.add("Point Cost: " + node.getPointCost());
-        tooltipLines.add("Required Level: " + node.getRequiredLevel());
+        tooltipLines.add("Required Level: " + node.getRequiredLevel() + (isUnlocked ? " §a✓" : " §c✗"));
 
         if (!node.getRequirements().isEmpty()) {
             tooltipLines.add("");
             tooltipLines.add("Requires:");
             for (String reqId : node.getRequirements()) {
                 skillTree.getNode(reqId).ifPresent(reqNode -> {
-                    tooltipLines.add("  - " + reqNode.getName());
+                    boolean hasReq = getAllocatedLevel(reqId) > 0;
+                    tooltipLines.add("  - " + reqNode.getName() + (hasReq ? " §a✓" : " §c✗"));
                 });
             }
+        }
+        
+        // Status line
+        tooltipLines.add("");
+        if (isMaxed) {
+            tooltipLines.add("§a[MAXED]");
+        } else if (!isUnlocked) {
+            tooltipLines.add("§c[LOCKED - Need level " + node.getRequiredLevel() + "]");
+        } else if (!meetsReqs) {
+            tooltipLines.add("§c[Prerequisites not met]");
+        } else if (availablePoints <= 0) {
+            tooltipLines.add("§e[No skill points available]");
+        } else {
+            tooltipLines.add("§a[Click to allocate point]");
         }
 
         int tooltipWidth = 0;
         for (String line : tooltipLines) {
-            int lineWidth = this.font.width(line);
+            String cleanLine = line.replaceAll("§.", ""); // Remove color codes for width calc
+            int lineWidth = this.font.width(cleanLine);
             if (lineWidth > tooltipWidth) {
                 tooltipWidth = lineWidth;
             }
@@ -522,20 +686,30 @@ public class SkillTreeScreen extends Screen {
         guiGraphics.fill(tooltipX, tooltipY,
                 tooltipX + tooltipWidth, tooltipY + tooltipHeight, 0xEE000000);
 
-        // Tooltip border
+        // Tooltip border - color based on state
+        int borderColor = isMaxed ? 0xFF44AA44 : (isUnlocked && meetsReqs && availablePoints > 0 ? 0xFFFFDD00 : 0xFFAA44FF);
         guiGraphics.fill(tooltipX, tooltipY,
-                tooltipX + tooltipWidth, tooltipY + 2, 0xFFAA44FF);
+                tooltipX + tooltipWidth, tooltipY + 2, borderColor);
         guiGraphics.fill(tooltipX, tooltipY + tooltipHeight - 2,
-                tooltipX + tooltipWidth, tooltipY + tooltipHeight, 0xFFAA44FF);
+                tooltipX + tooltipWidth, tooltipY + tooltipHeight, borderColor);
         guiGraphics.fill(tooltipX, tooltipY,
-                tooltipX + 2, tooltipY + tooltipHeight, 0xFFAA44FF);
+                tooltipX + 2, tooltipY + tooltipHeight, borderColor);
         guiGraphics.fill(tooltipX + tooltipWidth - 2, tooltipY,
-                tooltipX + tooltipWidth, tooltipY + tooltipHeight, 0xFFAA44FF);
+                tooltipX + tooltipWidth, tooltipY + tooltipHeight, borderColor);
 
         // Tooltip text
         int textY = tooltipY + 5;
         for (String line : tooltipLines) {
-            guiGraphics.drawString(this.font, line, tooltipX + 8, textY, 0xFFFFFFFF, false);
+            // Parse color codes
+            int color = 0xFFFFFFFF;
+            String displayLine = line;
+            if (line.contains("§")) {
+                if (line.contains("§a")) color = 0xFF55FF55;
+                else if (line.contains("§c")) color = 0xFFFF5555;
+                else if (line.contains("§e")) color = 0xFFFFFF55;
+                displayLine = line.replaceAll("§.", "");
+            }
+            guiGraphics.drawString(this.font, displayLine, tooltipX + 8, textY, color, false);
             textY += 12;
         }
     }

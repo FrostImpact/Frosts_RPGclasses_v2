@@ -2,6 +2,7 @@ package net.frostimpact.rpgclasses_v2.rpg.stats;
 
 import net.frostimpact.rpgclasses_v2.networking.ModMessages;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketAllocateStatPoint;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketResetStats;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.PlayerRPGData;
 import net.minecraft.client.Minecraft;
@@ -62,11 +63,17 @@ public class StatAllocationScreen extends Screen {
             ).bounds(buttonX, buttonY, buttonWidth, buttonHeight).build());
         }
         
+        // Add reset button
+        this.addRenderableWidget(Button.builder(
+            Component.literal("Reset Stats"),
+            button -> resetStats()
+        ).bounds((this.width - 200) / 2, this.height - 65, 90, 20).build());
+        
         // Add close button
         this.addRenderableWidget(Button.builder(
             Component.literal("Close"),
             button -> this.onClose()
-        ).bounds((this.width - 100) / 2, this.height - 40, 100, 20).build());
+        ).bounds((this.width - 200) / 2 + 100, this.height - 65, 90, 20).build());
     }
     
     private void allocateStat(StatType statType) {
@@ -75,6 +82,12 @@ public class StatAllocationScreen extends Screen {
             ModMessages.sendToServer(new PacketAllocateStatPoint(statType));
             LOGGER.debug("Allocating stat point to: {}", statType);
         }
+    }
+    
+    private void resetStats() {
+        // Send packet to server to reset all allocated stats
+        ModMessages.sendToServer(new PacketResetStats());
+        LOGGER.debug("Resetting all allocated stat points");
     }
     
     @Override
