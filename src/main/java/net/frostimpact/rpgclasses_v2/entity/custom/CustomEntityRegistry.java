@@ -48,6 +48,7 @@ public class CustomEntityRegistry {
             .filter(e -> e.getSummonId().equals(summonId))
             .findFirst();
     }
+
     
     /**
      * Check if a custom enemy is registered
@@ -62,6 +63,7 @@ public class CustomEntityRegistry {
     public static Iterable<String> getAllEnemyIds() {
         return customEnemies.keySet();
     }
+
     
     /**
      * Get all registered custom enemies
@@ -76,6 +78,8 @@ public class CustomEntityRegistry {
     public static int getEnemyCount() {
         return customEnemies.size();
     }
+
+
     
     /**
      * Initialize all example entities
@@ -149,4 +153,7 @@ public class CustomEntityRegistry {
         
         return sb.toString();
     }
+
+
+
 }
