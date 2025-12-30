@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 public class StatsDropdownOverlay implements LayeredDraw.Layer {
     private static final Logger LOGGER = LoggerFactory.getLogger(StatsDropdownOverlay.class);
     private static final int MARGIN = 5;
-    private static final int PANEL_WIDTH = 180;
+    private static final int PANEL_WIDTH = 200; // Increased from 180 to fit text
     private static final int LINE_HEIGHT = 12;
     
     private static boolean isExpanded = false;
@@ -103,7 +103,7 @@ public class StatsDropdownOverlay implements LayeredDraw.Layer {
         
         // Cooldown Reduction
         int cooldownReduction = stats.getIntStatValue(StatType.COOLDOWN_REDUCTION);
-        String cooldownText = String.format("⏱ Cooldown Reduction: +%d", cooldownReduction);
+        String cooldownText = String.format("⏱ CD Reduction: +%d", cooldownReduction);
         guiGraphics.drawString(mc.font, cooldownText, textStartX, currentY, 0xFFAA55FF);
         currentY += LINE_HEIGHT;
         

@@ -106,6 +106,14 @@ public class PlayerRPGData {
     public void clearAllCooldowns() {
         cooldowns.clear();
     }
+    
+    public Map<String, Integer> getAllCooldowns() {
+        return new HashMap<>(cooldowns);
+    }
+    
+    public void setAllCooldowns(Map<String, Integer> cooldowns) {
+        this.cooldowns = new HashMap<>(cooldowns);
+    }
 
     public String getCurrentClass() {
         return currentClass;
