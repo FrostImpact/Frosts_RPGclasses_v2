@@ -1,6 +1,7 @@
 package net.frostimpact.rpgclasses_v2.event;
 
 import net.frostimpact.rpgclasses_v2.networking.ModMessages;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncCooldowns;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMana;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncRPGData;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncStats;
@@ -25,8 +26,12 @@ public class ServerEvents {
     private static final int MANA_REGEN_INTERVAL = 20; // Regen every second (20 ticks)
     private int tickCounter = 0;
 
-    // Track last known move speed stat for each player to avoid recalculating every tick
+    // Track last known stats for each player to avoid recalculating every tick
     private final Map<UUID, Double> lastMoveSpeedStats = new HashMap<>();
+    private final Map<UUID, Double> lastAttackSpeedStats = new HashMap<>();
+    private final Map<UUID, Integer> lastMaxHealthStats = new HashMap<>();
+    private final Map<UUID, Integer> lastDefenseStats = new HashMap<>();
+    private final Map<UUID, Integer> lastDamageStats = new HashMap<>();
     
     // Track last known player level for stat point awards
     private final Map<UUID, Integer> lastPlayerLevels = new HashMap<>();
@@ -44,7 +49,7 @@ public class ServerEvents {
             var stats = player.getData(ModAttachments.PLAYER_STATS);
             stats.tick();
 
-            // Mana regeneration
+            // Mana regeneration and cooldown sync
             if (tickCounter % MANA_REGEN_INTERVAL == 0) {
                 int manaRegenBonus = stats.getIntStatValue(StatType.MANA_REGEN);
                 int baseRegen = 1;
@@ -60,6 +65,9 @@ public class ServerEvents {
                             player
                     );
                 }
+                
+                // Sync cooldowns periodically
+                ModMessages.sendToPlayer(new PacketSyncCooldowns(rpgData.getAllCooldowns()), player);
             }
 
             // Apply movement speed modifier only if it changed
@@ -70,6 +78,38 @@ public class ServerEvents {
                 applyMovementSpeed(player, currentSpeedStat);
                 lastMoveSpeedStats.put(player.getUUID(), currentSpeedStat);
             }
+            
+            // Apply attack speed modifier only if it changed
+            double currentAttackSpeedStat = stats.getPercentageStatValue(StatType.ATTACK_SPEED);
+            Double lastAttackSpeedStat = lastAttackSpeedStats.get(player.getUUID());
+            if (lastAttackSpeedStat == null || !lastAttackSpeedStat.equals(currentAttackSpeedStat)) {
+                applyAttackSpeed(player, currentAttackSpeedStat);
+                lastAttackSpeedStats.put(player.getUUID(), currentAttackSpeedStat);
+            }
+            
+            // Apply max health modifier only if it changed
+            int currentMaxHealthStat = stats.getIntStatValue(StatType.MAX_HEALTH);
+            Integer lastMaxHealthStat = lastMaxHealthStats.get(player.getUUID());
+            if (lastMaxHealthStat == null || !lastMaxHealthStat.equals(currentMaxHealthStat)) {
+                applyMaxHealth(player, currentMaxHealthStat);
+                lastMaxHealthStats.put(player.getUUID(), currentMaxHealthStat);
+            }
+            
+            // Apply defense modifier only if it changed
+            int currentDefenseStat = stats.getIntStatValue(StatType.DEFENSE);
+            Integer lastDefenseStat = lastDefenseStats.get(player.getUUID());
+            if (lastDefenseStat == null || !lastDefenseStat.equals(currentDefenseStat)) {
+                applyDefense(player, currentDefenseStat);
+                lastDefenseStats.put(player.getUUID(), currentDefenseStat);
+            }
+            
+            // Apply damage modifier only if it changed
+            int currentDamageStat = stats.getIntStatValue(StatType.DAMAGE);
+            Integer lastDamageStat = lastDamageStats.get(player.getUUID());
+            if (lastDamageStat == null || !lastDamageStat.equals(currentDamageStat)) {
+                applyDamage(player, currentDamageStat);
+                lastDamageStats.put(player.getUUID(), currentDamageStat);
+            }
         });
     }
 
@@ -78,6 +118,10 @@ public class ServerEvents {
         if (event.getEntity() instanceof ServerPlayer player) {
             UUID playerUUID = player.getUUID();
             lastMoveSpeedStats.remove(playerUUID);
+            lastAttackSpeedStats.remove(playerUUID);
+            lastMaxHealthStats.remove(playerUUID);
+            lastDefenseStats.remove(playerUUID);
+            lastDamageStats.remove(playerUUID);
             lastPlayerLevels.remove(playerUUID);
         }
     }
@@ -150,6 +194,63 @@ public class ServerEvents {
                     player.getName().getString(), speedModifier, baseSpeed, newSpeed);
 
             speedAttribute.setBaseValue(newSpeed);
+        }
+    }
+    
+    private void applyAttackSpeed(ServerPlayer player, double attackSpeedModifier) {
+        AttributeInstance attackSpeedAttribute = player.getAttribute(Attributes.ATTACK_SPEED);
+        if (attackSpeedAttribute != null) {
+            double baseAttackSpeed = 4.0; // Minecraft's base attack speed
+            double newAttackSpeed = baseAttackSpeed * (1.0 + attackSpeedModifier / 100.0);
+
+            LOGGER.debug("Applying ATTACK_SPEED to player {}: modifier={}%, baseSpeed={}, newSpeed={}",
+                    player.getName().getString(), attackSpeedModifier, baseAttackSpeed, newAttackSpeed);
+
+            attackSpeedAttribute.setBaseValue(newAttackSpeed);
+        }
+    }
+    
+    private void applyMaxHealth(ServerPlayer player, int healthBonus) {
+        AttributeInstance maxHealthAttribute = player.getAttribute(Attributes.MAX_HEALTH);
+        if (maxHealthAttribute != null) {
+            double baseMaxHealth = 20.0; // Minecraft's base max health
+            double newMaxHealth = baseMaxHealth + healthBonus;
+
+            LOGGER.debug("Applying MAX_HEALTH to player {}: bonus={}, baseHealth={}, newHealth={}",
+                    player.getName().getString(), healthBonus, baseMaxHealth, newMaxHealth);
+
+            maxHealthAttribute.setBaseValue(newMaxHealth);
+            
+            // Heal the player if their health is now below the new max
+            if (player.getHealth() > newMaxHealth) {
+                player.setHealth((float) newMaxHealth);
+            }
+        }
+    }
+    
+    private void applyDefense(ServerPlayer player, int defenseBonus) {
+        AttributeInstance armorAttribute = player.getAttribute(Attributes.ARMOR);
+        if (armorAttribute != null) {
+            double baseArmor = 0.0; // Minecraft's base armor without equipment
+            double newArmor = baseArmor + defenseBonus;
+
+            LOGGER.debug("Applying DEFENSE to player {}: bonus={}, baseArmor={}, newArmor={}",
+                    player.getName().getString(), defenseBonus, baseArmor, newArmor);
+
+            armorAttribute.setBaseValue(newArmor);
+        }
+    }
+    
+    private void applyDamage(ServerPlayer player, int damageBonus) {
+        AttributeInstance attackDamageAttribute = player.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (attackDamageAttribute != null) {
+            double baseAttackDamage = 1.0; // Minecraft's base attack damage
+            double newAttackDamage = baseAttackDamage + damageBonus;
+
+            LOGGER.debug("Applying DAMAGE to player {}: bonus={}, baseDamage={}, newDamage={}",
+                    player.getName().getString(), damageBonus, baseAttackDamage, newAttackDamage);
+
+            attackDamageAttribute.setBaseValue(newAttackDamage);
         }
     }
 }

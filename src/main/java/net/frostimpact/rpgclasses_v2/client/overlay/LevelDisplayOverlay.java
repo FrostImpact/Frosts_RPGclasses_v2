@@ -14,7 +14,7 @@ import net.minecraft.world.entity.player.Player;
  */
 public class LevelDisplayOverlay implements LayeredDraw.Layer {
     private static final int MARGIN = 5;
-    private static final int PANEL_WIDTH = 120;
+    private static final int PANEL_WIDTH = 130; // Increased from 120 to fit longer class names
     private static final int LINE_HEIGHT = 12;
     private static final int XP_PER_CLASS_LEVEL = 100; // Base XP required per class level
     

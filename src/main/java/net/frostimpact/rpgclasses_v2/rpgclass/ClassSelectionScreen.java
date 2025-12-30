@@ -343,10 +343,13 @@ public class ClassSelectionScreen extends Screen {
                         Minecraft.getInstance().setScreen(new ClassDetailScreen(rpgClass, this));
                         return true;
                     } else if (button == 1) {
-                        // Right-click: Open specializations (if they exist)
+                        // Right-click: Open specializations screen (if subclasses exist)
                         List<RPGClass> subclasses = ClassRegistry.getSubclasses(rpgClass.getId());
                         if (!subclasses.isEmpty()) {
-                            selectedType = rpgClass;
+                            PlayerRPGData rpgData = Minecraft.getInstance().player.getData(ModAttachments.PLAYER_RPG);
+                            int classLevel = rpgData.getClassLevel();
+                            LOGGER.info("Opening subclass selection for class: {}", rpgClass.getId());
+                            Minecraft.getInstance().setScreen(new SubclassSelectionScreen(rpgClass.getId(), classLevel, this));
                         }
                         return true;
                     }
