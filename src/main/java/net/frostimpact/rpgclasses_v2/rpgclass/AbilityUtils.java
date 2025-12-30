@@ -56,6 +56,13 @@ public final class AbilityUtils {
                 case 4 -> "Divine Intervention";
                 default -> "Unknown";
             };
+            case "hawkeye" -> switch (slot) {
+                case 1 -> "Glide";
+                case 2 -> "Updraft";
+                case 3 -> "Vault";
+                case 4 -> "Seekers";
+                default -> "Unknown";
+            };
             default -> "Ability " + slot;
         };
     }
@@ -107,6 +114,13 @@ public final class AbilityUtils {
                 case 4 -> 80;
                 default -> 0;
             };
+            case "hawkeye" -> switch (slot) {
+                case 1 -> 10;  // Glide - low cost
+                case 2 -> 15;  // Updraft
+                case 3 -> 15;  // Vault
+                case 4 -> 0;   // Seekers - cost depends on charges (5 * charges)
+                default -> 0;
+            };
             default -> 0;
         };
     }
@@ -156,6 +170,13 @@ public final class AbilityUtils {
                 case 2 -> 300;  // 15s
                 case 3 -> 160;  // 8s
                 case 4 -> 1800; // 90s
+                default -> 40;
+            };
+            case "hawkeye" -> switch (slot) {
+                case 1 -> 40;   // 2s - Glide
+                case 2 -> 240;  // 12s - Updraft
+                case 3 -> 160;  // 8s - Vault
+                case 4 -> 100;  // 5s - Seekers
                 default -> 40;
             };
             default -> 40;

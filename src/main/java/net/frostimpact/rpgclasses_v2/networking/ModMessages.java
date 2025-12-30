@@ -353,6 +353,16 @@ public class ModMessages {
         int baseCooldownTicks = AbilityUtils.getAbilityCooldownTicks(currentClass, abilitySlot);
         String abilityName = AbilityUtils.getAbilityName(currentClass, abilitySlot);
         
+        // Special handling for Hawkeye Seekers (slot 4) - mana cost is 5 * seeker charges
+        if (currentClass.equalsIgnoreCase("hawkeye") && abilitySlot == 4) {
+            int seekerCharges = rpgData.getSeekerCharges();
+            if (seekerCharges == 0) {
+                player.displayClientMessage(Component.literal("§eNo Seeker charges! Gain charges while airborne."), true);
+                return;
+            }
+            manaCost = 5 * seekerCharges;
+        }
+        
         // Check cooldown
         int cooldown = rpgData.getAbilityCooldown(abilityId);
         if (cooldown > 0) {
@@ -479,27 +489,81 @@ public class ModMessages {
             }
             case "ranger" -> {
                 switch (slot) {
-                    case 1 -> { // Precise Shot - high damage single target
-                        dealDamageToNearbyEnemies(player, 7.0 + damageBonus * 1.75, 10.0);
-                        // Long line of particles in look direction
-                        spawnDustParticlesLine(level, playerPos.add(0, 1.5, 0), player.getYRot(), 10.0, 0.5f, 0.55f, 0.4f);
+                    case 1 -> { // Precise Shot - fires a powerful arrow in the looking direction
+                        // Spawn an arrow projectile in the player's look direction
+                        spawnRangerArrow(player, level, 3.0f, 7.0f + damageBonus * 1.75f, false);
+                        // Visual effect - sweep particles from player
+                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                                playerPos.x, playerPos.y + 1.5, playerPos.z,
+                                10, 0.3, 0.3, 0.3, 0.1);
                     }
-                    case 2 -> { // Multi-Shot - multiple projectiles
-                        dealDamageToNearbyEnemies(player, 2.5 + damageBonus * 0.6, 8.0);
-                        // Fan of particles
-                        spawnDustParticlesFan(level, playerPos.add(0, 1.5, 0), player.getYRot(), 8.0, 0.5f, 0.5f, 0.4f);
+                    case 2 -> { // Multi-Shot - fires 5 arrows in a spread pattern
+                        // Spawn multiple arrows with spread
+                        spawnMultiShotArrows(player, level, 2.0f, 2.5f + damageBonus * 0.6f, 5, 15.0f);
+                        // Visual fan effect
+                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                                playerPos.x, playerPos.y + 1.5, playerPos.z,
+                                20, 0.5, 0.3, 0.5, 0.15);
                     }
-                    case 3 -> { // Trap - root enemies
+                    case 3 -> { // Trap - places a trap at the player's feet that affects nearby enemies
+                        // Apply root and poison to nearby enemies
                         applyEffectToNearbyEnemies(player, MobEffects.MOVEMENT_SLOWDOWN, 100, 4, 3.0);
                         applyEffectToNearbyEnemies(player, MobEffects.POISON, 100, 1, 3.0);
-                        // Ground particles
-                        spawnDustParticlesGround(level, playerPos, 3.0, 0.4f, 0.5f, 0.35f);
+                        // Spawn visible trap particles on ground
+                        spawnTrapEffect(level, playerPos, 3.0);
                     }
-                    case 4 -> { // Rain of Arrows - sustained AoE
+                    case 4 -> { // Rain of Arrows - spawns arrows falling from above in an area
+                        // Deal damage and slow enemies
                         dealDamageToNearbyEnemies(player, 6.0 + damageBonus * 1.5, 8.0);
                         applyEffectToNearbyEnemies(player, MobEffects.MOVEMENT_SLOWDOWN, 100, 1, 8.0);
-                        // Falling particles from above
-                        spawnDustParticlesRain(level, playerPos, 8.0, 0.55f, 0.55f, 0.45f);
+                        // Rain of arrow visual - spawn arrows from sky
+                        spawnRainOfArrowsEffect(player, level, 8.0, 15);
+                    }
+                }
+            }
+            case "hawkeye" -> {
+                var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+                switch (slot) {
+                    case 1 -> { // Glide - grants slow falling for 10 seconds
+                        player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 200, 0));
+                        // Wind particles around player
+                        spawnGlideEffect(level, playerPos);
+                    }
+                    case 2 -> { // Updraft - launch player upward with strong upward motion
+                        // Launch player upward
+                        Vec3 currentVelocity = player.getDeltaMovement();
+                        player.setDeltaMovement(currentVelocity.x * 0.5, 1.2, currentVelocity.z * 0.5);
+                        player.hurtMarked = true; // Force velocity sync
+                        // Add brief slow falling after launch
+                        player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 60, 0));
+                        // Add a seeker charge (aerial affinity)
+                        rpgData.addSeekerCharge();
+                        // Updraft visual - particles going up
+                        spawnUpdraftEffect(level, playerPos);
+                    }
+                    case 3 -> { // Vault - launch forward and lob a projectile
+                        // Launch player forward in look direction
+                        Vec3 lookVec = player.getLookAngle();
+                        Vec3 launchVec = new Vec3(lookVec.x * 1.5, 0.4, lookVec.z * 1.5);
+                        player.setDeltaMovement(player.getDeltaMovement().add(launchVec));
+                        player.hurtMarked = true;
+                        // Spawn a lobbed arrow projectile
+                        spawnVaultProjectile(player, level, 1.5f, 4.0f + damageBonus * 0.5f);
+                        // Add a seeker charge
+                        rpgData.addSeekerCharge();
+                        // Vault visual - directional particles
+                        spawnVaultEffect(level, playerPos, lookVec);
+                    }
+                    case 4 -> { // Seekers - fires homing projectiles based on seeker charges
+                        int charges = rpgData.consumeSeekerCharges();
+                        if (charges > 0) {
+                            // Find nearest enemies and shoot seeker projectiles at them
+                            spawnSeekerProjectiles(player, level, charges, 5.0f + damageBonus * 0.5f);
+                            // Seeker visual
+                            spawnSeekerEffect(level, playerPos, charges);
+                        } else {
+                            player.displayClientMessage(Component.literal("§eNo Seeker charges! Gain charges while airborne."), true);
+                        }
                     }
                 }
             }
@@ -816,5 +880,236 @@ public class ModMessages {
     
     private static boolean isHostile(Entity entity) {
         return entity instanceof net.minecraft.world.entity.monster.Monster;
+    }
+    
+    // ===== Ranger Ability Helper Methods =====
+    
+    /**
+     * Spawn a single powerful arrow in the player's look direction
+     */
+    private static void spawnRangerArrow(ServerPlayer player, ServerLevel level, float velocity, float damage, boolean crit) {
+        net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(level, player, 
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
+        arrow.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, velocity, 0.5F);
+        arrow.setBaseDamage(damage);
+        arrow.setCritArrow(crit);
+        arrow.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
+        level.addFreshEntity(arrow);
+    }
+    
+    /**
+     * Spawn multiple arrows in a fan spread pattern
+     */
+    private static void spawnMultiShotArrows(ServerPlayer player, ServerLevel level, float velocity, float damage, 
+            int arrowCount, float spreadAngle) {
+        float yaw = player.getYRot();
+        float pitch = player.getXRot();
+        float halfSpread = spreadAngle / 2.0f;
+        float angleStep = spreadAngle / (arrowCount - 1);
+        
+        for (int i = 0; i < arrowCount; i++) {
+            float offsetYaw = -halfSpread + (angleStep * i);
+            net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(level, player,
+                    new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
+            arrow.shootFromRotation(player, pitch, yaw + offsetYaw, 0.0F, velocity, 1.0F);
+            arrow.setBaseDamage(damage);
+            arrow.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
+            level.addFreshEntity(arrow);
+        }
+    }
+    
+    /**
+     * Spawn trap visual effect on the ground
+     */
+    private static void spawnTrapEffect(ServerLevel level, Vec3 center, double radius) {
+        // Spawn spore blossom particles in a circle pattern
+        int count = 40;
+        for (int i = 0; i < count; i++) {
+            double angle = (double) i / count * 2 * Math.PI;
+            double x = center.x + Math.cos(angle) * radius;
+            double z = center.z + Math.sin(angle) * radius;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.SPORE_BLOSSOM_AIR,
+                    x, center.y + 0.1, z, 2, 0.2, 0.1, 0.2, 0.01);
+        }
+        // Inner web/trap particles
+        for (int i = 0; i < 20; i++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double dist = RANDOM.nextDouble() * radius * 0.7;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.ITEM_SLIME,
+                    center.x + Math.cos(angle) * dist, center.y + 0.1, center.z + Math.sin(angle) * dist,
+                    1, 0, 0, 0, 0);
+        }
+    }
+    
+    /**
+     * Spawn rain of arrows visual effect - arrows falling from above
+     */
+    private static void spawnRainOfArrowsEffect(ServerPlayer player, ServerLevel level, double radius, int arrowCount) {
+        Vec3 center = player.position();
+        for (int i = 0; i < arrowCount; i++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double dist = RANDOM.nextDouble() * radius;
+            double x = center.x + Math.cos(angle) * dist;
+            double z = center.z + Math.sin(angle) * dist;
+            double y = center.y + 8 + RANDOM.nextDouble() * 3; // Spawn high above
+            
+            net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(
+                    level, x, y, z,
+                    new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
+            arrow.setOwner(player);
+            // Shoot downward
+            arrow.shoot(0, -1, 0, 2.0F, 3.0F);
+            arrow.setBaseDamage(3.0);
+            arrow.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
+            level.addFreshEntity(arrow);
+        }
+        // Particle rain effect
+        for (int i = 0; i < 30; i++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double dist = RANDOM.nextDouble() * radius;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                    center.x + Math.cos(angle) * dist, center.y + 4 + RANDOM.nextDouble() * 2, 
+                    center.z + Math.sin(angle) * dist,
+                    1, 0, -0.5, 0, 0.1);
+        }
+    }
+    
+    // ===== Hawkeye Ability Helper Methods =====
+    
+    /**
+     * Spawn glide visual effect - wind particles swirling around player
+     */
+    private static void spawnGlideEffect(ServerLevel level, Vec3 center) {
+        // Cloud/wind particles spiraling around player
+        for (int i = 0; i < 20; i++) {
+            double angle = (double) i / 20 * 2 * Math.PI;
+            double yOffset = (double) i / 20 * 2;
+            double x = center.x + Math.cos(angle) * 0.8;
+            double z = center.z + Math.sin(angle) * 0.8;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
+                    x, center.y + yOffset, z, 1, 0.1, 0.1, 0.1, 0.02);
+        }
+        // Wind/sweep particles
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
+                center.x, center.y + 1, center.z, 3, 0.5, 0.5, 0.5, 0);
+    }
+    
+    /**
+     * Spawn updraft visual effect - upward wind particles
+     */
+    private static void spawnUpdraftEffect(ServerLevel level, Vec3 center) {
+        // Vertical column of particles
+        for (int i = 0; i < 30; i++) {
+            double yOffset = (double) i / 10;
+            double xOffset = (RANDOM.nextDouble() - 0.5) * 0.5;
+            double zOffset = (RANDOM.nextDouble() - 0.5) * 0.5;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
+                    center.x + xOffset, center.y + yOffset, center.z + zOffset,
+                    1, 0, 0.3, 0, 0.05);
+        }
+        // Ground burst effect
+        for (int i = 0; i < 15; i++) {
+            double angle = (double) i / 15 * 2 * Math.PI;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.POOF,
+                    center.x + Math.cos(angle) * 0.5, center.y + 0.2, center.z + Math.sin(angle) * 0.5,
+                    1, 0, 0.1, 0, 0.02);
+        }
+    }
+    
+    /**
+     * Spawn vault visual effect - directional dash particles
+     */
+    private static void spawnVaultEffect(ServerLevel level, Vec3 center, Vec3 direction) {
+        // Trail particles in dash direction
+        for (int i = 0; i < 15; i++) {
+            double progress = (double) i / 15;
+            double x = center.x + direction.x * progress * 2;
+            double y = center.y + 1 + direction.y * progress;
+            double z = center.z + direction.z * progress * 2;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                    x, y, z, 1, 0.1, 0.1, 0.1, 0);
+        }
+        // Burst at start
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
+                center.x, center.y + 1, center.z, 2, 0.3, 0.3, 0.3, 0);
+    }
+    
+    /**
+     * Spawn vault projectile - lobbed arrow
+     */
+    private static void spawnVaultProjectile(ServerPlayer player, ServerLevel level, float velocity, float damage) {
+        Vec3 lookVec = player.getLookAngle();
+        net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(level, player,
+                new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
+        // Lob the projectile (arc trajectory)
+        arrow.shootFromRotation(player, player.getXRot() - 30, player.getYRot(), 0.0F, velocity, 1.0F);
+        arrow.setBaseDamage(damage);
+        arrow.setGlowingTag(true); // Make it visible
+        arrow.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
+        level.addFreshEntity(arrow);
+    }
+    
+    /**
+     * Spawn seeker visual effect
+     */
+    private static void spawnSeekerEffect(ServerLevel level, Vec3 center, int charges) {
+        // Spiral of particles based on charge count
+        for (int charge = 0; charge < charges; charge++) {
+            double angleOffset = (double) charge / charges * 2 * Math.PI;
+            for (int i = 0; i < 8; i++) {
+                double angle = angleOffset + (double) i / 8 * Math.PI;
+                double dist = 0.5 + (double) i / 8;
+                double x = center.x + Math.cos(angle) * dist;
+                double z = center.z + Math.sin(angle) * dist;
+                level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
+                        x, center.y + 1.5, z, 1, 0, 0, 0, 0);
+            }
+        }
+        // Center burst
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.WITCH,
+                center.x, center.y + 1, center.z, charges * 3, 0.3, 0.3, 0.3, 0.05);
+    }
+    
+    /**
+     * Spawn seeker projectiles that home in on nearby enemies
+     */
+    private static void spawnSeekerProjectiles(ServerPlayer player, ServerLevel level, int chargeCount, float damage) {
+        // Find nearby enemies
+        AABB searchBox = player.getBoundingBox().inflate(15.0);
+        List<Entity> entities = player.level().getEntities(player, searchBox,
+                e -> e instanceof LivingEntity && e != player && isHostile(e));
+        
+        Vec3 playerPos = player.position().add(0, 1.5, 0);
+        
+        if (entities.isEmpty()) {
+            // No enemies, fire in look direction
+            Vec3 lookVec = player.getLookAngle();
+            for (int i = 0; i < chargeCount; i++) {
+                float yawOffset = (RANDOM.nextFloat() - 0.5f) * 10;
+                net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(level, player,
+                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
+                arrow.shootFromRotation(player, player.getXRot(), player.getYRot() + yawOffset, 0.0F, 2.0F, 1.0F);
+                arrow.setBaseDamage(damage);
+                arrow.setGlowingTag(true);
+                arrow.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
+                level.addFreshEntity(arrow);
+            }
+        } else {
+            // Target enemies
+            for (int i = 0; i < chargeCount; i++) {
+                Entity target = entities.get(i % entities.size());
+                Vec3 targetPos = target.position().add(0, target.getBbHeight() * 0.5, 0);
+                Vec3 direction = targetPos.subtract(playerPos).normalize();
+                
+                net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(level, player,
+                        new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
+                arrow.setPos(playerPos.x, playerPos.y, playerPos.z);
+                arrow.shoot(direction.x, direction.y, direction.z, 2.0F, 0.5F);
+                arrow.setBaseDamage(damage);
+                arrow.setGlowingTag(true);
+                arrow.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
+                level.addFreshEntity(arrow);
+            }
+        }
     }
 }
