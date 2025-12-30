@@ -57,12 +57,18 @@ public class ServerEvents {
             var stats = player.getData(ModAttachments.PLAYER_STATS);
             stats.tick();
             
-            // HAWKEYE AERIAL AFFINITY: Restore seeker charges while mid-air
+            // HAWKEYE AERIAL AFFINITY & GLIDE PASSIVE: Restore seeker charges while mid-air + auto-apply Slow Falling
             if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("hawkeye")) {
                 if (!player.onGround() && !player.isInWater() && !player.isInLava()) {
                     // Player is airborne
                     int airTicks = airborneTickCounter.getOrDefault(player.getUUID(), 0) + 1;
                     airborneTickCounter.put(player.getUUID(), airTicks);
+                    
+                    // GLIDE PASSIVE: Auto-apply Slow Falling I while airborne
+                    if (!player.hasEffect(net.minecraft.world.effect.MobEffects.SLOW_FALLING)) {
+                        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                                net.minecraft.world.effect.MobEffects.SLOW_FALLING, 40, 0, false, false));
+                    }
                     
                     // Every SEEKER_CHARGE_INTERVAL ticks while airborne, add a seeker charge
                     if (airTicks % SEEKER_CHARGE_INTERVAL == 0) {

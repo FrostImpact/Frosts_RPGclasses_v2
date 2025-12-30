@@ -264,6 +264,18 @@ public class ModMessages {
                 markedIterator.remove();
             }
         }
+        
+        // Update Ranger Large Piercing Arrows
+        Iterator<LargePiercingArrow> piercingIterator = activeLargePiercingArrows.iterator();
+        while (piercingIterator.hasNext()) {
+            LargePiercingArrow arrow = piercingIterator.next();
+            arrow.ticksAlive++;
+            
+            // Update arrow position and check for hits
+            if (!updateLargePiercingArrow(arrow)) {
+                piercingIterator.remove();
+            }
+        }
     }
     
     /**
@@ -746,37 +758,27 @@ public class ModMessages {
             }
             case "ranger" -> {
                 switch (slot) {
-                    case 1 -> { // Precise Shot - PARTICLE-ONLY energy beam, no actual arrows
+                    case 1 -> { // Piercing Shot - LARGE slow-moving arrow projectile (3x size) with dust circles
                         Vec3 lookVec = player.getLookAngle();
                         Vec3 startPos = playerPos.add(0, player.getEyeHeight(), 0);
-                        float damage = 10.0f + damageBonus * 2.0f;
+                        float damage = 12.0f + damageBonus * 2.0f;
                         
-                        // Deal damage via hitscan to first enemy hit
-                        LivingEntity target = findTargetInSight(player, 50.0);
-                        if (target != null) {
-                            target.hurt(player.damageSources().playerAttack(player), damage);
-                        }
+                        // Create large piercing arrow projectile
+                        spawnLargePiercingArrowProjectile(player, level, startPos, lookVec, damage);
                         
-                        // Spawn EPIC energy beam particle effect (NO ARROWS!)
-                        spawnPreciseShotEnergyBeam(level, startPos, lookVec, target);
-                        
-                        // Dramatic charge release aura
-                        spawnPreciseShotChargeAura(level, playerPos);
-                        
-                        // Flash effect
+                        // Launch effect
                         level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
-                                startPos.x, startPos.y, startPos.z, 3, 0.5, 0.5, 0.5, 0);
+                                startPos.x, startPos.y, startPos.z, 2, 0.3, 0.3, 0.3, 0);
+                        spawnDustParticlesBurst(level, startPos, 2.0, 0.2f, 0.85f, 0.25f, 15);
                     }
-                    case 2 -> { // Multi-Shot - PARTICLE-ONLY spread attack, no actual arrows
+                    case 2 -> { // Spread Shot - Fixed direction based on player look angle
                         Vec3 lookVec = player.getLookAngle();
                         Vec3 startPos = playerPos.add(0, player.getEyeHeight(), 0);
+                        float yRot = player.getYRot();
                         float damage = 3.5f + damageBonus * 0.75f;
                         
-                        // Deal damage to multiple enemies in cone
-                        dealDamageInCone(player, damage, lookVec, 20.0, 35.0);
-                        
-                        // Spawn EPIC spread particle effect (NO ARROWS!)
-                        spawnMultiShotParticleSpread(level, startPos, lookVec, player.getYRot());
+                        // Spawn multiple arrows in a fan spread pattern FORWARD in look direction
+                        spawnMultiShotArrowsFixed(player, level, startPos, lookVec, yRot, damage);
                         
                         // Dramatic launch effect
                         spawnMultiShotLaunchEffect(level, startPos, lookVec);
@@ -790,33 +792,52 @@ public class ModMessages {
                         // Enhanced escape visual - particles at launch point and trail
                         spawnEscapeEffect(level, playerPos, lookVec.reverse());
                     }
-                    case 4 -> { // Rain of Arrows - SMALLER radius, visible particles hitting ground, DEFINED CIRCLE
+                    case 4 -> { // Arrow Rain - Target location based on where player is looking (raycast)
                         float damage = 4.0f + damageBonus * 1.0f;
-                        double rainRadius = 6.0; // SMALLER radius (was 10.0)
-                        // Register timed effect with smaller radius
+                        double rainRadius = 6.0;
+                        
+                        // Find target position where player is looking
+                        Vec3 targetPos = getPlayerLookTargetPosition(player, 50.0);
+                        if (targetPos == null) {
+                            // Fallback to player position if no valid target found
+                            targetPos = playerPos;
+                        }
+                        
+                        // Register timed effect at target location
                         RainOfArrowsEffect effect = new RainOfArrowsEffect(
-                                player, level, playerPos, rainRadius, damage, RAIN_OF_ARROWS_DURATION_TICKS
+                                player, level, targetPos, rainRadius, damage, RAIN_OF_ARROWS_DURATION_TICKS
                         );
                         activeRainEffects.put(player.getUUID(), effect);
                         
                         // Initial activation effect with DEFINED CIRCLE (not clouds!)
-                        spawnRainOfArrowsActivationEffect(level, playerPos, rainRadius);
+                        spawnRainOfArrowsActivationEffect(level, targetPos, rainRadius);
                         
                         // Apply slowdown to enemies in the zone
-                        applyEffectToNearbyEnemies(player, MobEffects.MOVEMENT_SLOWDOWN, 140, 1, rainRadius);
+                        applyEffectToNearbyEnemiesAtPosition(level, targetPos, MobEffects.MOVEMENT_SLOWDOWN, 140, 1, rainRadius);
                     }
                 }
             }
             case "hawkeye" -> {
                 var rpgData = player.getData(ModAttachments.PLAYER_RPG);
                 switch (slot) {
-                    case 1 -> { // Glide - grants slow falling for 10 seconds (MORE DRAMATIC)
-                        player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 200, 0));
-                        // Enhanced wind particles around player
-                        spawnGlideEffect(level, playerPos);
-                        // Additional feather trail
-                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
-                                playerPos.x, playerPos.y + 0.5, playerPos.z, 15, 0.5, 0.3, 0.5, 0.02);
+                    case 1 -> { // Vault - launch forward and throw a turtle scute entity (MOVED from slot 3)
+                        // Launch player forward in look direction with MORE force
+                        Vec3 lookVec = player.getLookAngle();
+                        Vec3 launchVec = new Vec3(lookVec.x * 2.0, 0.5, lookVec.z * 2.0);
+                        player.setDeltaMovement(player.getDeltaMovement().add(launchVec));
+                        player.hurtMarked = true;
+                        float projectileDamage = 6.0f + damageBonus * 0.7f;
+                        // Spawn turtle scute projectile entity that deals damage
+                        spawnVaultTurtleScuteProjectile(player, level, lookVec, projectileDamage);
+                        // Add a seeker charge
+                        rpgData.addSeekerCharge();
+                        // Sync seeker charges to client
+                        sendToPlayer(new PacketSyncSeekerCharges(rpgData.getSeekerCharges()), player);
+                        // Enhanced vault visual - directional particles
+                        spawnVaultEffect(level, playerPos, lookVec);
+                        // Additional sweep attack visuals
+                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
+                                playerPos.x + lookVec.x, playerPos.y + 1, playerPos.z + lookVec.z, 3, 0.3, 0.2, 0.3, 0);
                     }
                     case 2 -> { // Updraft - ENHANCED launch with more dramatic effects
                         // Launch player upward with STRONGER force
@@ -835,24 +856,8 @@ public class ModMessages {
                         level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
                                 playerPos.x, playerPos.y, playerPos.z, 2, 0, 0, 0, 0);
                     }
-                    case 3 -> { // Vault - launch forward and throw a turtle scute entity
-                        // Launch player forward in look direction with MORE force
-                        Vec3 lookVec = player.getLookAngle();
-                        Vec3 launchVec = new Vec3(lookVec.x * 2.0, 0.5, lookVec.z * 2.0);
-                        player.setDeltaMovement(player.getDeltaMovement().add(launchVec));
-                        player.hurtMarked = true;
-                        float projectileDamage = 6.0f + damageBonus * 0.7f;
-                        // Spawn turtle scute projectile entity that deals damage
-                        spawnVaultTurtleScuteProjectile(player, level, lookVec, projectileDamage);
-                        // Add a seeker charge
-                        rpgData.addSeekerCharge();
-                        // Sync seeker charges to client
-                        sendToPlayer(new PacketSyncSeekerCharges(rpgData.getSeekerCharges()), player);
-                        // Enhanced vault visual - directional particles
-                        spawnVaultEffect(level, playerPos, lookVec);
-                        // Additional sweep attack visuals
-                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
-                                playerPos.x + lookVec.x, playerPos.y + 1, playerPos.z + lookVec.z, 3, 0.3, 0.2, 0.3, 0);
+                    case 3 -> { // (Reserved slot - GLIDE is now a passive)
+                        player.displayClientMessage(Component.literal("§eGLIDE is now a passive ability - automatically activates when airborne!"), true);
                     }
                     case 4 -> { // Seekers - MOVING PROJECTILES that home on targets (not hitscan)
                         int charges = rpgData.consumeSeekerCharges();
@@ -4646,5 +4651,209 @@ public class ModMessages {
         // Muzzle flash at start
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
                 start.x, start.y, start.z, 2, 0.1, 0.1, 0.1, 0);
+    }
+    
+    // ===== NEW RANGER HELPER METHODS =====
+    
+    /**
+     * Get the position where the player is looking (raycast for blocks up to maxRange)
+     */
+    private static Vec3 getPlayerLookTargetPosition(ServerPlayer player, double maxRange) {
+        Vec3 startPos = player.position().add(0, player.getEyeHeight(), 0);
+        Vec3 lookVec = player.getLookAngle();
+        Vec3 endPos = startPos.add(lookVec.scale(maxRange));
+        
+        // Raycast for blocks
+        var blockHit = player.level().clip(new net.minecraft.world.level.ClipContext(
+                startPos, endPos,
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE,
+                player));
+        
+        if (blockHit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+            return blockHit.getLocation();
+        }
+        
+        return null; // No valid block found
+    }
+    
+    /**
+     * Apply effect to nearby enemies at a specific position (not centered on player)
+     */
+    private static void applyEffectToNearbyEnemiesAtPosition(ServerLevel level, Vec3 center, 
+            net.minecraft.world.effect.MobEffect effect, int duration, int amplifier, double radius) {
+        AABB searchBox = new AABB(
+                center.x - radius, center.y - radius, center.z - radius,
+                center.x + radius, center.y + radius, center.z + radius);
+        
+        List<Entity> entities = level.getEntities(null, searchBox,
+                e -> e instanceof LivingEntity && !(e instanceof ServerPlayer));
+        
+        for (Entity entity : entities) {
+            if (entity instanceof LivingEntity living) {
+                double dist = entity.position().distanceTo(center);
+                if (dist <= radius) {
+                    living.addEffect(new MobEffectInstance(effect, duration, amplifier));
+                }
+            }
+        }
+    }
+    
+    /**
+     * Spawn large piercing arrow projectile with dust circles (3x normal size)
+     */
+    private static void spawnLargePiercingArrowProjectile(ServerPlayer player, ServerLevel level, 
+            Vec3 startPos, Vec3 direction, float damage) {
+        // Create a custom piercing arrow projectile that tracks and deals damage
+        LargePiercingArrow arrow = new LargePiercingArrow(player, level, startPos, direction, damage);
+        activeLargePiercingArrows.add(arrow);
+        
+        // Initial spawn effect - green ranger theme
+        level.sendParticles(createDustParticle(0.2f, 0.85f, 0.25f, 1.0f),
+                startPos.x, startPos.y, startPos.z, 20, 0.3, 0.3, 0.3, 0.1);
+    }
+    
+    /**
+     * Spawn multiple arrows in a fan spread pattern in the direction player is looking (FIXED)
+     */
+    private static void spawnMultiShotArrowsFixed(ServerPlayer player, ServerLevel level, 
+            Vec3 startPos, Vec3 lookVec, float yRot, float damage) {
+        int arrowCount = 5;
+        float spreadAngle = 25.0f; // Total spread angle
+        
+        for (int i = 0; i < arrowCount; i++) {
+            // Calculate angle offset from center (-12.5 to +12.5 degrees for 5 arrows)
+            float angleOffset = (i - (arrowCount - 1) / 2.0f) * (spreadAngle / (arrowCount - 1));
+            float arrowYRot = yRot + angleOffset;
+            
+            // Convert angle to direction vector
+            double yRotRad = Math.toRadians(arrowYRot);
+            double xPitch = lookVec.y; // Maintain vertical angle from look vector
+            double horizontalLength = Math.cos(Math.asin(xPitch));
+            
+            Vec3 arrowDirection = new Vec3(
+                    -Math.sin(yRotRad) * horizontalLength,
+                    xPitch,
+                    Math.cos(yRotRad) * horizontalLength
+            ).normalize();
+            
+            // Spawn arrow entity
+            net.minecraft.world.entity.projectile.Arrow arrow = 
+                    new net.minecraft.world.entity.projectile.Arrow(level, player);
+            arrow.setPos(startPos.x, startPos.y, startPos.z);
+            arrow.shoot(arrowDirection.x, arrowDirection.y, arrowDirection.z, 2.5f, 0.0f);
+            arrow.setBaseDamage(damage);
+            arrow.setCritArrow(false);
+            arrow.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
+            level.addFreshEntity(arrow);
+            
+            // Spawn particle trail for each arrow
+            level.sendParticles(createDustParticle(0.3f, 0.9f, 0.3f, 0.6f),
+                    startPos.x, startPos.y, startPos.z, 3, 0.1, 0.1, 0.1, 0.05);
+        }
+    }
+    
+    // Data class for Large Piercing Arrow projectile
+    public static class LargePiercingArrow {
+        public final ServerPlayer owner;
+        public final ServerLevel level;
+        public Vec3 position;
+        public final Vec3 direction;
+        public final float damage;
+        public int ticksAlive;
+        public final int maxTicks;
+        public final float speed;
+        public final List<UUID> hitEntities; // Track which entities we've already hit
+        
+        public LargePiercingArrow(ServerPlayer owner, ServerLevel level, Vec3 startPos, Vec3 direction, float damage) {
+            this.owner = owner;
+            this.level = level;
+            this.position = startPos;
+            this.direction = direction.normalize();
+            this.damage = damage;
+            this.ticksAlive = 0;
+            this.maxTicks = 100; // 5 seconds max flight time
+            this.speed = 0.4f; // Slow moving
+            this.hitEntities = new ArrayList<>();
+        }
+    }
+    
+    // Active large piercing arrows list
+    private static final List<LargePiercingArrow> activeLargePiercingArrows = new ArrayList<>();
+    
+    /**
+     * Update large piercing arrow projectile - returns false when it should be removed
+     */
+    private static boolean updateLargePiercingArrow(LargePiercingArrow arrow) {
+        if (arrow.ticksAlive >= arrow.maxTicks) {
+            return false;
+        }
+        
+        // Move projectile
+        arrow.position = arrow.position.add(arrow.direction.scale(arrow.speed));
+        
+        // Check for entity collision (pierce through multiple)
+        AABB hitbox = new AABB(
+                arrow.position.x - 0.8, arrow.position.y - 0.8, arrow.position.z - 0.8,
+                arrow.position.x + 0.8, arrow.position.y + 0.8, arrow.position.z + 0.8);
+        
+        List<Entity> entities = arrow.level.getEntities(arrow.owner, hitbox,
+                e -> e instanceof LivingEntity && e != arrow.owner);
+        
+        for (Entity entity : entities) {
+            if (entity instanceof LivingEntity living && !arrow.hitEntities.contains(entity.getUUID())) {
+                living.hurt(arrow.owner.damageSources().playerAttack(arrow.owner), arrow.damage);
+                arrow.hitEntities.add(entity.getUUID());
+                
+                // Impact particles
+                arrow.level.sendParticles(createDustParticle(0.3f, 0.9f, 0.3f, 1.0f),
+                        entity.getX(), entity.getY() + entity.getBbHeight() * 0.5, entity.getZ(),
+                        15, 0.3, 0.3, 0.3, 0.1);
+            }
+        }
+        
+        // Check for block collision
+        var blockHit = arrow.level.clip(new net.minecraft.world.level.ClipContext(
+                arrow.position.subtract(arrow.direction.scale(0.5)),
+                arrow.position,
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE,
+                arrow.owner));
+        
+        if (blockHit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+            // Impact effect
+            arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.25f, 1.2f),
+                    blockHit.getLocation().x, blockHit.getLocation().y, blockHit.getLocation().z,
+                    25, 0.4, 0.4, 0.4, 0.15);
+            return false;
+        }
+        
+        // Spawn trail particles - LARGE arrow with radiating dust circles
+        if (arrow.ticksAlive % 1 == 0) { // Every tick
+            // Main arrow trail (green ranger theme)
+            arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.25f, 0.9f),
+                    arrow.position.x, arrow.position.y, arrow.position.z, 5, 0.15, 0.15, 0.15, 0.02);
+            
+            // Radiating dust circles around the arrow (at least same size as arrow)
+            double circleRadius = 0.8; // Large circles
+            int circlePoints = 12;
+            for (int i = 0; i < circlePoints; i++) {
+                double angle = (double) i / circlePoints * 2 * Math.PI;
+                Vec3 perpVec1 = new Vec3(
+                        Math.cos(angle) * circleRadius,
+                        Math.sin(angle) * circleRadius,
+                        0
+                );
+                Vec3 circlePos = arrow.position.add(perpVec1);
+                arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.25f, 0.6f),
+                        circlePos.x, circlePos.y, circlePos.z, 1, 0.05, 0.05, 0.05, 0);
+            }
+            
+            // Additional glow trail
+            arrow.level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                    arrow.position.x, arrow.position.y, arrow.position.z, 2, 0.1, 0.1, 0.1, 0.01);
+        }
+        
+        return true;
     }
 }
