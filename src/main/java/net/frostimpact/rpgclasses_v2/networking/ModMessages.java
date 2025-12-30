@@ -489,13 +489,13 @@ public class ModMessages {
             }
             case "ranger" -> {
                 switch (slot) {
-                    case 1 -> { // Precise Shot - charged green aura then massive particle arrow
+                    case 1 -> { // Precise Shot - massive particle arrow with green release aura
                         // Deal high damage to enemies in a line
                         Vec3 lookVec = player.getLookAngle();
                         dealDamageInLine(player, 7.0f + damageBonus * 1.75f, lookVec, 30.0, 0.8);
                         // Spawn the massive particle arrow effect (no entity arrows)
                         spawnPreciseShotParticleArrow(level, playerPos.add(0, player.getEyeHeight(), 0), lookVec);
-                        // Charging aura visual (instant for now - represents the release)
+                        // Release aura visual - shows the power release moment
                         spawnPreciseShotChargeAura(level, playerPos);
                     }
                     case 2 -> { // Multi-Shot - 6 small particle lines that pierce enemies (hitscan)
@@ -1092,6 +1092,7 @@ public class ModMessages {
             float yawOffset = rayCount > 1 ? -halfSpread + (angleStep * ray) : 0;
             
             // Calculate ray direction with spread
+            // Note: -90 degree offset converts Minecraft's yaw (0=south, 90=west) to standard math coordinates
             double yawRad = Math.toRadians(-baseYaw - 90 + yawOffset);
             double pitchRad = Math.toRadians(-basePitch);
             Vec3 rayDir = new Vec3(
@@ -1156,7 +1157,8 @@ public class ModMessages {
     }
     
     /**
-     * Spawn rain of particle arrows (visual only, no entity damage)
+     * Spawn rain of particle arrows - visual effect only.
+     * Damage is handled separately by dealDamageToNearbyEnemies in the calling method.
      */
     private static void spawnRainOfParticleArrowsEffect(ServerLevel level, Vec3 center, double radius, int arrowCount) {
         // Green ranger theme
