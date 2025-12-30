@@ -36,7 +36,7 @@ public final class AbilityUtils {
                 default -> "Unknown";
             };
             case "ranger" -> switch (slot) {
-                case 1 -> "Energy Beam";
+                case 1 -> "Piercing Shot";
                 case 2 -> "Spread Shot";
                 case 3 -> "Escape";
                 case 4 -> "Arrow Rain";
@@ -57,9 +57,9 @@ public final class AbilityUtils {
                 default -> "Unknown";
             };
             case "hawkeye" -> switch (slot) {
-                case 1 -> "Glide";
+                case 1 -> "Vault";
                 case 2 -> "Updraft";
-                case 3 -> "Vault";
+                case 3 -> "(Reserved)";
                 case 4 -> "Seekers";
                 default -> "Unknown";
             };
@@ -129,9 +129,9 @@ public final class AbilityUtils {
                 default -> 0;
             };
             case "hawkeye" -> switch (slot) {
-                case 1 -> 10;  // Glide - low cost
+                case 1 -> 20;  // Vault - launch forward + lobbing scute projectile
                 case 2 -> 15;  // Updraft
-                case 3 -> 20;  // Vault - lobbing scute projectile
+                case 3 -> 0;   // (Reserved)
                 case 4 -> 0;   // Seekers - cost depends on charges (5 * charges)
                 default -> 0;
             };
@@ -180,10 +180,10 @@ public final class AbilityUtils {
                 default -> 40;
             };
             case "ranger" -> switch (slot) {
-                case 1 -> 100;  // 5s - Precise Shot (charge time effect)
-                case 2 -> 160;  // 8s - Multi-Shot
+                case 1 -> 100;  // 5s - Piercing Shot (large arrow with dust circles)
+                case 2 -> 160;  // 8s - Spread Shot (fixed direction)
                 case 3 -> 300;  // 15s - Escape
-                case 4 -> 1200; // 60s - Rain of Arrows (6 second duration ultimate)
+                case 4 -> 800;  // 40s - Arrow Rain (REDUCED from 60s)
                 default -> 40;
             };
             case "tank" -> switch (slot) {
@@ -201,24 +201,24 @@ public final class AbilityUtils {
                 default -> 40;
             };
             case "hawkeye" -> switch (slot) {
-                case 1 -> 40;   // 2s - Glide
+                case 1 -> 40;   // 2s - Vault (NEW - replaces Glide, from original RPG)
                 case 2 -> 240;  // 12s - Updraft
-                case 3 -> 160;  // 8s - Vault
-                case 4 -> 100;  // 5s - Seekers
+                case 3 -> 160;  // 8s - (reserved)
+                case 4 -> 60;   // 3s - Seekers (REDUCED from 5s)
                 default -> 40;
             };
             case "marksman" -> switch (slot) {
                 case 1 -> 60;   // 3s - Snipe (1.5s in FOCUS mode)
                 case 2 -> 200;  // 10s - Mark (medium cooldown)
                 case 3 -> 60;   // 3s - Grapple Hook (low cooldown)
-                case 4 -> 400;  // 20s - Headshot (resets on kill)
+                case 4 -> 300;  // 15s - Headshot (REDUCED from 20s, resets on kill)
                 default -> 40;
             };
             case "beastmaster" -> switch (slot) {
                 case 1 -> 200;  // 10s - Wolf Pack
                 case 2 -> 400;  // 20s - Bear Strength
                 case 3 -> 300;  // 15s - Eagle Eye
-                case 4 -> 900;  // 45s - Stampede
+                case 4 -> 600;  // 30s - Stampede (REDUCED from 45s)
                 default -> 40;
             };
             default -> 40;

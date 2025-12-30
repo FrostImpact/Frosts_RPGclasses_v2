@@ -381,18 +381,18 @@ public class ClassDetailScreen extends Screen {
                         50, 45));
             }
             case "ranger" -> {
-                abilities.add(new ClassAbility("Precise Shot", "Z", "active",
-                        "Fire a MASSIVE glowing arrow projectile (3x normal size) with radiating energy circles. Deals 175% damage and ignores 50% of armor.",
+                abilities.add(new ClassAbility("Piercing Shot", "Z", "active",
+                        "Fire a MASSIVE glowing arrow projectile (3x normal size) with radiating dust circles. Pierces through multiple enemies dealing heavy damage.",
                         20, 5));
-                abilities.add(new ClassAbility("Multi-Shot", "X", "active",
-                        "Fire 6 arrows in a spread pattern from your position. Each arrow travels in the direction you're looking.",
+                abilities.add(new ClassAbility("Spread Shot", "X", "active",
+                        "Fire multiple arrows in a fan spread pattern in the direction you're looking. Each arrow travels forward and deals damage.",
                         30, 8));
                 abilities.add(new ClassAbility("Escape", "C", "active",
                         "Launch yourself backward away from danger with a burst of speed.",
                         20, 15));
-                abilities.add(new ClassAbility("Rain of Arrows", "V", "ultimate",
-                        "Create a massive arrow storm that lasts 6 SECONDS. Continuous stream of particle arrows rain down dealing damage over time.",
-                        80, 60));
+                abilities.add(new ClassAbility("Arrow Rain", "V", "ultimate",
+                        "Summon a massive arrow storm at your target location. Continuous arrows rain down for 6 seconds dealing massive damage over time.",
+                        80, 40));
             }
             case "tank" -> {
                 abilities.add(new ClassAbility("Shield Bash", "Z", "active",
@@ -423,46 +423,52 @@ public class ClassDetailScreen extends Screen {
                         80, 90));
             }
             case "hawkeye" -> {
-                abilities.add(new ClassAbility("Glide", "Z", "active",
-                        "Gain Slow Falling for 10 seconds, allowing you to float gracefully through the air with feather-like particles.",
-                        10, 2));
+                abilities.add(new ClassAbility("GLIDE (Passive)", "", "passive",
+                        "Automatically activates when airborne - grants Slow Falling I. Builds SEEKER charges while in the air via AERIAL AFFINITY.",
+                        0, 0));
+                abilities.add(new ClassAbility("Vault", "Z", "active",
+                        "Launch yourself forward and throw a lobbing turtle scute projectile. Deals damage on impact and grants 1 Seeker charge.",
+                        20, 2));
                 abilities.add(new ClassAbility("Updraft", "X", "active",
                         "Launch yourself high into the air with a powerful vertical boost. Grants slow falling and 1 Seeker charge.",
                         15, 12));
-                abilities.add(new ClassAbility("Vault", "C", "active",
-                        "Dash forward and lob a LARGE turtle scute projectile that deals significant impact damage. Grants 1 Seeker charge.",
-                        20, 8));
                 abilities.add(new ClassAbility("Seekers", "V", "ultimate",
                         "Release homing projectiles that track enemies in your vision. Medium-speed moving orbs that home in on targets. Consumes all Seeker charges.",
-                        0, 5));
+                        0, 3));
             }
             case "marksman" -> {
-                abilities.add(new ClassAbility("Steady Shot", "Z", "active",
-                        "Fire a high-velocity, perfectly accurate arrow with extended range. Deals massive single-target damage.",
-                        15, 3));
-                abilities.add(new ClassAbility("Piercing Shot", "X", "active",
-                        "Fire an arrow that pierces through multiple enemies, damaging all targets in its path.",
-                        25, 6));
-                abilities.add(new ClassAbility("Mark Target", "C", "active",
-                        "Mark an enemy in your sights, causing them to glow and take increased damage from your attacks.",
-                        20, 20));
+                abilities.add(new ClassAbility("FOCUS MODE (Passive)", "SHIFT", "passive",
+                        "Hold SHIFT to enter FOCUS mode - cannot move, zoom camera, reduced Snipe cooldown (1.5s) and cost. Slow fall mid-air. Drains 3 mana/sec.",
+                        0, 0));
+                abilities.add(new ClassAbility("Snipe", "Z", "active",
+                        "Fire a slow-moving projectile dealing massive single-target damage. Low cooldown (3s), reduced to 1.5s in FOCUS mode.",
+                        10, 3));
+                abilities.add(new ClassAbility("Mark", "X", "active",
+                        "Mark the closest enemy in line of sight. Marked enemies take 30% more damage from you for 7 seconds.",
+                        15, 10));
+                abilities.add(new ClassAbility("Grapple Hook", "C", "active",
+                        "Throw a hook and launch yourself toward that direction. Great for repositioning.",
+                        12, 3));
                 abilities.add(new ClassAbility("Headshot", "V", "ultimate",
-                        "Deliver a devastating critical hit to a single target, dealing MASSIVE damage. Shows dramatic impact effect.",
-                        50, 30));
+                        "Lock onto nearest enemy and fire an instant hitscan shot. Killing the target resets all other cooldowns!",
+                        25, 15));
             }
             case "beastmaster" -> {
-                abilities.add(new ClassAbility("Wolf Pack", "Z", "active",
-                        "Command wolves to attack up to 3 nearby enemies, dealing damage with claw slash effects.",
+                abilities.add(new ClassAbility("Beast Bond (Passive)", "", "passive",
+                        "For each active beast companion, gain +5% damage. Stacks up to 3 times for +15% total damage.",
+                        0, 0));
+                abilities.add(new ClassAbility("Summon Wolves", "Z", "active",
+                        "Summon 3 friendly wolves with unique colored collars. They attack nearby enemies with boosted strength.",
                         25, 10));
-                abilities.add(new ClassAbility("Bear Strength", "X", "active",
-                        "Channel the power of a bear, gaining damage resistance and increased damage for a duration.",
+                abilities.add(new ClassAbility("Summon Bear", "X", "active",
+                        "Summon a powerful bear companion with a golden glow. Tanky and deals heavy damage to enemies.",
                         30, 20));
-                abilities.add(new ClassAbility("Eagle Eye", "C", "active",
-                        "Activate enhanced vision, gaining night vision and revealing all enemies in a large radius with glowing effect.",
+                abilities.add(new ClassAbility("Summon Eagle", "C", "active",
+                        "Summon a flying eagle scout with cyan particles. Provides reconnaissance and unique benefits.",
                         20, 15));
-                abilities.add(new ClassAbility("Stampede", "V", "ultimate",
-                        "Summon a stampede of beasts that charge forward, dealing damage and knocking back all enemies in their path.",
-                        60, 45));
+                abilities.add(new ClassAbility("Beast Stampede", "V", "ultimate",
+                        "Summon 3 distinct lines of charging beasts moving in formation. Each line moves in unison dealing devastating damage.",
+                        60, 30));
             }
             default -> {
                 abilities.add(new ClassAbility("Basic Attack", "Z", "passive",
