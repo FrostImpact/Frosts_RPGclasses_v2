@@ -489,35 +489,36 @@ public class ModMessages {
             }
             case "ranger" -> {
                 switch (slot) {
-                    case 1 -> { // Precise Shot - fires a powerful arrow in the looking direction
-                        // Spawn an arrow projectile in the player's look direction
-                        spawnRangerArrow(player, level, 3.0f, 7.0f + damageBonus * 1.75f, false);
-                        // Visual effect - sweep particles from player
-                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
-                                playerPos.x, playerPos.y + 1.5, playerPos.z,
-                                10, 0.3, 0.3, 0.3, 0.1);
+                    case 1 -> { // Precise Shot - massive particle arrow with green release aura
+                        // Deal high damage to enemies in a line
+                        Vec3 lookVec = player.getLookAngle();
+                        dealDamageInLine(player, 7.0f + damageBonus * 1.75f, lookVec, 30.0, 0.8);
+                        // Spawn the massive particle arrow effect (no entity arrows)
+                        spawnPreciseShotParticleArrow(level, playerPos.add(0, player.getEyeHeight(), 0), lookVec);
+                        // Release aura visual - shows the power release moment
+                        spawnPreciseShotChargeAura(level, playerPos);
                     }
-                    case 2 -> { // Multi-Shot - fires 5 arrows in a spread pattern
-                        // Spawn multiple arrows with spread
-                        spawnMultiShotArrows(player, level, 2.0f, 2.5f + damageBonus * 0.6f, 5, 15.0f);
-                        // Visual fan effect
-                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
-                                playerPos.x, playerPos.y + 1.5, playerPos.z,
-                                20, 0.5, 0.3, 0.5, 0.15);
+                    case 2 -> { // Multi-Shot - 6 small particle lines that pierce enemies (hitscan)
+                        Vec3 lookVec = player.getLookAngle();
+                        // Fire 6 particle lines one after another (hitscan rays)
+                        spawnMultiShotParticleRays(player, level, playerPos.add(0, player.getEyeHeight(), 0), lookVec, 
+                                6, 2.5f + damageBonus * 0.6f, 25.0);
                     }
-                    case 3 -> { // Trap - places a trap at the player's feet that affects nearby enemies
-                        // Apply root and poison to nearby enemies
-                        applyEffectToNearbyEnemies(player, MobEffects.MOVEMENT_SLOWDOWN, 100, 4, 3.0);
-                        applyEffectToNearbyEnemies(player, MobEffects.POISON, 100, 1, 3.0);
-                        // Spawn visible trap particles on ground
-                        spawnTrapEffect(level, playerPos, 3.0);
+                    case 3 -> { // Escape - launch player opposite of look direction
+                        Vec3 lookVec = player.getLookAngle();
+                        // Launch player in the opposite direction
+                        Vec3 escapeVec = new Vec3(-lookVec.x * 2.0, 0.5, -lookVec.z * 2.0);
+                        player.setDeltaMovement(player.getDeltaMovement().add(escapeVec));
+                        player.hurtMarked = true; // Force velocity sync
+                        // Escape visual - particles at launch point and trail
+                        spawnEscapeEffect(level, playerPos, lookVec.reverse());
                     }
-                    case 4 -> { // Rain of Arrows - spawns arrows falling from above in an area
-                        // Deal damage and slow enemies
+                    case 4 -> { // Rain of Arrows - constant damage zone with particle arrows (visual only)
+                        // Deal constant damage in area (not based on arrow positions)
                         dealDamageToNearbyEnemies(player, 6.0 + damageBonus * 1.5, 8.0);
                         applyEffectToNearbyEnemies(player, MobEffects.MOVEMENT_SLOWDOWN, 100, 1, 8.0);
-                        // Rain of arrow visual - spawn arrows from sky
-                        spawnRainOfArrowsEffect(player, level, 8.0, 15);
+                        // Rain of particle arrows - visual only (no entity arrows)
+                        spawnRainOfParticleArrowsEffect(level, playerPos, 8.0, 30);
                     }
                 }
             }
@@ -972,6 +973,282 @@ public class ModMessages {
                     center.x + Math.cos(angle) * dist, center.y + 4 + RANDOM.nextDouble() * 2, 
                     center.z + Math.sin(angle) * dist,
                     1, 0, -0.5, 0, 0.1);
+        }
+    }
+    
+    // ===== NEW Ranger Particle-Based Ability Methods =====
+    
+    /**
+     * Spawn a massive particle arrow effect for Precise Shot
+     * The arrow is made of particles with pulsing vertical circles around it
+     */
+    private static void spawnPreciseShotParticleArrow(ServerLevel level, Vec3 start, Vec3 direction) {
+        Vec3 normalizedDir = direction.normalize();
+        double arrowLength = 30.0; // How far the arrow travels
+        
+        // Green color for Ranger theme
+        float r = 0.2f, g = 0.8f, b = 0.3f;
+        
+        // Main arrow body - a thick line of particles
+        for (int i = 0; i < 60; i++) {
+            double progress = (double) i / 60.0 * arrowLength;
+            Vec3 pos = start.add(normalizedDir.scale(progress));
+            
+            // Arrow core particles (bright green)
+            float size = 0.6f + RANDOM.nextFloat() * 0.2f;
+            level.sendParticles(createDustParticle(r, g, b, size), 
+                    pos.x, pos.y, pos.z, 1, 0.05, 0.05, 0.05, 0);
+            
+            // Glowing trail
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                    pos.x, pos.y, pos.z, 1, 0.02, 0.02, 0.02, 0);
+        }
+        
+        // Pulsing vertical particle circles along the arrow path
+        for (int ring = 0; ring < 8; ring++) {
+            double ringProgress = (double) ring / 8.0 * arrowLength;
+            Vec3 ringCenter = start.add(normalizedDir.scale(ringProgress));
+            
+            // Create vertical circle perpendicular to arrow direction
+            Vec3 perpVec1 = getPerpendicular(normalizedDir);
+            Vec3 perpVec2 = normalizedDir.cross(perpVec1).normalize();
+            
+            double ringRadius = 0.3 + (ring % 2) * 0.2; // Alternating sizes for "pulsing" effect
+            int circlePoints = 12;
+            for (int p = 0; p < circlePoints; p++) {
+                double angle = (double) p / circlePoints * 2 * Math.PI;
+                double offsetX = Math.cos(angle) * ringRadius;
+                double offsetY = Math.sin(angle) * ringRadius;
+                Vec3 circlePos = ringCenter.add(perpVec1.scale(offsetX)).add(perpVec2.scale(offsetY));
+                
+                float circleSize = 0.4f + RANDOM.nextFloat() * 0.15f;
+                level.sendParticles(createDustParticle(0.3f, 1.0f, 0.4f, circleSize),
+                        circlePos.x, circlePos.y, circlePos.z, 1, 0, 0, 0, 0);
+            }
+        }
+        
+        // Arrow head - larger particles at the front
+        Vec3 arrowTip = start.add(normalizedDir.scale(arrowLength));
+        for (int i = 0; i < 15; i++) {
+            level.sendParticles(createDustParticle(0.4f, 1.0f, 0.5f, 0.8f),
+                    arrowTip.x + (RANDOM.nextDouble() - 0.5) * 0.3,
+                    arrowTip.y + (RANDOM.nextDouble() - 0.5) * 0.3,
+                    arrowTip.z + (RANDOM.nextDouble() - 0.5) * 0.3,
+                    1, 0, 0, 0, 0);
+        }
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                arrowTip.x, arrowTip.y, arrowTip.z, 1, 0, 0, 0, 0);
+    }
+    
+    /**
+     * Spawn the charging green aura effect around the player for Precise Shot
+     */
+    private static void spawnPreciseShotChargeAura(ServerLevel level, Vec3 center) {
+        // Swirling green particles around the player (charge-up visual)
+        for (int ring = 0; ring < 3; ring++) {
+            double ringY = center.y + 0.5 + ring * 0.7;
+            double radius = 1.0 + ring * 0.2;
+            int particleCount = 16;
+            for (int i = 0; i < particleCount; i++) {
+                double angle = (double) i / particleCount * 2 * Math.PI + ring * 0.5;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                level.sendParticles(createDustParticle(0.2f, 0.9f, 0.3f, 0.5f),
+                        x, ringY, z, 1, 0.1, 0.1, 0.1, 0.02);
+            }
+        }
+        // Central glow
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.GLOW,
+                center.x, center.y + 1.0, center.z, 15, 0.3, 0.5, 0.3, 0.02);
+        // Enchant particles spiraling
+        for (int i = 0; i < 20; i++) {
+            double angle = (double) i / 20 * 4 * Math.PI;
+            double y = center.y + (double) i / 20 * 2;
+            double radius = 0.8;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
+                    center.x + Math.cos(angle) * radius, y, center.z + Math.sin(angle) * radius,
+                    1, 0, 0, 0, 0);
+        }
+    }
+    
+    /**
+     * Spawn 6 particle lines (hitscan rays) for Multi-Shot that pierce enemies
+     */
+    private static void spawnMultiShotParticleRays(ServerPlayer player, ServerLevel level, Vec3 start, Vec3 direction, 
+            int rayCount, float damage, double range) {
+        Vec3 normalizedDir = direction.normalize();
+        float baseYaw = player.getYRot();
+        float basePitch = player.getXRot();
+        
+        // Calculate spread angles for 6 rays
+        float spreadAngle = 20.0f; // Total spread in degrees
+        float halfSpread = spreadAngle / 2.0f;
+        float angleStep = rayCount > 1 ? spreadAngle / (rayCount - 1) : 0;
+        
+        // Green ranger color theme
+        float r = 0.3f, g = 0.85f, b = 0.35f;
+        
+        for (int ray = 0; ray < rayCount; ray++) {
+            float yawOffset = rayCount > 1 ? -halfSpread + (angleStep * ray) : 0;
+            
+            // Calculate ray direction with spread
+            // Note: -90 degree offset converts Minecraft's yaw (0=south, 90=west) to standard math coordinates
+            double yawRad = Math.toRadians(-baseYaw - 90 + yawOffset);
+            double pitchRad = Math.toRadians(-basePitch);
+            Vec3 rayDir = new Vec3(
+                    Math.cos(yawRad) * Math.cos(pitchRad),
+                    Math.sin(pitchRad),
+                    Math.sin(yawRad) * Math.cos(pitchRad)
+            ).normalize();
+            
+            // Deal damage along the ray (piercing - hits all enemies in line)
+            dealDamageInLine(player, damage, rayDir, range, 0.5);
+            
+            // Spawn particle line
+            for (int i = 0; i < 25; i++) {
+                double progress = (double) i / 25.0 * range;
+                Vec3 pos = start.add(rayDir.scale(progress));
+                
+                // Thin green particle line
+                float size = 0.25f + RANDOM.nextFloat() * 0.1f;
+                level.sendParticles(createDustParticle(r, g, b, size),
+                        pos.x, pos.y, pos.z, 1, 0.02, 0.02, 0.02, 0);
+                
+                // Occasional brighter particles
+                if (i % 5 == 0) {
+                    level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                            pos.x, pos.y, pos.z, 1, 0, 0, 0, 0);
+                }
+            }
+        }
+        
+        // Muzzle flash effect at start
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                start.x, start.y, start.z, 1, 0, 0, 0, 0);
+        level.sendParticles(createDustParticle(0.5f, 1.0f, 0.5f, 0.7f),
+                start.x, start.y, start.z, 10, 0.2, 0.2, 0.2, 0.05);
+    }
+    
+    /**
+     * Spawn the Escape ability visual effect
+     */
+    private static void spawnEscapeEffect(ServerLevel level, Vec3 center, Vec3 escapeDirection) {
+        // Trail particles in escape direction
+        for (int i = 0; i < 20; i++) {
+            double progress = (double) i / 20;
+            double x = center.x + escapeDirection.x * progress * 2;
+            double y = center.y + 0.5 + progress * 0.3;
+            double z = center.z + escapeDirection.z * progress * 2;
+            
+            // Green dash particles
+            level.sendParticles(createDustParticle(0.3f, 0.8f, 0.4f, 0.4f),
+                    x, y, z, 1, 0.1, 0.1, 0.1, 0);
+        }
+        
+        // Burst at origin point
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.CLOUD,
+                center.x, center.y + 0.5, center.z, 8, 0.3, 0.2, 0.3, 0.05);
+        level.sendParticles(createDustParticle(0.2f, 0.9f, 0.3f, 0.6f),
+                center.x, center.y + 0.5, center.z, 15, 0.4, 0.3, 0.4, 0.1);
+        
+        // Sweep effect
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
+                center.x, center.y + 1, center.z, 2, 0.3, 0.2, 0.3, 0);
+    }
+    
+    /**
+     * Spawn rain of particle arrows - visual effect only.
+     * Damage is handled separately by dealDamageToNearbyEnemies in the calling method.
+     */
+    private static void spawnRainOfParticleArrowsEffect(ServerLevel level, Vec3 center, double radius, int arrowCount) {
+        // Green ranger theme
+        float r = 0.25f, g = 0.75f, b = 0.3f;
+        
+        // Spawn falling particle arrows
+        for (int arrow = 0; arrow < arrowCount; arrow++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double dist = RANDOM.nextDouble() * radius;
+            double startX = center.x + Math.cos(angle) * dist;
+            double startZ = center.z + Math.sin(angle) * dist;
+            double startY = center.y + 6 + RANDOM.nextDouble() * 4;
+            
+            // Each arrow is a short vertical line of particles
+            for (int i = 0; i < 8; i++) {
+                double y = startY - i * 0.3;
+                float size = 0.3f + (1.0f - (float) i / 8) * 0.2f; // Larger at tip
+                level.sendParticles(createDustParticle(r, g, b, size),
+                        startX + (RANDOM.nextDouble() - 0.5) * 0.1,
+                        y,
+                        startZ + (RANDOM.nextDouble() - 0.5) * 0.1,
+                        1, 0, -0.3, 0, 0.05);
+            }
+            
+            // Arrow tip glow
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                    startX, startY, startZ, 1, 0, -0.2, 0, 0.02);
+        }
+        
+        // Ground impact particles
+        for (int i = 0; i < 40; i++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double dist = RANDOM.nextDouble() * radius;
+            double x = center.x + Math.cos(angle) * dist;
+            double z = center.z + Math.sin(angle) * dist;
+            level.sendParticles(createDustParticle(0.3f, 0.85f, 0.35f, 0.4f),
+                    x, center.y + 0.1, z, 1, 0.1, 0.05, 0.1, 0.01);
+        }
+        
+        // Central aura to show damage zone
+        spawnDustParticlesRing(level, center, radius * 0.8, 0.35f, 0.9f, 0.4f);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.GLOW,
+                center.x, center.y + 1, center.z, 20, radius * 0.4, 0.5, radius * 0.4, 0.01);
+    }
+    
+    /**
+     * Deal damage to all enemies along a line (for hitscan/piercing abilities)
+     */
+    private static void dealDamageInLine(ServerPlayer player, float damage, Vec3 direction, double range, double width) {
+        Vec3 start = player.position().add(0, player.getEyeHeight(), 0);
+        Vec3 end = start.add(direction.normalize().scale(range));
+        
+        // Create a bounding box that covers the entire line
+        AABB lineBox = new AABB(
+                Math.min(start.x, end.x) - width, Math.min(start.y, end.y) - width, Math.min(start.z, end.z) - width,
+                Math.max(start.x, end.x) + width, Math.max(start.y, end.y) + width, Math.max(start.z, end.z) + width
+        );
+        
+        List<Entity> entities = player.level().getEntities(player, lineBox,
+                e -> e instanceof LivingEntity && e != player);
+        
+        Vec3 lineDir = direction.normalize();
+        for (Entity entity : entities) {
+            if (entity instanceof LivingEntity living) {
+                // Check if entity is close enough to the line
+                Vec3 entityPos = entity.position().add(0, entity.getBbHeight() * 0.5, 0);
+                Vec3 toEntity = entityPos.subtract(start);
+                double projection = toEntity.dot(lineDir);
+                
+                // Only hit if entity is within the line range
+                if (projection >= 0 && projection <= range) {
+                    Vec3 closestPointOnLine = start.add(lineDir.scale(projection));
+                    double distToLine = entityPos.distanceTo(closestPointOnLine);
+                    
+                    if (distToLine <= width + entity.getBbWidth() * 0.5) {
+                        living.hurt(player.damageSources().playerAttack(player), damage);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Get a vector perpendicular to the given direction
+     */
+    private static Vec3 getPerpendicular(Vec3 direction) {
+        if (Math.abs(direction.y) < 0.9) {
+            return direction.cross(new Vec3(0, 1, 0)).normalize();
+        } else {
+            return direction.cross(new Vec3(1, 0, 0)).normalize();
         }
     }
     

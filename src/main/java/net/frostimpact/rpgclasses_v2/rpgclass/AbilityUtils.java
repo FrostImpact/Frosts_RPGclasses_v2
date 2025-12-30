@@ -38,7 +38,7 @@ public final class AbilityUtils {
             case "ranger" -> switch (slot) {
                 case 1 -> "Precise Shot";
                 case 2 -> "Multi-Shot";
-                case 3 -> "Trap";
+                case 3 -> "Escape";
                 case 4 -> "Rain of Arrows";
                 default -> "Unknown";
             };
