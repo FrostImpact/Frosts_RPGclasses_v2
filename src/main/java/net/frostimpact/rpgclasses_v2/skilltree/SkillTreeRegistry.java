@@ -124,24 +124,132 @@ public class SkillTreeRegistry {
         
         register(rogueTree);
         
-        // Ranger skill tree
+        // Ranger skill tree - Full comprehensive tree
         SkillTree rangerTree = new SkillTree("ranger", "Ranger Skills", "Archery and tracking skills");
         
+        // Tier 1 - Root skills (no requirements)
         SkillNode precision = new SkillNode("precision", "Precision", 
             "Increases ranged damage by 8% per level", 5, 1, 1, 2, 0, "");
         rangerTree.addNode(precision);
         
+        // Tier 2 - Branching out
         SkillNode rapidFire = new SkillNode("rapid_fire", "Rapid Fire", 
             "Increases attack speed by 10% per level", 3, 1, 3, 1, 1, "");
         rapidFire.addRequirement("precision");
         rangerTree.addNode(rapidFire);
         
+        SkillNode steadyHand = new SkillNode("steady_hand", "Steady Hand", 
+            "Increases bow draw speed by 15% per level", 3, 1, 3, 2, 1, "");
+        steadyHand.addRequirement("precision");
+        rangerTree.addNode(steadyHand);
+        
+        SkillNode eagleEye = new SkillNode("eagle_eye", "Eagle Eye", 
+            "Increases arrow velocity and range by 10% per level", 3, 1, 3, 3, 1, "");
+        eagleEye.addRequirement("precision");
+        rangerTree.addNode(eagleEye);
+        
+        // Tier 3 - Intermediate skills
+        SkillNode multiShot = new SkillNode("multi_shot", "Multi-Shot", 
+            "Fire additional arrows (1 per level, max 3)", 3, 2, 5, 1, 2, "");
+        multiShot.addRequirement("rapid_fire");
+        rangerTree.addNode(multiShot);
+        
         SkillNode tracking = new SkillNode("tracking", "Tracking", 
-            "Reveals enemies in a radius", 1, 2, 5, 3, 1, "");
-        tracking.addRequirement("precision");
+            "Highlights enemies through walls within 20 blocks", 1, 2, 5, 2, 2, "");
+        tracking.addRequirement("steady_hand");
         rangerTree.addNode(tracking);
         
+        SkillNode windRunner = new SkillNode("wind_runner", "Wind Runner", 
+            "Increases movement speed by 5% per level", 5, 1, 5, 3, 2, "");
+        windRunner.addRequirement("eagle_eye");
+        rangerTree.addNode(windRunner);
+        
+        // Tier 4 - Advanced skills
+        SkillNode explosiveArrow = new SkillNode("explosive_arrow", "Explosive Arrow", 
+            "Arrows explode on impact dealing AoE damage", 1, 3, 8, 1, 3, "");
+        explosiveArrow.addRequirement("multi_shot");
+        rangerTree.addNode(explosiveArrow);
+        
+        SkillNode huntersMark = new SkillNode("hunters_mark", "Hunter's Mark", 
+            "Mark a target to take 20% more damage from you", 1, 3, 8, 2, 3, "");
+        huntersMark.addRequirement("tracking");
+        rangerTree.addNode(huntersMark);
+        
+        SkillNode nimbleFeet = new SkillNode("nimble_feet", "Nimble Feet", 
+            "No movement penalty while drawing bow", 1, 2, 8, 3, 3, "");
+        nimbleFeet.addRequirement("wind_runner");
+        rangerTree.addNode(nimbleFeet);
+        
+        // Tier 5 - Ultimate skills
+        SkillNode arrowStorm = new SkillNode("arrow_storm", "Arrow Storm", 
+            "Rain arrows down in a target area", 1, 4, 12, 2, 4, "");
+        arrowStorm.addRequirement("explosive_arrow");
+        arrowStorm.addRequirement("hunters_mark");
+        rangerTree.addNode(arrowStorm);
+        
         register(rangerTree);
+        
+        // Hawkeye skill tree (Ranger subclass) - Aerial combat specialist
+        SkillTree hawkeyeTree = new SkillTree("hawkeye", "Hawkeye Skills", "Aerial combat and mobility abilities");
+        
+        // Tier 1 - Root: GLIDE
+        SkillNode glide = new SkillNode("glide", "Glide", 
+            "Gain Slow Falling I while in the air. Duration increases with level.", 5, 1, 1, 2, 0, "");
+        hawkeyeTree.addNode(glide);
+        
+        // Tier 2 - AERIAL AFFINITY and basic abilities
+        SkillNode aerialAffinity = new SkillNode("aerial_affinity", "Aerial Affinity", 
+            "Passively gain SEEKER charges (max 5) while midair. Abilities grant 1 SEEKER charge on usage.", 3, 1, 3, 1, 1, "");
+        aerialAffinity.addRequirement("glide");
+        hawkeyeTree.addNode(aerialAffinity);
+        
+        SkillNode updraft = new SkillNode("updraft", "Updraft", 
+            "Launch yourself upwards. 12s cooldown, 15 MP cost.", 1, 2, 3, 3, 1, "");
+        updraft.addRequirement("glide");
+        hawkeyeTree.addNode(updraft);
+        
+        // Tier 3 - VAULT and SEEKERS
+        SkillNode vault = new SkillNode("vault", "Vault", 
+            "Launch yourself forward and lob a low velocity projectile. Hitting an enemy resets UPDRAFT cooldown. 8s cooldown, 15 MP cost.", 1, 2, 5, 1, 2, "");
+        vault.addRequirement("aerial_affinity");
+        hawkeyeTree.addNode(vault);
+        
+        SkillNode seekers = new SkillNode("seekers", "Seekers", 
+            "Release homing projectiles based on SEEKER charges (1 per charge). 5s cooldown, (5 * charges) MP cost.", 1, 2, 5, 3, 2, "");
+        seekers.addRequirement("aerial_affinity");
+        seekers.addRequirement("updraft");
+        hawkeyeTree.addNode(seekers);
+        
+        // Tier 4 - Enhanced abilities
+        SkillNode improvedGlide = new SkillNode("improved_glide", "Improved Glide", 
+            "Glide now provides Slow Falling II and slight horizontal drift control", 3, 2, 7, 1, 3, "");
+        improvedGlide.addRequirement("vault");
+        hawkeyeTree.addNode(improvedGlide);
+        
+        SkillNode aerialMastery = new SkillNode("aerial_mastery", "Aerial Mastery", 
+            "Increased damage (5% per level) while airborne", 5, 1, 7, 2, 3, "");
+        aerialMastery.addRequirement("seekers");
+        hawkeyeTree.addNode(aerialMastery);
+        
+        SkillNode quickRecovery = new SkillNode("quick_recovery", "Quick Recovery", 
+            "Reduce UPDRAFT and VAULT cooldowns by 10% per level", 5, 1, 7, 3, 3, "");
+        quickRecovery.addRequirement("seekers");
+        hawkeyeTree.addNode(quickRecovery);
+        
+        // Tier 5 - Ultimate abilities
+        SkillNode skyDive = new SkillNode("sky_dive", "Sky Dive", 
+            "Dive bomb enemies from above, dealing massive damage on impact", 1, 3, 10, 1, 4, "");
+        skyDive.addRequirement("improved_glide");
+        skyDive.addRequirement("aerial_mastery");
+        hawkeyeTree.addNode(skyDive);
+        
+        SkillNode seekerBarrage = new SkillNode("seeker_barrage", "Seeker Barrage", 
+            "Double the number of SEEKER projectiles released", 1, 3, 10, 3, 4, "");
+        seekerBarrage.addRequirement("aerial_mastery");
+        seekerBarrage.addRequirement("quick_recovery");
+        hawkeyeTree.addNode(seekerBarrage);
+        
+        register(hawkeyeTree);
         
         // Tank skill tree
         SkillTree tankTree = new SkillTree("tank", "Tank Skills", "Defensive and protective skills");
