@@ -1092,13 +1092,13 @@ public class ModMessages {
                             player.displayClientMessage(Component.literal("§bEagle spirit grants vision!"), true);
                         }
                     }
-                    case 4 -> { // Beast Stampede - SUMMON A HORDE of beasts that charge forward!
+                    case 4 -> { // Beast Stampede - 3 SYNCHRONIZED LINES of beasts charging forward!
                         Vec3 lookVec = player.getLookAngle();
                         float damage = 8.0f + damageBonus * 1.5f;
                         Vec3 stampedDir = new Vec3(lookVec.x, 0, lookVec.z).normalize();
                         
-                        // Summon multiple beasts charging in direction
-                        int beastsSummoned = summonStampedBeasts(player, level, playerPos, stampedDir, 5);
+                        // Summon 3 lines of beasts (9-12 total beasts in synchronized formation)
+                        int beastsSummoned = summonStampedBeasts(player, level, playerPos, stampedDir, 12);
                         
                         // Deal damage in a wide line in front of player
                         dealDamageInWideSwath(player, damage, stampedDir, 15.0, 4.0);
@@ -4061,9 +4061,9 @@ public class ModMessages {
     }
     
     /**
-     * Summon stampeding beasts that charge in a direction - with unique visual appearance
+     * Summon stampeding beasts in 3 SYNCHRONIZED LINES moving in formation
      */
-    private static int summonStampedBeasts(ServerPlayer player, ServerLevel level, Vec3 center, Vec3 direction, int count) {
+    private static int summonStampedBeasts(ServerPlayer player, ServerLevel level, Vec3 center, Vec3 direction, int totalCount) {
         int summoned = 0;
         Vec3 perpDir = direction.cross(new Vec3(0, 1, 0)).normalize();
         
@@ -4076,70 +4076,86 @@ public class ModMessages {
             net.minecraft.world.item.DyeColor.GRAY
         };
         
+        // Create 3 lines: left, center, right
+        int beastsPerLine = Math.max(3, totalCount / 3);
+        double lineSpacing = 2.5; // Distance between left-center and center-right lines
+        
+        // Left line offset
+        Vec3 leftLineOffset = perpDir.scale(-lineSpacing);
+        // Center line offset
+        Vec3 centerLineOffset = new Vec3(0, 0, 0);
+        // Right line offset
+        Vec3 rightLineOffset = perpDir.scale(lineSpacing);
+        
+        // Spawn left line
+        summoned += spawnStampedeLine(player, level, center.add(leftLineOffset), direction, beastsPerLine, collarColors, 0);
+        // Spawn center line
+        summoned += spawnStampedeLine(player, level, center.add(centerLineOffset), direction, beastsPerLine, collarColors, 1);
+        // Spawn right line
+        summoned += spawnStampedeLine(player, level, center.add(rightLineOffset), direction, beastsPerLine, collarColors, 2);
+        
+        return summoned;
+    }
+    
+    /**
+     * Spawn a single line of stampeding beasts in formation
+     */
+    private static int spawnStampedeLine(ServerPlayer player, ServerLevel level, Vec3 lineStart, Vec3 direction, 
+            int count, net.minecraft.world.item.DyeColor[] collarColors, int lineIndex) {
+        int summoned = 0;
+        
         for (int i = 0; i < count; i++) {
-            double sideOffset = (i - count / 2) * 1.5;
-            double spawnX = center.x + perpDir.x * sideOffset;
-            double spawnZ = center.z + perpDir.z * sideOffset;
+            // Stagger beasts along the line (depth spacing)
+            double depthOffset = i * 1.2;
+            Vec3 spawnPos = lineStart.add(direction.scale(depthOffset));
+            double spawnX = spawnPos.x;
+            double spawnZ = spawnPos.z;
             
-            // Alternate between wolves and ravagers for more variety and impact
-            if (i % 3 == 0) {
-                // Spawn goat for charging attacks (they ram into enemies!)
-                net.minecraft.world.entity.animal.goat.Goat beast = new net.minecraft.world.entity.animal.goat.Goat(
-                        net.minecraft.world.entity.EntityType.GOAT, level);
-                beast.setPos(spawnX, center.y, spawnZ);
-                beast.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 200, 3));
-                beast.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 2));
-                beast.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200, 0));
-                
-                // Mark as stampede beast
-                beast.getPersistentData().putBoolean("rpgclasses_stampede_beast", true);
-                
-                // Push in stampede direction
-                beast.setDeltaMovement(direction.scale(2.0).add(0, 0.3, 0));
-                beast.hurtMarked = true;
-                
-                if (level.addFreshEntity(beast)) {
-                    summoned++;
-                }
-            } else if (i % 2 == 0) {
-                // Spawn wolf with unique collar color
-                net.minecraft.world.entity.animal.Wolf beast = new net.minecraft.world.entity.animal.Wolf(
+            // Determine beast type based on line - each line gets a specific type for consistency
+            net.minecraft.world.entity.Mob beast = null;
+            
+            if (lineIndex == 0) {
+                // Left line: Wolves
+                net.minecraft.world.entity.animal.Wolf wolf = new net.minecraft.world.entity.animal.Wolf(
                         net.minecraft.world.entity.EntityType.WOLF, level);
-                beast.setPos(spawnX, center.y, spawnZ);
-                beast.setTame(true, false);
-                beast.setOwnerUUID(player.getUUID());
-                beast.setCollarColor(collarColors[i % collarColors.length]);
-                beast.setRemainingPersistentAngerTime(200);
-                beast.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 200, 2));
-                beast.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 2));
-                beast.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200, 0));
-                
-                // Mark as stampede beast
-                beast.getPersistentData().putBoolean("rpgclasses_stampede_beast", true);
-                
-                // Push in stampede direction
-                beast.setDeltaMovement(direction.scale(1.5).add(0, 0.2, 0));
-                beast.hurtMarked = true;
-                
-                if (level.addFreshEntity(beast)) {
-                    summoned++;
-                }
+                wolf.setPos(spawnX, lineStart.y, spawnZ);
+                wolf.setTame(true, false);
+                wolf.setOwnerUUID(player.getUUID());
+                wolf.setCollarColor(collarColors[i % collarColors.length]);
+                wolf.setRemainingPersistentAngerTime(200);
+                wolf.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 200, 2));
+                wolf.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 2));
+                wolf.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200, 0));
+                beast = wolf;
+            } else if (lineIndex == 1) {
+                // Center line: Goats (they ram!)
+                net.minecraft.world.entity.animal.goat.Goat goat = new net.minecraft.world.entity.animal.goat.Goat(
+                        net.minecraft.world.entity.EntityType.GOAT, level);
+                goat.setPos(spawnX, lineStart.y, spawnZ);
+                goat.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 200, 3));
+                goat.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 2));
+                goat.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200, 0));
+                beast = goat;
             } else {
-                // Spawn rabbit for speed and variety (hopping in the stampede)
-                net.minecraft.world.entity.animal.Rabbit beast = new net.minecraft.world.entity.animal.Rabbit(
+                // Right line: Rabbits (fast hoppers)
+                net.minecraft.world.entity.animal.Rabbit rabbit = new net.minecraft.world.entity.animal.Rabbit(
                         net.minecraft.world.entity.EntityType.RABBIT, level);
-                beast.setPos(spawnX, center.y, spawnZ);
-                // Set rabbit variant for variety
-                beast.setVariant(net.minecraft.world.entity.animal.Rabbit.Variant.values()[i % 6]);
-                beast.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 4));
-                beast.addEffect(new MobEffectInstance(MobEffects.JUMP, 200, 2));
-                beast.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200, 0));
-                
+                rabbit.setPos(spawnX, lineStart.y, spawnZ);
+                rabbit.setVariant(net.minecraft.world.entity.animal.Rabbit.Variant.values()[i % 6]);
+                rabbit.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 4));
+                rabbit.addEffect(new MobEffectInstance(MobEffects.JUMP, 200, 2));
+                rabbit.addEffect(new MobEffectInstance(MobEffects.GLOWING, 200, 0));
+                beast = rabbit;
+            }
+            
+            if (beast != null) {
                 // Mark as stampede beast
                 beast.getPersistentData().putBoolean("rpgclasses_stampede_beast", true);
+                beast.getPersistentData().putInt("rpgclasses_stampede_line", lineIndex);
                 
-                // Push in stampede direction with extra bounce
-                beast.setDeltaMovement(direction.scale(1.8).add(0, 0.5, 0));
+                // Synchronized movement - all beasts in same line move at same speed
+                double baseSpeed = 1.5 + (lineIndex * 0.2); // Slightly different speeds per line for visual variety
+                beast.setDeltaMovement(direction.scale(baseSpeed).add(0, 0.3, 0));
                 beast.hurtMarked = true;
                 
                 if (level.addFreshEntity(beast)) {

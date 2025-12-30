@@ -88,6 +88,29 @@ public class ServerEvents {
                     airborneTickCounter.put(player.getUUID(), 0);
                 }
             }
+            
+            // BEAST MASTER BEAST BOND PASSIVE: +5% damage per active beast companion (max 3 stacks = +15%)
+            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("beastmaster")) {
+                // Count active summoned beasts nearby (within 30 blocks)
+                int activeBeastCount = countNearbyBeastCompanions(player);
+                
+                // Remove old beast bond modifier
+                stats.removeModifier("beast_bond", net.frostimpact.rpgclasses_v2.rpg.stats.StatType.DAMAGE);
+                
+                // Apply new beast bond modifier if beasts are present
+                if (activeBeastCount > 0) {
+                    int maxStacks = 3;
+                    int effectiveBeastCount = Math.min(activeBeastCount, maxStacks);
+                    int damageBonus = effectiveBeastCount * 5; // 5% per beast, max 15%
+                    
+                    stats.addModifier(new net.frostimpact.rpgclasses_v2.rpg.stats.StatModifier(
+                            "beast_bond",
+                            net.frostimpact.rpgclasses_v2.rpg.stats.StatType.DAMAGE,
+                            damageBonus,
+                            -1 // Permanent until removed
+                    ));
+                }
+            }
 
             // Mana regeneration and cooldown sync
             if (tickCounter % MANA_REGEN_INTERVAL == 0) {
@@ -297,5 +320,38 @@ public class ServerEvents {
 
             attackDamageAttribute.setBaseValue(newAttackDamage);
         }
+    }
+    
+    /**
+     * Count nearby beast companions summoned by the player (for Beast Bond passive)
+     */
+    private int countNearbyBeastCompanions(ServerPlayer player) {
+        double searchRadius = 30.0;
+        net.minecraft.world.phys.AABB searchBox = player.getBoundingBox().inflate(searchRadius);
+        
+        java.util.List<net.minecraft.world.entity.Entity> entities = player.level().getEntities(player, searchBox,
+                e -> e instanceof net.minecraft.world.entity.Mob);
+        
+        int count = 0;
+        for (net.minecraft.world.entity.Entity entity : entities) {
+            // Check if entity is marked as a summoned beast
+            if (entity.getPersistentData().getBoolean("rpgclasses_summoned_beast")) {
+                // Verify owner matches (if owner is stored)
+                if (entity.getPersistentData().contains("rpgclasses_owner")) {
+                    java.util.UUID ownerUUID = entity.getPersistentData().getUUID("rpgclasses_owner");
+                    if (ownerUUID.equals(player.getUUID()) && entity.isAlive()) {
+                        count++;
+                    }
+                } else if (entity instanceof net.minecraft.world.entity.TamableAnimal tameable) {
+                    // For tameable animals (wolves), check if owned by player
+                    if (tameable.getOwnerUUID() != null && tameable.getOwnerUUID().equals(player.getUUID()) && 
+                            tameable.getPersistentData().getBoolean("rpgclasses_summoned_beast")) {
+                        count++;
+                    }
+                }
+            }
+        }
+        
+        return count;
     }
 }
