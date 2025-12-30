@@ -36,10 +36,10 @@ public final class AbilityUtils {
                 default -> "Unknown";
             };
             case "ranger" -> switch (slot) {
-                case 1 -> "Precise Shot";
-                case 2 -> "Multi-Shot";
+                case 1 -> "Energy Beam";
+                case 2 -> "Spread Shot";
                 case 3 -> "Escape";
-                case 4 -> "Rain of Arrows";
+                case 4 -> "Arrow Rain";
                 default -> "Unknown";
             };
             case "tank" -> switch (slot) {
@@ -64,17 +64,17 @@ public final class AbilityUtils {
                 default -> "Unknown";
             };
             case "marksman" -> switch (slot) {
-                case 1 -> "Steady Shot";
-                case 2 -> "Piercing Shot";
-                case 3 -> "Mark Target";
-                case 4 -> "Headshot";
+                case 1 -> "Sniper Shot";
+                case 2 -> "Railgun";
+                case 3 -> "Hunter's Mark";
+                case 4 -> "Execution";
                 default -> "Unknown";
             };
             case "beastmaster" -> switch (slot) {
-                case 1 -> "Wolf Pack";
-                case 2 -> "Bear Strength";
-                case 3 -> "Eagle Eye";
-                case 4 -> "Stampede";
+                case 1 -> "Summon Wolves";
+                case 2 -> "Summon Bear";
+                case 3 -> "Summon Eagle";
+                case 4 -> "Beast Stampede";
                 default -> "Unknown";
             };
             default -> "Ability " + slot;
