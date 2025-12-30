@@ -905,10 +905,11 @@ public class ModMessages {
         float yaw = player.getYRot();
         float pitch = player.getXRot();
         float halfSpread = spreadAngle / 2.0f;
-        float angleStep = spreadAngle / (arrowCount - 1);
+        // Handle single arrow case to avoid division by zero
+        float angleStep = arrowCount > 1 ? spreadAngle / (arrowCount - 1) : 0;
         
         for (int i = 0; i < arrowCount; i++) {
-            float offsetYaw = -halfSpread + (angleStep * i);
+            float offsetYaw = arrowCount > 1 ? -halfSpread + (angleStep * i) : 0;
             net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(level, player,
                     new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
             arrow.shootFromRotation(player, pitch, yaw + offsetYaw, 0.0F, velocity, 1.0F);
@@ -953,9 +954,9 @@ public class ModMessages {
             double z = center.z + Math.sin(angle) * dist;
             double y = center.y + 8 + RANDOM.nextDouble() * 3; // Spawn high above
             
-            net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(
-                    level, x, y, z,
+            net.minecraft.world.entity.projectile.Arrow arrow = new net.minecraft.world.entity.projectile.Arrow(level, player,
                     new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
+            arrow.setPos(x, y, z);
             arrow.setOwner(player);
             // Shoot downward
             arrow.shoot(0, -1, 0, 2.0F, 3.0F);
