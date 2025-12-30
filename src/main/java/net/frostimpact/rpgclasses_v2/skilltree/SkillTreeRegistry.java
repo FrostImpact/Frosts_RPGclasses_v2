@@ -134,7 +134,7 @@ public class SkillTreeRegistry {
         
         // Tier 2 - Branching out
         SkillNode rapidFire = new SkillNode("rapid_fire", "Rapid Fire", 
-            "Increases attack speed by 10% per level", 3, 1, 3, 0, 1, "");
+            "Increases attack speed by 10% per level", 3, 1, 3, 1, 1, "");
         rapidFire.addRequirement("precision");
         rangerTree.addNode(rapidFire);
         
@@ -144,7 +144,7 @@ public class SkillTreeRegistry {
         rangerTree.addNode(steadyHand);
         
         SkillNode eagleEye = new SkillNode("eagle_eye", "Eagle Eye", 
-            "Increases arrow velocity and range by 10% per level", 3, 1, 3, 4, 1, "");
+            "Increases arrow velocity and range by 10% per level", 3, 1, 3, 3, 1, "");
         eagleEye.addRequirement("precision");
         rangerTree.addNode(eagleEye);
         
@@ -222,7 +222,7 @@ public class SkillTreeRegistry {
         
         // Tier 4 - Enhanced abilities
         SkillNode improvedGlide = new SkillNode("improved_glide", "Improved Glide", 
-            "Glide now provides Slow Falling II and slight horizontal drift control", 3, 2, 7, 0, 3, "");
+            "Glide now provides Slow Falling II and slight horizontal drift control", 3, 2, 7, 1, 3, "");
         improvedGlide.addRequirement("vault");
         hawkeyeTree.addNode(improvedGlide);
         
@@ -232,7 +232,7 @@ public class SkillTreeRegistry {
         hawkeyeTree.addNode(aerialMastery);
         
         SkillNode quickRecovery = new SkillNode("quick_recovery", "Quick Recovery", 
-            "Reduce UPDRAFT and VAULT cooldowns by 10% per level", 5, 1, 7, 4, 3, "");
+            "Reduce UPDRAFT and VAULT cooldowns by 10% per level", 5, 1, 7, 3, 3, "");
         quickRecovery.addRequirement("seekers");
         hawkeyeTree.addNode(quickRecovery);
         
