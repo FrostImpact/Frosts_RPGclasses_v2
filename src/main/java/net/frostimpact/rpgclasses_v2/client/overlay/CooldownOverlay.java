@@ -134,7 +134,7 @@ public class CooldownOverlay implements LayeredDraw.Layer {
             case "mage" -> switch (slot) {
                 case 1 -> "🔥"; // Fireball
                 case 2 -> "❄"; // Frost Nova
-                case 3 -> "🛡"; // Arcane Shield
+                case 3 -> "💎"; // Arcane Shield
                 case 4 -> "☄"; // Meteor Storm
                 default -> "⭐";
             };
@@ -148,7 +148,7 @@ public class CooldownOverlay implements LayeredDraw.Layer {
             case "ranger" -> switch (slot) {
                 case 1 -> "🎯"; // Precise Shot
                 case 2 -> "🏹"; // Multi-Shot
-                case 3 -> "⚡"; // Trap
+                case 3 -> "⚠"; // Trap
                 case 4 -> "☔"; // Rain of Arrows
                 default -> "⭐";
             };
