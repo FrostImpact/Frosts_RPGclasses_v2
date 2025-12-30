@@ -14,10 +14,11 @@ import net.minecraft.world.entity.player.Player;
  * Overlay that displays ability cooldowns next to the hotbar on the bottom right
  */
 public class CooldownOverlay implements LayeredDraw.Layer {
-    private static final int ICON_SIZE = 24;
-    private static final int ICON_SPACING = 4;
-    private static final int MARGIN_RIGHT = 5;
-    private static final int MARGIN_BOTTOM = 40; // Above hotbar level
+    private static final int ICON_SIZE = 22;
+    private static final int ICON_SPACING = 3;
+    private static final int MARGIN_BOTTOM = 38; // Above hotbar level
+    private static final int BORDER_WIDTH = 1;
+    private static final int INNER_SIZE = ICON_SIZE - (BORDER_WIDTH * 2);
     
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
@@ -55,14 +56,15 @@ public class CooldownOverlay implements LayeredDraw.Layer {
             String currentClass, int slot, int x, int y) {
         String abilityId = currentClass.toLowerCase() + "_ability_" + slot;
         int cooldown = rpgData.getAbilityCooldown(abilityId);
+        int maxCooldown = AbilityUtils.getAbilityCooldownTicks(currentClass, slot);
         int mana = rpgData.getMana();
         int manaCost = AbilityUtils.getAbilityManaCost(currentClass, slot);
         
-        // Background - darker when on cooldown
-        int bgColor = cooldown > 0 ? 0xDD1A1A1A : 0xCC2A2A2A;
+        // Background color - lighter base
+        int bgColor = 0xCC2A2A2A;
         guiGraphics.fill(x, y, x + ICON_SIZE, y + ICON_SIZE, bgColor);
         
-        // Border color based on state - gray shades instead of red/green
+        // Border color based on state - gray shades
         int borderColor;
         if (cooldown > 0) {
             borderColor = 0xFF555555; // Dark gray when on cooldown
@@ -72,51 +74,44 @@ public class CooldownOverlay implements LayeredDraw.Layer {
             borderColor = 0xFFAAAAAA; // Light gray when ready
         }
         
-        // Draw border (2px thick)
-        guiGraphics.fill(x, y, x + ICON_SIZE, y + 2, borderColor);
-        guiGraphics.fill(x, y + ICON_SIZE - 2, x + ICON_SIZE, y + ICON_SIZE, borderColor);
-        guiGraphics.fill(x, y + 2, x + 2, y + ICON_SIZE - 2, borderColor);
-        guiGraphics.fill(x + ICON_SIZE - 2, y + 2, x + ICON_SIZE, y + ICON_SIZE - 2, borderColor);
+        // Draw border (1px thick)
+        guiGraphics.fill(x, y, x + ICON_SIZE, y + BORDER_WIDTH, borderColor);
+        guiGraphics.fill(x, y + ICON_SIZE - BORDER_WIDTH, x + ICON_SIZE, y + ICON_SIZE, borderColor);
+        guiGraphics.fill(x, y + BORDER_WIDTH, x + BORDER_WIDTH, y + ICON_SIZE - BORDER_WIDTH, borderColor);
+        guiGraphics.fill(x + ICON_SIZE - BORDER_WIDTH, y + BORDER_WIDTH, x + ICON_SIZE, y + ICON_SIZE - BORDER_WIDTH, borderColor);
+        
+        // Draw cooldown overlay if on cooldown - dark gray fill that ticks down from top to bottom
+        if (cooldown > 0 && maxCooldown > 0) {
+            // Calculate the fill percentage (1.0 = full cooldown, 0.0 = ready)
+            float cooldownProgress = (float) cooldown / maxCooldown;
+            // Fill height from top - decreases as cooldown progresses
+            int fillHeight = (int) (INNER_SIZE * cooldownProgress);
+            if (fillHeight > 0) {
+                // Dark gray cooldown overlay - fills from top and shrinks downward
+                int cooldownColor = 0xDD333333;
+                guiGraphics.fill(x + BORDER_WIDTH, y + BORDER_WIDTH, 
+                                 x + ICON_SIZE - BORDER_WIDTH, y + BORDER_WIDTH + fillHeight, 
+                                 cooldownColor);
+            }
+        }
         
         // Get ability icon
         String abilityIcon = getAbilityIcon(currentClass, slot);
         
-        // Draw ability icon in center
-        int iconColor = cooldown > 0 ? 0xFF666666 : (mana < manaCost ? 0xFF8888AA : 0xFFFFFFFF);
+        // Draw ability icon centered vertically and horizontally in the box
+        int iconColor = cooldown > 0 ? 0xFF888888 : (mana < manaCost ? 0xFF8888AA : 0xFFFFFFFF);
         int iconWidth = mc.font.width(abilityIcon);
         int iconX = x + (ICON_SIZE - iconWidth) / 2;
-        int iconY = y + 3;
+        int iconY = y + (ICON_SIZE - 8) / 2 - 2; // Center vertically, accounting for font height (~8px)
         guiGraphics.drawString(mc.font, abilityIcon, iconX, iconY, iconColor, false);
         
-        // Keybind letter at bottom
+        // Keybind letter at bottom - ensure it fits inside the box
         String keybind = AbilityUtils.getAbilityKeybind(slot);
         int textColor = cooldown > 0 ? 0xFF777777 : (mana < manaCost ? 0xFF8888BB : 0xFFCCCCCC);
         int textWidth = mc.font.width(keybind);
         int textX = x + (ICON_SIZE - textWidth) / 2;
-        int textY = y + ICON_SIZE - 10;
+        int textY = y + ICON_SIZE - 9; // Position inside bottom of box
         guiGraphics.drawString(mc.font, keybind, textX, textY, textColor, false);
-        
-        // Draw cooldown overlay if on cooldown
-        if (cooldown > 0) {
-            // Semi-transparent dark overlay
-            int cooldownSeconds = (cooldown + 19) / 20; // Round up
-            
-            // Draw cooldown number in center-bottom area
-            String cdText = String.valueOf(cooldownSeconds);
-            int cdWidth = mc.font.width(cdText);
-            int cdX = x + (ICON_SIZE - cdWidth) / 2;
-            int cdY = y + ICON_SIZE - 10;
-            guiGraphics.drawString(mc.font, cdText, cdX, cdY, 0xFFDDDDDD, false);
-        }
-        
-        // Draw mana cost indicator if not enough mana (and not on cooldown)
-        if (cooldown <= 0 && mana < manaCost) {
-            String manaText = String.valueOf(manaCost);
-            int manaWidth = mc.font.width(manaText);
-            int manaX = x + (ICON_SIZE - manaWidth) / 2;
-            int manaY = y + ICON_SIZE - 10;
-            guiGraphics.drawString(mc.font, manaText, manaX, manaY, 0xFF8888DD, false);
-        }
     }
     
     /**
@@ -164,6 +159,13 @@ public class CooldownOverlay implements LayeredDraw.Layer {
                 case 2 -> "✨"; // Blessing
                 case 3 -> "⚡"; // Smite
                 case 4 -> "☀"; // Divine Intervention
+                default -> "⭐";
+            };
+            case "hawkeye" -> switch (slot) {
+                case 1 -> "🪶"; // Glide
+                case 2 -> "↑"; // Updraft
+                case 3 -> "➤"; // Vault
+                case 4 -> "◎"; // Seekers
                 default -> "⭐";
             };
             default -> "⭐";
