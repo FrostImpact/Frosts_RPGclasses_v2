@@ -51,6 +51,8 @@ public class ModMessages {
     private static final double SEEKER_SEARCH_RANGE = 20.0;
     private static final int RAIN_OF_ARROWS_DURATION_TICKS = 120; // 6 seconds at 20 ticks/second
     private static final int SEEKER_PROJECTILE_SPEED_TICKS = 3; // Update every 3 ticks for medium speed
+    private static final double SEEKER_NO_TARGET_RANGE = 20.0; // Distance seekers travel when no target found
+    private static final double SEEKER_STRAIGHT_FLIGHT_RANGE = 30.0; // Distance seekers fly straight when target dies
     
     // Active timed effects for Rain of Arrows
     private static final Map<UUID, RainOfArrowsEffect> activeRainEffects = new ConcurrentHashMap<>();
@@ -2519,24 +2521,26 @@ public class ModMessages {
     // ===== NEW HAWKEYE ABILITY METHODS =====
     
     /**
-     * Spawn Vault projectile using TURTLE SCUTE (larger, more visible)
+     * Spawn Vault projectile - A large glowing projectile with scute-like visual appearance.
+     * Uses a ThrownTrident entity as the base since it provides good arc trajectory and damage mechanics.
+     * The actual visual is enhanced with cyan/teal particles to represent a turtle scute shell projectile.
      */
     private static void spawnVaultScuteProjectile(ServerPlayer player, ServerLevel level, float velocity, float damage) {
         Vec3 lookVec = player.getLookAngle();
         
-        // Use a thrown potion as the base entity (for item display), or we can use a snowball
-        // For this implementation, we'll use a ThrownTrident-like behavior with visual particles
-        net.minecraft.world.entity.projectile.ThrownTrident trident = new net.minecraft.world.entity.projectile.ThrownTrident(
+        // Using ThrownTrident as the projectile base - provides good physics for a lobbed heavy projectile.
+        // The visual appearance is enhanced with scute-colored particles to match the intended design.
+        net.minecraft.world.entity.projectile.ThrownTrident projectile = new net.minecraft.world.entity.projectile.ThrownTrident(
                 level, player, new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.TRIDENT));
         
         // Shoot at an arc (lob)
-        trident.shootFromRotation(player, player.getXRot() - 25, player.getYRot(), 0.0F, velocity, 2.0F);
-        trident.setBaseDamage(damage);
-        trident.setGlowingTag(true);
-        trident.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
-        level.addFreshEntity(trident);
+        projectile.shootFromRotation(player, player.getXRot() - 25, player.getYRot(), 0.0F, velocity, 2.0F);
+        projectile.setBaseDamage(damage);
+        projectile.setGlowingTag(true);
+        projectile.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
+        level.addFreshEntity(projectile);
         
-        // Large scute-like particle visual around the projectile
+        // Spawn cyan/teal particle trail to visually represent a scute shell projectile
         Vec3 startPos = player.position().add(0, player.getEyeHeight(), 0);
         Vec3 lobDir = new Vec3(lookVec.x, lookVec.y + 0.5, lookVec.z).normalize();
         
@@ -2616,8 +2620,8 @@ public class ModMessages {
                         Math.sin(pitchRad),
                         Math.sin(yawRad) * Math.cos(pitchRad)
                 ).normalize();
-                // Store direction as a "fake target position"
-                seeker.position = playerPos.add(seekerDir.scale(20));
+                // Store direction as a "fake target position" at the defined no-target range
+                seeker.position = playerPos.add(seekerDir.scale(SEEKER_NO_TARGET_RANGE));
             }
             
             activeSeekers.add(seeker);
@@ -2638,8 +2642,8 @@ public class ModMessages {
         if (seeker.target != null && seeker.target.isAlive()) {
             targetPos = seeker.target.position().add(0, seeker.target.getBbHeight() * 0.5, 0);
         } else {
-            // No target or target dead - fly straight
-            targetPos = seeker.position.add(seeker.owner.getLookAngle().scale(30));
+            // No target or target dead - fly straight using the defined range constant
+            targetPos = seeker.position.add(seeker.owner.getLookAngle().scale(SEEKER_STRAIGHT_FLIGHT_RANGE));
         }
         
         // Move toward target
