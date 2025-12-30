@@ -4,6 +4,10 @@
   "key.categories.rpgclasses_v2": "RPG Classes",
   "key.rpgclasses_v2.toggle_stats": "Toggle Stats Panel",
   "key.rpgclasses_v2.open_stat_allocation": "Open Stat Allocation",
+  "key.rpgclasses_v2.ability_1": "Ability 1 (Z)",
+  "key.rpgclasses_v2.ability_2": "Ability 2 (X)",
+  "key.rpgclasses_v2.ability_3": "Ability 3 (C)",
+  "key.rpgclasses_v2.ability_4": "Ability 4 / Ultimate (V)",
 
   "entity.rpgclasses_v2.grunt": "Grunt",
   "entity.rpgclasses_v2.skeleton_archer": "Skeleton Archer",

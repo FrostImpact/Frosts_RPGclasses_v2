@@ -2,6 +2,7 @@ package net.frostimpact.rpgclasses_v2;
 
 import net.frostimpact.rpgclasses_v2.client.ModKeybindings;
 import net.frostimpact.rpgclasses_v2.client.overlay.HealthBarOverlay;
+import net.frostimpact.rpgclasses_v2.client.overlay.LevelDisplayOverlay;
 import net.frostimpact.rpgclasses_v2.client.overlay.ManaBarOverlay;
 import net.frostimpact.rpgclasses_v2.event.ServerEvents;
 import net.frostimpact.rpgclasses_v2.item.ModItems;
@@ -65,10 +66,18 @@ public class RpgClassesMod {
         event.registerAbove(VanillaGuiLayers.HOTBAR,
             net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, "stats_dropdown"),
             new StatsDropdownOverlay());
+        
+        event.registerAbove(VanillaGuiLayers.HOTBAR,
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, "level_display"),
+            new LevelDisplayOverlay());
     }
     
     private void registerKeybindings(net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event) {
         event.register(ModKeybindings.TOGGLE_STATS);
         event.register(ModKeybindings.OPEN_STAT_ALLOCATION);
+        event.register(ModKeybindings.ABILITY_1);
+        event.register(ModKeybindings.ABILITY_2);
+        event.register(ModKeybindings.ABILITY_3);
+        event.register(ModKeybindings.ABILITY_4);
     }
 }
