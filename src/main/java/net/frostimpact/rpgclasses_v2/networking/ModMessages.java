@@ -54,6 +54,14 @@ public class ModMessages {
     private static final double SEEKER_NO_TARGET_RANGE = 20.0; // Distance seekers travel when no target found
     private static final double SEEKER_STRAIGHT_FLIGHT_RANGE = 30.0; // Distance seekers fly straight when target dies
     
+    // Marksman ability constants
+    private static final float SNIPE_PROJECTILE_SPEED = 0.6f; // Slow moving for dramatic effect
+    private static final int SNIPE_MAX_FLIGHT_TICKS = 200; // 10 seconds max flight time
+    private static final float HEADSHOT_BASE_CHARGE_MULTIPLIER = 1.5f; // 50% bonus damage (charge system not fully implemented)
+    private static final int HEADSHOT_MAX_CHARGE_TICKS = 100; // 5 seconds for full 100% bonus
+    private static final float MARK_DAMAGE_BONUS = 1.3f; // 30% bonus damage to marked targets
+    private static final int MARK_DURATION_TICKS = 140; // 7 seconds
+    
     // Active timed effects for Rain of Arrows
     private static final Map<UUID, RainOfArrowsEffect> activeRainEffects = new ConcurrentHashMap<>();
     // Active seeker projectiles (homing missiles)
@@ -131,8 +139,8 @@ public class ModMessages {
             this.direction = direction.normalize();
             this.damage = damage;
             this.ticksAlive = 0;
-            this.maxTicks = 200; // 10 seconds max flight time
-            this.speed = 0.6f; // Slow moving for dramatic effect
+            this.maxTicks = SNIPE_MAX_FLIGHT_TICKS;
+            this.speed = SNIPE_PROJECTILE_SPEED;
         }
     }
     
@@ -152,7 +160,7 @@ public class ModMessages {
             this.level = level;
             this.target = target;
             this.chargeTime = 0;
-            this.maxChargeTime = 100; // 5 seconds max charge for 100% bonus
+            this.maxChargeTime = HEADSHOT_MAX_CHARGE_TICKS;
             this.baseDamage = baseDamage;
         }
         
@@ -928,15 +936,8 @@ public class ModMessages {
                         Vec3 startPos = playerPos.add(0, player.getEyeHeight(), 0);
                         float baseDamage = 20.0f + damageBonus * 3.0f; // High damage
                         
-                        // Check for marked enemy bonus
-                        float markBonus = 1.0f;
-                        LivingEntity nearestMarked = findNearestMarkedEnemy(player);
-                        if (nearestMarked != null) {
-                            markBonus = 1.3f; // 30% bonus damage to marked targets
-                        }
-                        
-                        // Create slow-moving snipe projectile
-                        SnipeProjectile snipe = new SnipeProjectile(player, level, startPos, lookVec, baseDamage * markBonus);
+                        // Create slow-moving snipe projectile (mark bonus is applied on hit)
+                        SnipeProjectile snipe = new SnipeProjectile(player, level, startPos, lookVec, baseDamage);
                         activeSnipeProjectiles.add(snipe);
                         
                         // Spawn launch visual effect - orange/red sniper theme
@@ -947,12 +948,12 @@ public class ModMessages {
                     case 2 -> { // Mark - mark the closest enemy in line of sight, deal 30% more damage, 7s duration
                         LivingEntity target = findTargetInSight(player, 50.0);
                         if (target != null) {
-                            // Create mark effect (7 seconds = 140 ticks)
-                            MarkedEnemy mark = new MarkedEnemy(player.getUUID(), target, 140);
+                            // Create mark effect using constant duration
+                            MarkedEnemy mark = new MarkedEnemy(player.getUUID(), target, MARK_DURATION_TICKS);
                             markedEnemies.put(target.getUUID(), mark);
                             
                             // Apply visual effects
-                            target.addEffect(new MobEffectInstance(MobEffects.GLOWING, 140, 0));
+                            target.addEffect(new MobEffectInstance(MobEffects.GLOWING, MARK_DURATION_TICKS, 0));
                             
                             // Spawn mark visual
                             spawnMarkAppliedEffect(level, target.position(), target);
@@ -998,24 +999,23 @@ public class ModMessages {
                             float baseDamage = 15.0f + damageBonus * 2.0f;
                             
                             // Check for marked enemy bonus
-                            float markBonus = 1.0f;
-                            if (isMarkedEnemy(target)) {
-                                markBonus = 1.3f;
-                            }
+                            float markBonus = isMarkedEnemy(target) ? MARK_DAMAGE_BONUS : 1.0f;
                             
-                            // Create headshot charge (for now, instant execution - charge system needs client-side UI)
-                            // TODO: Implement proper charge system with hold detection
-                            // For now, deal damage with a base charge level
-                            float finalDamage = baseDamage * markBonus * 1.5f; // 50% charge equivalent
+                            // Apply damage with base charge level
+                            // Note: Full charge system requires client-side hold detection which is not implemented
+                            float finalDamage = baseDamage * markBonus * HEADSHOT_BASE_CHARGE_MULTIPLIER;
                             
-                            boolean targetKilled = target.getHealth() <= finalDamage;
+                            // Deal damage first
                             target.hurt(player.damageSources().playerAttack(player), finalDamage);
+                            
+                            // Check if target was killed AFTER damage is applied
+                            boolean targetKilled = !target.isAlive() || target.getHealth() <= 0;
                             
                             // Spawn headshot visual
                             Vec3 startPos = playerPos.add(0, player.getEyeHeight(), 0);
                             spawnHeadshotEffect(level, startPos, target.position().add(0, target.getBbHeight() * 0.8, 0));
                             
-                            if (targetKilled || !target.isAlive()) {
+                            if (targetKilled) {
                                 // Reset all other cooldowns on kill
                                 String ability1Id = "marksman_ability_1";
                                 String ability2Id = "marksman_ability_2";
@@ -4338,18 +4338,6 @@ public class ModMessages {
     // ===== NEW MARKSMAN HELPER METHODS =====
     
     /**
-     * Find the nearest marked enemy for a player
-     */
-    private static LivingEntity findNearestMarkedEnemy(ServerPlayer player) {
-        for (MarkedEnemy marked : markedEnemies.values()) {
-            if (marked.ownerUUID.equals(player.getUUID()) && marked.target.isAlive()) {
-                return marked.target;
-            }
-        }
-        return null;
-    }
-    
-    /**
      * Check if an entity is marked
      */
     private static boolean isMarkedEnemy(LivingEntity entity) {
@@ -4418,10 +4406,10 @@ public class ModMessages {
         
         for (Entity entity : entities) {
             if (entity instanceof LivingEntity living) {
-                // Apply mark bonus if applicable
+                // Apply mark bonus if target is marked
                 float finalDamage = snipe.damage;
                 if (isMarkedEnemy(living)) {
-                    finalDamage *= 1.3f;
+                    finalDamage *= MARK_DAMAGE_BONUS;
                 }
                 
                 living.hurt(snipe.owner.damageSources().playerAttack(snipe.owner), finalDamage);
@@ -4455,9 +4443,12 @@ public class ModMessages {
     
     /**
      * Update Headshot charge - returns false when it should be removed
+     * Note: Charge system requires client-side hold detection which is not implemented.
+     * The HeadshotCharge data class is kept for future implementation of the charge mechanic.
      */
     private static boolean updateHeadshotCharge(HeadshotCharge charge) {
-        // For now, charges don't persist - they are instant (TODO: implement hold detection)
+        // Charges are processed instantly in the current implementation
+        // A full implementation would track charge duration and apply damage multiplier
         return false;
     }
     
