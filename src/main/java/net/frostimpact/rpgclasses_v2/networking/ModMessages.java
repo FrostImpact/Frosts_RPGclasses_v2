@@ -10,6 +10,7 @@ import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncSeekerCharges;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncStats;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketUseAbility;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketResetStats;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketMarksmanFocusMode;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatModifier;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
@@ -562,6 +563,30 @@ public class ModMessages {
                     });
                 }
         );
+        
+        // Register PacketMarksmanFocusMode - handles Marksman FOCUS mode state from client
+        registrar.playToServer(
+                PacketMarksmanFocusMode.TYPE,
+                PacketMarksmanFocusMode.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        if (context.player() instanceof ServerPlayer serverPlayer) {
+                            var rpgData = serverPlayer.getData(ModAttachments.PLAYER_RPG);
+                            
+                            // Only allow Marksman class to enter FOCUS mode
+                            if (!rpgData.getCurrentClass().equalsIgnoreCase("marksman")) {
+                                return;
+                            }
+                            
+                            rpgData.setInFocusMode(packet.inFocusMode());
+                            
+                            LOGGER.debug("Marksman {} {} FOCUS mode", 
+                                    serverPlayer.getName().getString(), 
+                                    packet.inFocusMode() ? "entered" : "exited");
+                        }
+                    });
+                }
+        );
     }
 
     public static void sendToPlayer(PacketSyncMana packet, ServerPlayer player) {
@@ -604,6 +629,10 @@ public class ModMessages {
         PacketDistributor.sendToServer(packet);
     }
     
+    public static void sendToServer(PacketMarksmanFocusMode packet) {
+        PacketDistributor.sendToServer(packet);
+    }
+    
     /**
      * Execute an ability on the server side
      */
@@ -621,6 +650,12 @@ public class ModMessages {
         int manaCost = AbilityUtils.getAbilityManaCost(currentClass, abilitySlot);
         int baseCooldownTicks = AbilityUtils.getAbilityCooldownTicks(currentClass, abilitySlot);
         String abilityName = AbilityUtils.getAbilityName(currentClass, abilitySlot);
+        
+        // Special handling for Marksman Snipe (slot 1) in FOCUS mode - reduced cost and cooldown
+        if (currentClass.equalsIgnoreCase("marksman") && abilitySlot == 1 && rpgData.isInFocusMode()) {
+            manaCost = 5; // Reduced from 10 to 5
+            baseCooldownTicks = 30; // Reduced from 60 (3s) to 30 (1.5s)
+        }
         
         // Special handling for Hawkeye Seekers (slot 4) - mana cost is 5 * seeker charges
         if (currentClass.equalsIgnoreCase("hawkeye") && abilitySlot == 4) {

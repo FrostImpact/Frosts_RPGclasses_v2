@@ -111,6 +111,37 @@ public class ServerEvents {
                     ));
                 }
             }
+            
+            // MARKSMAN FOCUS MODE: Mana drain (3 mana/sec) and slow falling mid-air
+            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("marksman")) {
+                if (rpgData.isInFocusMode()) {
+                    // Drain mana every 20 ticks (1 second) - 3 mana per second
+                    if (tickCounter % 20 == 0) {
+                        int currentMana = rpgData.getMana();
+                        if (currentMana >= 3) {
+                            rpgData.useMana(3);
+                            ModMessages.sendToPlayer(
+                                    new net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMana(
+                                            rpgData.getMana(), rpgData.getMaxMana()),
+                                    player
+                            );
+                        } else {
+                            // Out of mana - exit FOCUS mode
+                            rpgData.setInFocusMode(false);
+                            player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                    "§cOut of mana! FOCUS mode disabled."), true);
+                        }
+                    }
+                    
+                    // Apply slow falling if mid-air (like FOCUS mid-air feature)
+                    if (!player.onGround() && !player.isInWater() && !player.isInLava()) {
+                        if (!player.hasEffect(net.minecraft.world.effect.MobEffects.SLOW_FALLING)) {
+                            player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                                    net.minecraft.world.effect.MobEffects.SLOW_FALLING, 40, 0, false, false));
+                        }
+                    }
+                }
+            }
 
             // Mana regeneration and cooldown sync
             if (tickCounter % MANA_REGEN_INTERVAL == 0) {
