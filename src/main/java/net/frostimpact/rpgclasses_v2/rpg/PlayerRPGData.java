@@ -32,6 +32,9 @@ public class PlayerRPGData {
     private int classLevel;
     private int classExperience;
     private int seekerCharges; // For Hawkeye SEEKER ability
+    
+    // Transient field - not persisted, only used for runtime state
+    private transient boolean inFocusMode = false; // For Marksman FOCUS mode
 
     public PlayerRPGData() {
         this.mana = 100;
@@ -44,6 +47,7 @@ public class PlayerRPGData {
         this.classLevel = 1;
         this.classExperience = 0;
         this.seekerCharges = 0;
+        this.inFocusMode = false;
     }
 
     private PlayerRPGData(int mana, int maxMana, Map<String, Integer> cooldowns, String currentClass, 
@@ -220,5 +224,14 @@ public class PlayerRPGData {
         int charges = this.seekerCharges;
         this.seekerCharges = 0;
         return charges;
+    }
+    
+    // Marksman FOCUS mode state
+    public boolean isInFocusMode() {
+        return inFocusMode;
+    }
+    
+    public void setInFocusMode(boolean inFocusMode) {
+        this.inFocusMode = inFocusMode;
     }
 }

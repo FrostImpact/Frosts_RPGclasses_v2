@@ -57,12 +57,18 @@ public class ServerEvents {
             var stats = player.getData(ModAttachments.PLAYER_STATS);
             stats.tick();
             
-            // HAWKEYE AERIAL AFFINITY: Restore seeker charges while mid-air
+            // HAWKEYE AERIAL AFFINITY & GLIDE PASSIVE: Restore seeker charges while mid-air + auto-apply Slow Falling
             if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("hawkeye")) {
                 if (!player.onGround() && !player.isInWater() && !player.isInLava()) {
                     // Player is airborne
                     int airTicks = airborneTickCounter.getOrDefault(player.getUUID(), 0) + 1;
                     airborneTickCounter.put(player.getUUID(), airTicks);
+                    
+                    // GLIDE PASSIVE: Auto-apply Slow Falling I while airborne
+                    if (!player.hasEffect(net.minecraft.world.effect.MobEffects.SLOW_FALLING)) {
+                        player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                                net.minecraft.world.effect.MobEffects.SLOW_FALLING, 40, 0, false, false));
+                    }
                     
                     // Every SEEKER_CHARGE_INTERVAL ticks while airborne, add a seeker charge
                     if (airTicks % SEEKER_CHARGE_INTERVAL == 0) {
@@ -80,6 +86,60 @@ public class ServerEvents {
                 } else {
                     // Player is grounded - reset counter
                     airborneTickCounter.put(player.getUUID(), 0);
+                }
+            }
+            
+            // BEAST MASTER BEAST BOND PASSIVE: +5% damage per active beast companion (max 3 stacks = +15%)
+            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("beastmaster")) {
+                // Count active summoned beasts nearby (within 30 blocks)
+                int activeBeastCount = countNearbyBeastCompanions(player);
+                
+                // Remove old beast bond modifier
+                stats.removeModifier("beast_bond", net.frostimpact.rpgclasses_v2.rpg.stats.StatType.DAMAGE);
+                
+                // Apply new beast bond modifier if beasts are present
+                if (activeBeastCount > 0) {
+                    int maxStacks = 3;
+                    int effectiveBeastCount = Math.min(activeBeastCount, maxStacks);
+                    int damageBonus = effectiveBeastCount * 5; // 5% per beast, max 15%
+                    
+                    stats.addModifier(new net.frostimpact.rpgclasses_v2.rpg.stats.StatModifier(
+                            "beast_bond",
+                            net.frostimpact.rpgclasses_v2.rpg.stats.StatType.DAMAGE,
+                            damageBonus,
+                            -1 // Permanent until removed
+                    ));
+                }
+            }
+            
+            // MARKSMAN FOCUS MODE: Mana drain (3 mana/sec) and slow falling mid-air
+            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("marksman")) {
+                if (rpgData.isInFocusMode()) {
+                    // Drain mana every 20 ticks (1 second) - 3 mana per second
+                    if (tickCounter % 20 == 0) {
+                        int currentMana = rpgData.getMana();
+                        if (currentMana >= 3) {
+                            rpgData.useMana(3);
+                            ModMessages.sendToPlayer(
+                                    new net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMana(
+                                            rpgData.getMana(), rpgData.getMaxMana()),
+                                    player
+                            );
+                        } else {
+                            // Out of mana - exit FOCUS mode
+                            rpgData.setInFocusMode(false);
+                            player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                    "§cOut of mana! FOCUS mode disabled."), true);
+                        }
+                    }
+                    
+                    // Apply slow falling if mid-air (like FOCUS mid-air feature)
+                    if (!player.onGround() && !player.isInWater() && !player.isInLava()) {
+                        if (!player.hasEffect(net.minecraft.world.effect.MobEffects.SLOW_FALLING)) {
+                            player.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                                    net.minecraft.world.effect.MobEffects.SLOW_FALLING, 40, 0, false, false));
+                        }
+                    }
                 }
             }
 
@@ -291,5 +351,38 @@ public class ServerEvents {
 
             attackDamageAttribute.setBaseValue(newAttackDamage);
         }
+    }
+    
+    /**
+     * Count nearby beast companions summoned by the player (for Beast Bond passive)
+     */
+    private int countNearbyBeastCompanions(ServerPlayer player) {
+        double searchRadius = 30.0;
+        net.minecraft.world.phys.AABB searchBox = player.getBoundingBox().inflate(searchRadius);
+        
+        java.util.List<net.minecraft.world.entity.Entity> entities = player.level().getEntities(player, searchBox,
+                e -> e instanceof net.minecraft.world.entity.Mob);
+        
+        int count = 0;
+        for (net.minecraft.world.entity.Entity entity : entities) {
+            // Check if entity is marked as a summoned beast
+            if (entity.getPersistentData().getBoolean("rpgclasses_summoned_beast")) {
+                // Verify owner matches (if owner is stored)
+                if (entity.getPersistentData().contains("rpgclasses_owner")) {
+                    java.util.UUID ownerUUID = entity.getPersistentData().getUUID("rpgclasses_owner");
+                    if (ownerUUID.equals(player.getUUID()) && entity.isAlive()) {
+                        count++;
+                    }
+                } else if (entity instanceof net.minecraft.world.entity.TamableAnimal tameable) {
+                    // For tameable animals (wolves), check if owned by player
+                    if (tameable.getOwnerUUID() != null && tameable.getOwnerUUID().equals(player.getUUID()) && 
+                            tameable.getPersistentData().getBoolean("rpgclasses_summoned_beast")) {
+                        count++;
+                    }
+                }
+            }
+        }
+        
+        return count;
     }
 }
