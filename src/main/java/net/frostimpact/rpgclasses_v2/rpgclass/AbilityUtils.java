@@ -64,10 +64,10 @@ public final class AbilityUtils {
                 default -> "Unknown";
             };
             case "marksman" -> switch (slot) {
-                case 1 -> "Sniper Shot";
-                case 2 -> "Railgun";
-                case 3 -> "Hunter's Mark";
-                case 4 -> "Execution";
+                case 1 -> "Snipe";
+                case 2 -> "Mark";
+                case 3 -> "Grapple Hook";
+                case 4 -> "Headshot";
                 default -> "Unknown";
             };
             case "beastmaster" -> switch (slot) {
@@ -136,10 +136,10 @@ public final class AbilityUtils {
                 default -> 0;
             };
             case "marksman" -> switch (slot) {
-                case 1 -> 15;  // Steady Shot
-                case 2 -> 25;  // Piercing Shot
-                case 3 -> 20;  // Mark Target
-                case 4 -> 50;  // Headshot (ultimate single target)
+                case 1 -> 10;  // Snipe - low mana cost
+                case 2 -> 15;  // Mark - low mana cost
+                case 3 -> 12;  // Grapple Hook - low mana cost
+                case 4 -> 25;  // Headshot - moderate cost (but can be charged)
                 default -> 0;
             };
             case "beastmaster" -> switch (slot) {
@@ -208,10 +208,10 @@ public final class AbilityUtils {
                 default -> 40;
             };
             case "marksman" -> switch (slot) {
-                case 1 -> 60;   // 3s - Steady Shot
-                case 2 -> 120;  // 6s - Piercing Shot
-                case 3 -> 400;  // 20s - Mark Target
-                case 4 -> 600;  // 30s - Headshot
+                case 1 -> 60;   // 3s - Snipe (1.5s in FOCUS mode)
+                case 2 -> 200;  // 10s - Mark (medium cooldown)
+                case 3 -> 60;   // 3s - Grapple Hook (low cooldown)
+                case 4 -> 400;  // 20s - Headshot (resets on kill)
                 default -> 40;
             };
             case "beastmaster" -> switch (slot) {
