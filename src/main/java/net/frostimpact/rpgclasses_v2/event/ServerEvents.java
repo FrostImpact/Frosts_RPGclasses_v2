@@ -4,6 +4,7 @@ import net.frostimpact.rpgclasses_v2.networking.ModMessages;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncCooldowns;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMana;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncRPGData;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncSeekerCharges;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncStats;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
@@ -143,6 +144,8 @@ public class ServerEvents {
                     rpgData.getAvailableStatPoints(),
                     rpgData.getAvailableSkillPoints()
             ), player);
+            // Sync seeker charges for Hawkeye class
+            ModMessages.sendToPlayer(new PacketSyncSeekerCharges(rpgData.getSeekerCharges()), player);
             
             // Initialize last level tracking
             lastPlayerLevels.put(player.getUUID(), player.experienceLevel);

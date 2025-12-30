@@ -5,6 +5,7 @@ import net.frostimpact.rpgclasses_v2.client.overlay.CooldownOverlay;
 import net.frostimpact.rpgclasses_v2.client.overlay.HealthBarOverlay;
 import net.frostimpact.rpgclasses_v2.client.overlay.LevelDisplayOverlay;
 import net.frostimpact.rpgclasses_v2.client.overlay.ManaBarOverlay;
+import net.frostimpact.rpgclasses_v2.client.overlay.SeekerChargeOverlay;
 import net.frostimpact.rpgclasses_v2.event.ServerEvents;
 import net.frostimpact.rpgclasses_v2.item.ModItems;
 import net.frostimpact.rpgclasses_v2.networking.ModMessages;
@@ -75,6 +76,10 @@ public class RpgClassesMod {
         event.registerAbove(VanillaGuiLayers.HOTBAR,
             net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, "cooldown_overlay"),
             new CooldownOverlay());
+        
+        event.registerAbove(VanillaGuiLayers.HOTBAR,
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, "seeker_charge_overlay"),
+            new SeekerChargeOverlay());
     }
     
     private void registerKeybindings(net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event) {

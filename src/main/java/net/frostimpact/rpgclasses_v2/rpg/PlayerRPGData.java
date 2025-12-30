@@ -202,16 +202,18 @@ public class PlayerRPGData {
     }
     
     // Seeker Charges methods (for Hawkeye)
+    public static final int MAX_SEEKER_CHARGES = 5;
+    
     public int getSeekerCharges() {
         return seekerCharges;
     }
     
     public void setSeekerCharges(int charges) {
-        this.seekerCharges = Math.max(0, Math.min(charges, 5)); // Max 5 charges
+        this.seekerCharges = Math.max(0, Math.min(charges, MAX_SEEKER_CHARGES));
     }
     
     public void addSeekerCharge() {
-        this.seekerCharges = Math.min(5, this.seekerCharges + 1);
+        this.seekerCharges = Math.min(MAX_SEEKER_CHARGES, this.seekerCharges + 1);
     }
     
     public int consumeSeekerCharges() {

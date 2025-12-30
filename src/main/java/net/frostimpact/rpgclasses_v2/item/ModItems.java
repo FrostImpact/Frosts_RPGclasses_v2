@@ -16,6 +16,12 @@ public class ModItems {
         () -> new ClassSelectionBookItem(new Item.Properties()
             .stacksTo(1))
     );
+    
+    public static final DeferredHolder<Item, Item> MANA_RESTORATION_CRYSTAL = ITEMS.register(
+        "mana_restoration_crystal",
+        () -> new ManaRestorationItem(new Item.Properties()
+            .stacksTo(16))
+    );
 
     public static void register(IEventBus eventBus) {
         ITEMS.register(eventBus);
