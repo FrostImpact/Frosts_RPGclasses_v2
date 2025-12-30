@@ -11,6 +11,7 @@ import net.frostimpact.rpgclasses_v2.networking.packet.PacketUseAbility;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatModifier;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
+import net.frostimpact.rpgclasses_v2.rpgclass.AbilityUtils;
 import net.frostimpact.rpgclasses_v2.rpgclass.ClassRegistry;
 import net.frostimpact.rpgclasses_v2.rpgclass.RPGClass;
 import net.minecraft.network.chat.Component;
@@ -19,9 +20,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.projectile.FireworkRocketEntity;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
@@ -297,9 +296,9 @@ public class ModMessages {
         }
         
         String abilityId = currentClass.toLowerCase() + "_ability_" + abilitySlot;
-        int manaCost = getAbilityManaCost(currentClass, abilitySlot);
-        int baseCooldownTicks = getAbilityCooldownTicks(currentClass, abilitySlot);
-        String abilityName = getAbilityName(currentClass, abilitySlot);
+        int manaCost = AbilityUtils.getAbilityManaCost(currentClass, abilitySlot);
+        int baseCooldownTicks = AbilityUtils.getAbilityCooldownTicks(currentClass, abilitySlot);
+        String abilityName = AbilityUtils.getAbilityName(currentClass, abilitySlot);
         
         // Check cooldown
         int cooldown = rpgData.getAbilityCooldown(abilityId);
@@ -364,7 +363,6 @@ public class ModMessages {
                 switch (slot) {
                     case 1 -> { // Fireball - ranged fire damage
                         dealDamageToNearbyEnemies(player, 5.0 + damageBonus, 5.0);
-                        applyEffectToNearbyEnemies(player, MobEffects.FIRE_RESISTANCE, 1, 0, 5.0); // Actually causes fire
                         setNearbyEnemiesOnFire(player, 5.0, 100);
                     }
                     case 2 -> { // Frost Nova - freeze nearby enemies
@@ -519,150 +517,5 @@ public class ModMessages {
     
     private static boolean isHostile(Entity entity) {
         return entity instanceof net.minecraft.world.entity.monster.Monster;
-    }
-    
-    private static String getAbilityName(String classId, int slot) {
-        return switch (classId.toLowerCase()) {
-            case "warrior" -> switch (slot) {
-                case 1 -> "Power Strike";
-                case 2 -> "Battle Cry";
-                case 3 -> "Whirlwind";
-                case 4 -> "Berserker Rage";
-                default -> "Unknown";
-            };
-            case "mage" -> switch (slot) {
-                case 1 -> "Fireball";
-                case 2 -> "Frost Nova";
-                case 3 -> "Arcane Shield";
-                case 4 -> "Meteor Storm";
-                default -> "Unknown";
-            };
-            case "rogue" -> switch (slot) {
-                case 1 -> "Backstab";
-                case 2 -> "Smoke Bomb";
-                case 3 -> "Fan of Knives";
-                case 4 -> "Shadow Dance";
-                default -> "Unknown";
-            };
-            case "ranger" -> switch (slot) {
-                case 1 -> "Precise Shot";
-                case 2 -> "Multi-Shot";
-                case 3 -> "Trap";
-                case 4 -> "Rain of Arrows";
-                default -> "Unknown";
-            };
-            case "tank" -> switch (slot) {
-                case 1 -> "Shield Bash";
-                case 2 -> "Taunt";
-                case 3 -> "Iron Skin";
-                case 4 -> "Fortress";
-                default -> "Unknown";
-            };
-            case "priest" -> switch (slot) {
-                case 1 -> "Holy Light";
-                case 2 -> "Blessing";
-                case 3 -> "Smite";
-                case 4 -> "Divine Intervention";
-                default -> "Unknown";
-            };
-            default -> "Ability " + slot;
-        };
-    }
-    
-    private static int getAbilityManaCost(String classId, int slot) {
-        return switch (classId.toLowerCase()) {
-            case "warrior" -> switch (slot) {
-                case 1 -> 20;
-                case 2 -> 30;
-                case 3 -> 40;
-                case 4 -> 60;
-                default -> 0;
-            };
-            case "mage" -> switch (slot) {
-                case 1 -> 25;
-                case 2 -> 35;
-                case 3 -> 40;
-                case 4 -> 80;
-                default -> 0;
-            };
-            case "rogue" -> switch (slot) {
-                case 1 -> 15;
-                case 2 -> 20;
-                case 3 -> 30;
-                case 4 -> 50;
-                default -> 0;
-            };
-            case "ranger" -> switch (slot) {
-                case 1 -> 15;
-                case 2 -> 25;
-                case 3 -> 20;
-                case 4 -> 60;
-                default -> 0;
-            };
-            case "tank" -> switch (slot) {
-                case 1 -> 15;
-                case 2 -> 10;
-                case 3 -> 25;
-                case 4 -> 40;
-                default -> 0;
-            };
-            case "priest" -> switch (slot) {
-                case 1 -> 30;
-                case 2 -> 25;
-                case 3 -> 35;
-                case 4 -> 80;
-                default -> 0;
-            };
-            default -> 0;
-        };
-    }
-    
-    private static int getAbilityCooldownTicks(String classId, int slot) {
-        // Return cooldown in ticks (20 ticks = 1 second)
-        return switch (classId.toLowerCase()) {
-            case "warrior" -> switch (slot) {
-                case 1 -> 60;   // 3s
-                case 2 -> 300;  // 15s
-                case 3 -> 160;  // 8s
-                case 4 -> 900;  // 45s
-                default -> 40;
-            };
-            case "mage" -> switch (slot) {
-                case 1 -> 80;   // 4s
-                case 2 -> 200;  // 10s
-                case 3 -> 400;  // 20s
-                case 4 -> 1200; // 60s
-                default -> 40;
-            };
-            case "rogue" -> switch (slot) {
-                case 1 -> 100;  // 5s
-                case 2 -> 240;  // 12s
-                case 3 -> 160;  // 8s
-                case 4 -> 900;  // 45s
-                default -> 40;
-            };
-            case "ranger" -> switch (slot) {
-                case 1 -> 80;   // 4s
-                case 2 -> 120;  // 6s
-                case 3 -> 300;  // 15s
-                case 4 -> 800;  // 40s
-                default -> 40;
-            };
-            case "tank" -> switch (slot) {
-                case 1 -> 120;  // 6s
-                case 2 -> 200;  // 10s
-                case 3 -> 400;  // 20s
-                case 4 -> 1200; // 60s
-                default -> 40;
-            };
-            case "priest" -> switch (slot) {
-                case 1 -> 60;   // 3s
-                case 2 -> 300;  // 15s
-                case 3 -> 160;  // 8s
-                case 4 -> 1800; // 90s
-                default -> 40;
-            };
-            default -> 40;
-        };
     }
 }

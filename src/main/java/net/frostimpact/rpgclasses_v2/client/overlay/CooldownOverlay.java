@@ -3,6 +3,7 @@ package net.frostimpact.rpgclasses_v2.client.overlay;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.PlayerRPGData;
+import net.frostimpact.rpgclasses_v2.rpgclass.AbilityUtils;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -55,7 +56,7 @@ public class CooldownOverlay implements LayeredDraw.Layer {
         String abilityId = currentClass.toLowerCase() + "_ability_" + slot;
         int cooldown = rpgData.getAbilityCooldown(abilityId);
         int mana = rpgData.getMana();
-        int manaCost = getAbilityManaCost(currentClass, slot);
+        int manaCost = AbilityUtils.getAbilityManaCost(currentClass, slot);
         
         // Background
         int bgColor = 0xCC222222;
@@ -78,7 +79,7 @@ public class CooldownOverlay implements LayeredDraw.Layer {
         guiGraphics.fill(x + ICON_SIZE - 1, y + 1, x + ICON_SIZE, y + ICON_SIZE - 1, borderColor);
         
         // Keybind letter
-        String keybind = getKeybind(slot);
+        String keybind = AbilityUtils.getAbilityKeybind(slot);
         int textColor = cooldown > 0 ? 0xFF888888 : (mana < manaCost ? 0xFF6666FF : 0xFFFFFFFF);
         
         // Center the keybind text
@@ -109,62 +110,5 @@ public class CooldownOverlay implements LayeredDraw.Layer {
             guiGraphics.drawString(mc.font, manaText, manaX, manaY, 0xFF5555FF, false);
         }
     }
-    
-    private String getKeybind(int slot) {
-        return switch (slot) {
-            case 1 -> "Z";
-            case 2 -> "X";
-            case 3 -> "C";
-            case 4 -> "V";
-            default -> "?";
-        };
-    }
-    
-    private int getAbilityManaCost(String classId, int slot) {
-        return switch (classId.toLowerCase()) {
-            case "warrior" -> switch (slot) {
-                case 1 -> 20;
-                case 2 -> 30;
-                case 3 -> 40;
-                case 4 -> 60;
-                default -> 0;
-            };
-            case "mage" -> switch (slot) {
-                case 1 -> 25;
-                case 2 -> 35;
-                case 3 -> 40;
-                case 4 -> 80;
-                default -> 0;
-            };
-            case "rogue" -> switch (slot) {
-                case 1 -> 15;
-                case 2 -> 20;
-                case 3 -> 30;
-                case 4 -> 50;
-                default -> 0;
-            };
-            case "ranger" -> switch (slot) {
-                case 1 -> 15;
-                case 2 -> 25;
-                case 3 -> 20;
-                case 4 -> 60;
-                default -> 0;
-            };
-            case "tank" -> switch (slot) {
-                case 1 -> 15;
-                case 2 -> 10;
-                case 3 -> 25;
-                case 4 -> 40;
-                default -> 0;
-            };
-            case "priest" -> switch (slot) {
-                case 1 -> 30;
-                case 2 -> 25;
-                case 3 -> 35;
-                case 4 -> 80;
-                default -> 0;
-            };
-            default -> 0;
-        };
-    }
+}
 }

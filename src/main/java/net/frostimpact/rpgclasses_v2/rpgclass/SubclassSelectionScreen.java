@@ -179,41 +179,11 @@ public class SubclassSelectionScreen extends Screen {
     }
     
     private String getClassIcon(String classId) {
-        return switch (classId.toLowerCase()) {
-            case "warrior" -> "⚔";
-            case "mage" -> "✨";
-            case "rogue" -> "🗡";
-            case "ranger" -> "🏹";
-            case "tank" -> "🛡";
-            case "priest" -> "❤";
-            case "berserker" -> "💢";
-            case "paladin" -> "✝";
-            case "pyromancer" -> "🔥";
-            case "frostmage" -> "❄";
-            case "assassin" -> "☠";
-            case "shadowdancer" -> "👤";
-            case "hawkeye" -> "👁";
-            case "marksman" -> "🎯";
-            case "beastmaster" -> "🐺";
-            case "guardian" -> "🏰";
-            case "juggernaut" -> "💪";
-            case "cleric" -> "💚";
-            case "templar" -> "⚡";
-            default -> "⭐";
-        };
+        return AbilityUtils.getClassIcon(classId);
     }
     
     private int getClassColor(String classId) {
-        return switch (classId.toLowerCase()) {
-            case "warrior", "berserker" -> 0xFF4444;
-            case "paladin" -> 0xFFDD44;
-            case "mage", "pyromancer", "frostmage" -> 0xAA00FF;
-            case "rogue", "assassin", "shadowdancer" -> 0x55FF55;
-            case "ranger", "hawkeye", "marksman", "beastmaster" -> 0x88DD44;
-            case "tank", "guardian", "juggernaut" -> 0x55AAFF;
-            case "priest", "cleric", "templar" -> 0xFFAA00;
-            default -> 0xAAAAAA;
-        };
+        return AbilityUtils.getClassColor(classId);
     }
     
     @Override
