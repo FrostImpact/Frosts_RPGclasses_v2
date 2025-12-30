@@ -4077,7 +4077,7 @@ public class ModMessages {
         };
         
         // Create 3 lines: left, center, right
-        int beastsPerLine = Math.max(3, totalCount / 3);
+        int beastsPerLine = Math.max(3, (totalCount + 2) / 3); // Ensure all beasts are distributed
         double lineSpacing = 2.5; // Distance between left-center and center-right lines
         
         // Left line offset
@@ -4154,7 +4154,8 @@ public class ModMessages {
                 beast.getPersistentData().putInt("rpgclasses_stampede_line", lineIndex);
                 
                 // Synchronized movement - all beasts in same line move at same speed
-                double baseSpeed = 1.5 + (lineIndex * 0.2); // Slightly different speeds per line for visual variety
+                double STAMPEDE_SPEED_VARIATION = 0.2; // Speed difference per line for visual variety
+                double baseSpeed = 1.5 + (lineIndex * STAMPEDE_SPEED_VARIATION);
                 beast.setDeltaMovement(direction.scale(baseSpeed).add(0, 0.3, 0));
                 beast.hurtMarked = true;
                 
