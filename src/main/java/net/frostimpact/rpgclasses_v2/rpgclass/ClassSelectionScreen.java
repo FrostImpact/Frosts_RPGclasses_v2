@@ -1,5 +1,7 @@
 package net.frostimpact.rpgclasses_v2.rpgclass;
 
+import net.frostimpact.rpgclasses_v2.networking.ModMessages;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketSelectClass;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.PlayerRPGData;
 import net.minecraft.client.Minecraft;
@@ -99,7 +101,7 @@ public class ClassSelectionScreen extends Screen {
         }
 
         // Instructions
-        graphics.drawCenteredString(this.font, "§7Left-click to select - Right-click for specializations",
+        graphics.drawCenteredString(this.font, "§7Left-click for class details - Right-click for specializations",
                 centerX, this.height - 30, 0x888888);
     }
 
@@ -336,10 +338,9 @@ public class ClassSelectionScreen extends Screen {
                         mouseY >= y && mouseY <= y + BUTTON_HEIGHT) {
 
                     if (button == 0) {
-                        // Left-click: Select this class directly
-                        LOGGER.info("Selected class: {}", rpgClass.getId());
-                        // TODO: Apply class selection
-                        this.onClose();
+                        // Left-click: Open class detail screen
+                        LOGGER.info("Opening detail screen for class: {}", rpgClass.getId());
+                        Minecraft.getInstance().setScreen(new ClassDetailScreen(rpgClass, this));
                         return true;
                     } else if (button == 1) {
                         // Right-click: Open specializations (if they exist)
@@ -368,7 +369,7 @@ public class ClassSelectionScreen extends Screen {
             // Check specialization selection
             if (hoveredSpec != null && !hoveredSpec.equals(currentClass) && button == 0) {
                 LOGGER.info("Selected class: {}", hoveredSpec);
-                // TODO: Apply class selection
+                ModMessages.sendToServer(new PacketSelectClass(hoveredSpec));
                 this.onClose();
                 return true;
             }

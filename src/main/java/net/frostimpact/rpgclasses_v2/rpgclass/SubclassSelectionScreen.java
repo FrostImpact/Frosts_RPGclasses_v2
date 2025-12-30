@@ -1,5 +1,7 @@
 package net.frostimpact.rpgclasses_v2.rpgclass;
 
+import net.frostimpact.rpgclasses_v2.networking.ModMessages;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketSelectClass;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -86,7 +88,7 @@ public class SubclassSelectionScreen extends Screen {
     private void onSubclassSelected(RPGClass subclass) {
         this.selectedSubclass = subclass;
         LOGGER.info("Selected subclass: {}", subclass.getName());
-        // TODO: Apply subclass to player
+        ModMessages.sendToServer(new PacketSelectClass(subclass.getId()));
         this.onClose();
     }
     

@@ -26,4 +26,37 @@ public class ModKeybindings {
         GLFW.GLFW_KEY_P,
         CATEGORY
     );
+    
+    // Ability keybinds - ZXCV
+    public static final KeyMapping ABILITY_1 = new KeyMapping(
+        "key.rpgclasses_v2.ability_1",
+        KeyConflictContext.IN_GAME,
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_Z,
+        CATEGORY
+    );
+    
+    public static final KeyMapping ABILITY_2 = new KeyMapping(
+        "key.rpgclasses_v2.ability_2",
+        KeyConflictContext.IN_GAME,
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_X,
+        CATEGORY
+    );
+    
+    public static final KeyMapping ABILITY_3 = new KeyMapping(
+        "key.rpgclasses_v2.ability_3",
+        KeyConflictContext.IN_GAME,
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_C,
+        CATEGORY
+    );
+    
+    public static final KeyMapping ABILITY_4 = new KeyMapping(
+        "key.rpgclasses_v2.ability_4",
+        KeyConflictContext.IN_GAME,
+        InputConstants.Type.KEYSYM,
+        GLFW.GLFW_KEY_V,
+        CATEGORY
+    );
 }
