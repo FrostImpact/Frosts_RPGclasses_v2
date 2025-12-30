@@ -309,6 +309,9 @@ public class ClassDetailScreen extends Screen {
             case "ranger" -> "🏹";
             case "tank" -> "🛡";
             case "priest" -> "❤";
+            case "hawkeye" -> "👁";
+            case "marksman" -> "🎯";
+            case "beastmaster" -> "🐺";
             default -> "⭐";
         };
     }
@@ -321,6 +324,9 @@ public class ClassDetailScreen extends Screen {
             case "ranger" -> 0x88DD44;
             case "tank" -> 0x55AAFF;
             case "priest" -> 0xFFAA00;
+            case "hawkeye" -> 0x55DDAA;
+            case "marksman" -> 0xFFCC44;
+            case "beastmaster" -> 0xBB8844;
             default -> 0xAAAAAA;
         };
     }
@@ -376,17 +382,17 @@ public class ClassDetailScreen extends Screen {
             }
             case "ranger" -> {
                 abilities.add(new ClassAbility("Precise Shot", "Z", "active",
-                        "Fire a carefully aimed arrow that deals 175% damage and ignores 50% of armor.",
-                        15, 4));
+                        "Fire a MASSIVE glowing arrow projectile (3x normal size) with radiating energy circles. Deals 175% damage and ignores 50% of armor.",
+                        20, 5));
                 abilities.add(new ClassAbility("Multi-Shot", "X", "active",
-                        "Fire 5 arrows in a cone, each dealing 60% damage.",
-                        25, 6));
-                abilities.add(new ClassAbility("Trap", "C", "active",
-                        "Place a trap that roots enemies and deals damage over time when triggered.",
+                        "Fire 6 arrows in a spread pattern from your position. Each arrow travels in the direction you're looking.",
+                        30, 8));
+                abilities.add(new ClassAbility("Escape", "C", "active",
+                        "Launch yourself backward away from danger with a burst of speed.",
                         20, 15));
                 abilities.add(new ClassAbility("Rain of Arrows", "V", "ultimate",
-                        "Launch arrows into the sky that rain down in an area, dealing damage over 5 seconds.",
-                        60, 40));
+                        "Create a massive arrow storm that lasts 6 SECONDS. Continuous stream of particle arrows rain down dealing damage over time.",
+                        80, 60));
             }
             case "tank" -> {
                 abilities.add(new ClassAbility("Shield Bash", "Z", "active",
@@ -415,6 +421,48 @@ public class ClassDetailScreen extends Screen {
                 abilities.add(new ClassAbility("Divine Intervention", "V", "ultimate",
                         "Become immune to damage and heal all nearby allies to full health. Cannot attack during effect.",
                         80, 90));
+            }
+            case "hawkeye" -> {
+                abilities.add(new ClassAbility("Glide", "Z", "active",
+                        "Gain Slow Falling for 10 seconds, allowing you to float gracefully through the air with feather-like particles.",
+                        10, 2));
+                abilities.add(new ClassAbility("Updraft", "X", "active",
+                        "Launch yourself high into the air with a powerful vertical boost. Grants slow falling and 1 Seeker charge.",
+                        15, 12));
+                abilities.add(new ClassAbility("Vault", "C", "active",
+                        "Dash forward and lob a LARGE turtle scute projectile that deals significant impact damage. Grants 1 Seeker charge.",
+                        20, 8));
+                abilities.add(new ClassAbility("Seekers", "V", "ultimate",
+                        "Release homing projectiles that track enemies in your vision. Medium-speed moving orbs that home in on targets. Consumes all Seeker charges.",
+                        0, 5));
+            }
+            case "marksman" -> {
+                abilities.add(new ClassAbility("Steady Shot", "Z", "active",
+                        "Fire a high-velocity, perfectly accurate arrow with extended range. Deals massive single-target damage.",
+                        15, 3));
+                abilities.add(new ClassAbility("Piercing Shot", "X", "active",
+                        "Fire an arrow that pierces through multiple enemies, damaging all targets in its path.",
+                        25, 6));
+                abilities.add(new ClassAbility("Mark Target", "C", "active",
+                        "Mark an enemy in your sights, causing them to glow and take increased damage from your attacks.",
+                        20, 20));
+                abilities.add(new ClassAbility("Headshot", "V", "ultimate",
+                        "Deliver a devastating critical hit to a single target, dealing MASSIVE damage. Shows dramatic impact effect.",
+                        50, 30));
+            }
+            case "beastmaster" -> {
+                abilities.add(new ClassAbility("Wolf Pack", "Z", "active",
+                        "Command wolves to attack up to 3 nearby enemies, dealing damage with claw slash effects.",
+                        25, 10));
+                abilities.add(new ClassAbility("Bear Strength", "X", "active",
+                        "Channel the power of a bear, gaining damage resistance and increased damage for a duration.",
+                        30, 20));
+                abilities.add(new ClassAbility("Eagle Eye", "C", "active",
+                        "Activate enhanced vision, gaining night vision and revealing all enemies in a large radius with glowing effect.",
+                        20, 15));
+                abilities.add(new ClassAbility("Stampede", "V", "ultimate",
+                        "Summon a stampede of beasts that charge forward, dealing damage and knocking back all enemies in their path.",
+                        60, 45));
             }
             default -> {
                 abilities.add(new ClassAbility("Basic Attack", "Z", "passive",

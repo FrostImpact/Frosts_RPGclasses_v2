@@ -63,6 +63,20 @@ public final class AbilityUtils {
                 case 4 -> "Seekers";
                 default -> "Unknown";
             };
+            case "marksman" -> switch (slot) {
+                case 1 -> "Steady Shot";
+                case 2 -> "Piercing Shot";
+                case 3 -> "Mark Target";
+                case 4 -> "Headshot";
+                default -> "Unknown";
+            };
+            case "beastmaster" -> switch (slot) {
+                case 1 -> "Wolf Pack";
+                case 2 -> "Bear Strength";
+                case 3 -> "Eagle Eye";
+                case 4 -> "Stampede";
+                default -> "Unknown";
+            };
             default -> "Ability " + slot;
         };
     }
@@ -94,10 +108,10 @@ public final class AbilityUtils {
                 default -> 0;
             };
             case "ranger" -> switch (slot) {
-                case 1 -> 15;
-                case 2 -> 25;
-                case 3 -> 20;
-                case 4 -> 60;
+                case 1 -> 20;  // Precise Shot - increased for dramatic effect
+                case 2 -> 30;  // Multi-Shot - shoots 6 actual arrows
+                case 3 -> 20;  // Escape
+                case 4 -> 80;  // Rain of Arrows - 6 second duration
                 default -> 0;
             };
             case "tank" -> switch (slot) {
@@ -117,8 +131,22 @@ public final class AbilityUtils {
             case "hawkeye" -> switch (slot) {
                 case 1 -> 10;  // Glide - low cost
                 case 2 -> 15;  // Updraft
-                case 3 -> 15;  // Vault
+                case 3 -> 20;  // Vault - lobbing scute projectile
                 case 4 -> 0;   // Seekers - cost depends on charges (5 * charges)
+                default -> 0;
+            };
+            case "marksman" -> switch (slot) {
+                case 1 -> 15;  // Steady Shot
+                case 2 -> 25;  // Piercing Shot
+                case 3 -> 20;  // Mark Target
+                case 4 -> 50;  // Headshot (ultimate single target)
+                default -> 0;
+            };
+            case "beastmaster" -> switch (slot) {
+                case 1 -> 25;  // Wolf Pack
+                case 2 -> 30;  // Bear Strength
+                case 3 -> 20;  // Eagle Eye
+                case 4 -> 60;  // Stampede
                 default -> 0;
             };
             default -> 0;
@@ -152,10 +180,10 @@ public final class AbilityUtils {
                 default -> 40;
             };
             case "ranger" -> switch (slot) {
-                case 1 -> 80;   // 4s
-                case 2 -> 120;  // 6s
-                case 3 -> 300;  // 15s
-                case 4 -> 800;  // 40s
+                case 1 -> 100;  // 5s - Precise Shot (charge time effect)
+                case 2 -> 160;  // 8s - Multi-Shot
+                case 3 -> 300;  // 15s - Escape
+                case 4 -> 1200; // 60s - Rain of Arrows (6 second duration ultimate)
                 default -> 40;
             };
             case "tank" -> switch (slot) {
@@ -177,6 +205,20 @@ public final class AbilityUtils {
                 case 2 -> 240;  // 12s - Updraft
                 case 3 -> 160;  // 8s - Vault
                 case 4 -> 100;  // 5s - Seekers
+                default -> 40;
+            };
+            case "marksman" -> switch (slot) {
+                case 1 -> 60;   // 3s - Steady Shot
+                case 2 -> 120;  // 6s - Piercing Shot
+                case 3 -> 400;  // 20s - Mark Target
+                case 4 -> 600;  // 30s - Headshot
+                default -> 40;
+            };
+            case "beastmaster" -> switch (slot) {
+                case 1 -> 200;  // 10s - Wolf Pack
+                case 2 -> 400;  // 20s - Bear Strength
+                case 3 -> 300;  // 15s - Eagle Eye
+                case 4 -> 900;  // 45s - Stampede
                 default -> 40;
             };
             default -> 40;
