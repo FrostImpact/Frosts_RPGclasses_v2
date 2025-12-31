@@ -848,7 +848,7 @@ public class ModMessages {
                         spawnRainOfArrowsActivationEffect(level, targetPos, rainRadius);
                         
                         // Apply slowdown to enemies in the zone
-                        applyEffectToNearbyEnemiesAtPosition(level, targetPos, MobEffects.MOVEMENT_SLOWDOWN, 140, 1, rainRadius);
+
                     }
                 }
             }
@@ -2553,7 +2553,6 @@ public class ModMessages {
         arrow.setBaseDamage(damage);
         arrow.setCritArrow(true);
         arrow.setGlowingTag(true); // Make it glow for visibility
-        arrow.setPierceLevel((byte) 3); // Pierce through multiple enemies
         arrow.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
         level.addFreshEntity(arrow);
         
@@ -3133,7 +3132,6 @@ public class ModMessages {
                 new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.ARROW), null);
         arrow.shootFromRotation(player, player.getXRot(), player.getYRot(), 0.0F, 3.5F, 0.5F);
         arrow.setBaseDamage(damage);
-        arrow.setPierceLevel((byte) 10); // Pierce through many enemies
         arrow.setCritArrow(true);
         arrow.setGlowingTag(true);
         arrow.pickup = net.minecraft.world.entity.projectile.AbstractArrow.Pickup.CREATIVE_ONLY;
@@ -3997,7 +3995,7 @@ public class ModMessages {
             wolf.setOwnerUUID(player.getUUID());
             
             // Make each wolf unique with different collar colors
-            wolf.setCollarColor(collarColors[i % collarColors.length]);
+
             
             // Set wolf to be aggressive (angry mode)
             wolf.setRemainingPersistentAngerTime(400); // Stay angry for 20 seconds
@@ -4219,7 +4217,7 @@ public class ModMessages {
                 wolf.setPos(spawnX, lineStart.y, spawnZ);
                 wolf.setTame(true, false);
                 wolf.setOwnerUUID(player.getUUID());
-                wolf.setCollarColor(collarColors[i % collarColors.length]);
+
                 wolf.setRemainingPersistentAngerTime(200);
                 wolf.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 200, 2));
                 wolf.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 2));
@@ -4988,15 +4986,17 @@ public class ModMessages {
     /**
      * Apply effect to nearby enemies at a specific position (not centered on player)
      */
-    private static void applyEffectToNearbyEnemiesAtPosition(ServerLevel level, Vec3 center, 
+
+    /**
+    private static void applyEffectToNearbyEnemiesAtPosition(ServerLevel level, Vec3 center,
             net.minecraft.world.effect.MobEffect effect, int duration, int amplifier, double radius) {
         AABB searchBox = new AABB(
                 center.x - radius, center.y - radius, center.z - radius,
                 center.x + radius, center.y + radius, center.z + radius);
-        
-        List<Entity> entities = level.getEntities(null, searchBox,
+
+        List<Entity> entities = level.getEntities((Entity) null, searchBox,
                 e -> e instanceof LivingEntity && !(e instanceof ServerPlayer));
-        
+
         for (Entity entity : entities) {
             if (entity instanceof LivingEntity living) {
                 double dist = entity.position().distanceTo(center);
@@ -5006,6 +5006,7 @@ public class ModMessages {
             }
         }
     }
+
     
     /**
      * Spawn large piercing arrow projectile with dust circles (3x normal size)
@@ -5046,8 +5047,8 @@ public class ModMessages {
             ).normalize();
             
             // Spawn arrow entity
-            net.minecraft.world.entity.projectile.Arrow arrow = 
-                    new net.minecraft.world.entity.projectile.Arrow(level, player);
+            net.minecraft.world.entity.projectile.Arrow arrow =
+                    new net.minecraft.world.entity.projectile.Arrow(net.minecraft.world.entity.EntityType.ARROW, level);
             arrow.setPos(startPos.x, startPos.y, startPos.z);
             arrow.shoot(arrowDirection.x, arrowDirection.y, arrowDirection.z, 2.5f, 0.0f);
             arrow.setBaseDamage(damage);

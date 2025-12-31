@@ -216,7 +216,7 @@ public class ModCommands {
 
     // XP Methods
     private static int addXp(CommandSourceStack source, ServerPlayer player, int amount) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         data.addClassExperience(amount);
         source.sendSuccess(() -> Component.literal("Added " + amount + " XP to " + player.getName().getString() + 
             ". New XP: " + data.getClassExperience() + ", Level: " + data.getClassLevel()), true);
@@ -224,14 +224,14 @@ public class ModCommands {
     }
 
     private static int setXp(CommandSourceStack source, ServerPlayer player, int amount) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         data.setClassExperience(amount);
         source.sendSuccess(() -> Component.literal("Set " + player.getName().getString() + "'s XP to " + amount), true);
         return 1;
     }
 
     private static int getXp(CommandSourceStack source, ServerPlayer player) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         source.sendSuccess(() -> Component.literal(player.getName().getString() + " has " + data.getClassExperience() + 
             " XP (Level " + data.getClassLevel() + ")"), false);
         return 1;
@@ -239,7 +239,7 @@ public class ModCommands {
 
     // Skill Points Methods
     private static int addSkillPoints(CommandSourceStack source, ServerPlayer player, int amount) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         data.addSkillPoints(amount);
         source.sendSuccess(() -> Component.literal("Added " + amount + " skill points to " + player.getName().getString() + 
             ". Total: " + data.getAvailableSkillPoints()), true);
@@ -247,21 +247,21 @@ public class ModCommands {
     }
 
     private static int setSkillPoints(CommandSourceStack source, ServerPlayer player, int amount) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         data.setAvailableSkillPoints(amount);
         source.sendSuccess(() -> Component.literal("Set " + player.getName().getString() + "'s skill points to " + amount), true);
         return 1;
     }
 
     private static int getSkillPoints(CommandSourceStack source, ServerPlayer player) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         source.sendSuccess(() -> Component.literal(player.getName().getString() + " has " + data.getAvailableSkillPoints() + " skill points"), false);
         return 1;
     }
 
     // Stat Points Methods
     private static int addStatPoints(CommandSourceStack source, ServerPlayer player, int amount) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         data.addStatPoints(amount);
         source.sendSuccess(() -> Component.literal("Added " + amount + " stat points to " + player.getName().getString() + 
             ". Total: " + data.getAvailableStatPoints()), true);
@@ -269,28 +269,28 @@ public class ModCommands {
     }
 
     private static int setStatPoints(CommandSourceStack source, ServerPlayer player, int amount) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         data.setAvailableStatPoints(amount);
         source.sendSuccess(() -> Component.literal("Set " + player.getName().getString() + "'s stat points to " + amount), true);
         return 1;
     }
 
     private static int getStatPoints(CommandSourceStack source, ServerPlayer player) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         source.sendSuccess(() -> Component.literal(player.getName().getString() + " has " + data.getAvailableStatPoints() + " stat points"), false);
         return 1;
     }
 
     // Level Methods
     private static int setLevel(CommandSourceStack source, ServerPlayer player, int level) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         data.setClassLevel(level);
         source.sendSuccess(() -> Component.literal("Set " + player.getName().getString() + "'s class level to " + level), true);
         return 1;
     }
 
     private static int getLevel(CommandSourceStack source, ServerPlayer player) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         source.sendSuccess(() -> Component.literal(player.getName().getString() + " is class level " + data.getClassLevel()), false);
         return 1;
     }
@@ -303,14 +303,14 @@ public class ModCommands {
             return 0;
         }
         
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         data.setCurrentClass(classId);
         source.sendSuccess(() -> Component.literal("Set " + player.getName().getString() + "'s class to " + rpgClassOpt.get().getName()), true);
         return 1;
     }
 
     private static int getClass(CommandSourceStack source, ServerPlayer player) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         String classId = data.getCurrentClass();
         Optional<RPGClass> rpgClassOpt = ClassRegistry.getClass(classId);
         String className = rpgClassOpt.map(RPGClass::getName).orElse(classId);
@@ -320,7 +320,7 @@ public class ModCommands {
 
     // Info Method
     private static int getInfo(CommandSourceStack source, ServerPlayer player) {
-        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG_DATA);
+        PlayerRPGData data = player.getData(ModAttachments.PLAYER_RPG);
         String classId = data.getCurrentClass();
         Optional<RPGClass> rpgClassOpt = ClassRegistry.getClass(classId);
         String className = rpgClassOpt.map(RPGClass::getName).orElse(classId);
