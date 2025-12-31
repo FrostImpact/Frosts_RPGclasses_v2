@@ -1121,7 +1121,6 @@ public class ModMessages {
                                 player.displayClientMessage(Component.literal("§eNo valid target for headshot!"), true);
                             }
                         }
-                        }
                     }
                 }
             }
