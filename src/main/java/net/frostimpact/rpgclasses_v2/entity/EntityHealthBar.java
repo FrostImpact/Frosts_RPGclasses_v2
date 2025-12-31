@@ -118,8 +118,8 @@ public class EntityHealthBar {
         Matrix4f matrix = poseStack.last().pose();
         VertexConsumer vc = buffer.getBuffer(RenderType.gui());
 
-        // 3. Draw Background (Black)
-        drawQuad(vc, matrix, (float) (startX - 0.03), (float) (startY - 0.03), (float) (barWidth + 0.06), (float) (barHeight + 0.06), 0.0f, 0, 0, 0, 200, light);
+        // 3. Draw Background (Black with higher alpha)
+        drawQuad(vc, matrix, (float) (startX - 0.03), (float) (startY - 0.03), (float) (barWidth + 0.06), (float) (barHeight + 0.06), 0.0f, 0, 0, 0, 255, light);
 
         // Determine Color
         int r = 255, g = 50, b = 50;

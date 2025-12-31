@@ -971,19 +971,34 @@ public class ModMessages {
             case "marksman" -> {
                 var rpgData = player.getData(ModAttachments.PLAYER_RPG);
                 switch (slot) {
-                    case 1 -> { // Snipe - slow moving projectile that deals massive single target damage
+                case 1 -> { // Snipe - HITSCAN (instant bullet travel) with subtle dust gradient targeting line
                         Vec3 lookVec = player.getLookAngle();
                         Vec3 startPos = playerPos.add(0, player.getEyeHeight(), 0);
                         float baseDamage = 20.0f + damageBonus * 3.0f; // High damage
                         
-                        // Create slow-moving snipe projectile (mark bonus is applied on hit)
-                        SnipeProjectile snipe = new SnipeProjectile(player, level, startPos, lookVec, baseDamage);
-                        activeSnipeProjectiles.add(snipe);
+                        // Find target using raycast (hitscan - instant damage)
+                        LivingEntity target = findTargetInSight(player, 80.0); // Long range
                         
-                        // Spawn launch visual effect - orange/red sniper theme
-                        spawnSnipeLaunchEffect(level, startPos, lookVec);
-                        
-                        player.displayClientMessage(Component.literal("§c§l⌖ SNIPE FIRED!"), true);
+                        if (target != null) {
+                            // Apply mark bonus if target is marked
+                            float finalDamage = baseDamage;
+                            if (isMarkedEnemy(target)) {
+                                finalDamage *= MARK_DAMAGE_BONUS;
+                            }
+                            
+                            // Instant damage (hitscan)
+                            target.hurt(player.damageSources().playerAttack(player), finalDamage);
+                            
+                            // Spawn subtle targeting line with dust gradient (no flash, no lava)
+                            spawnSnipeHitscanEffect(level, startPos, target.position().add(0, target.getBbHeight() * 0.5, 0));
+                            
+                            player.displayClientMessage(Component.literal("§c§l⌖ SNIPE HIT! §r§7(" + String.format("%.1f", finalDamage) + " damage)"), true);
+                        } else {
+                            // No target found - show targeting line in look direction
+                            Vec3 endPos = startPos.add(lookVec.scale(80.0));
+                            spawnSnipeHitscanEffect(level, startPos, endPos);
+                            player.displayClientMessage(Component.literal("§eSnipe missed - no target in sight!"), true);
+                        }
                     }
                     case 2 -> { // Mark - mark the closest enemy in line of sight, deal 30% more damage, 7s duration
                         LivingEntity target = findTargetInSight(player, 50.0);
@@ -1031,48 +1046,81 @@ public class ModMessages {
                             player.displayClientMessage(Component.literal("§eNo grapple point in range!"), true);
                         }
                     }
-                    case 4 -> { // Headshot - home onto nearest enemy, charge system, hitscan on release
-                        // Find target
-                        LivingEntity target = findTargetInSight(player, 60.0);
+                    case 4 -> { // Headshot - COMPLETE REWORK with lock-on, rooting, charging, and cooldown reset on kill
+                        // Check if already charging - if so, this is a release/fire
+                        HeadshotCharge existingCharge = activeHeadshotCharges.get(player.getUUID());
                         
-                        if (target != null) {
-                            float baseDamage = 15.0f + damageBonus * 2.0f;
+                        if (existingCharge != null) {
+                            // RELEASE/FIRE - player pressed ability again
+                            LivingEntity target = existingCharge.target;
                             
-                            // Check for marked enemy bonus
-                            float markBonus = isMarkedEnemy(target) ? MARK_DAMAGE_BONUS : 1.0f;
-                            
-                            // Apply damage with base charge level
-                            // Note: Full charge system requires client-side hold detection which is not implemented
-                            float finalDamage = baseDamage * markBonus * HEADSHOT_BASE_CHARGE_MULTIPLIER;
-                            
-                            // Deal damage first
-                            target.hurt(player.damageSources().playerAttack(player), finalDamage);
-                            
-                            // Check if target was killed AFTER damage is applied
-                            boolean targetKilled = !target.isAlive() || target.getHealth() <= 0;
-                            
-                            // Spawn headshot visual
-                            Vec3 startPos = playerPos.add(0, player.getEyeHeight(), 0);
-                            spawnHeadshotEffect(level, startPos, target.position().add(0, target.getBbHeight() * 0.8, 0));
-                            
-                            if (targetKilled) {
-                                // Reset all other cooldowns on kill
-                                String ability1Id = "marksman_ability_1";
-                                String ability2Id = "marksman_ability_2";
-                                String ability3Id = "marksman_ability_3";
-                                rpgData.setAbilityCooldown(ability1Id, 0);
-                                rpgData.setAbilityCooldown(ability2Id, 0);
-                                rpgData.setAbilityCooldown(ability3Id, 0);
+                            if (target != null && target.isAlive()) {
+                                float baseDamage = existingCharge.baseDamage;
+                                float damageMultiplier = existingCharge.getDamageMultiplier();
                                 
-                                // Sync cooldowns to client
-                                sendToPlayer(new PacketSyncCooldowns(rpgData.getAllCooldowns()), player);
+                                // Check for marked enemy bonus
+                                float markBonus = isMarkedEnemy(target) ? MARK_DAMAGE_BONUS : 1.0f;
                                 
-                                player.displayClientMessage(Component.literal("§c§l☠ HEADSHOT KILL! §r§a(Cooldowns reset!)"), true);
+                                // Apply damage with charge multiplier
+                                float finalDamage = baseDamage * markBonus * damageMultiplier;
+                                
+                                // Deal hitscan damage
+                                target.hurt(player.damageSources().playerAttack(player), finalDamage);
+                                
+                                // Check if target was killed
+                                boolean targetKilled = !target.isAlive() || target.getHealth() <= 0;
+                                
+                                // Spawn headshot hitscan visual
+                                Vec3 startPos = playerPos.add(0, player.getEyeHeight(), 0);
+                                spawnHeadshotEffect(level, startPos, target.position().add(0, target.getBbHeight() * 0.8, 0));
+                                
+                                if (targetKilled) {
+                                    // Reset all other cooldowns on kill
+                                    String ability1Id = "marksman_ability_1";
+                                    String ability2Id = "marksman_ability_2";
+                                    String ability3Id = "marksman_ability_3";
+                                    rpgData.setAbilityCooldown(ability1Id, 0);
+                                    rpgData.setAbilityCooldown(ability2Id, 0);
+                                    rpgData.setAbilityCooldown(ability3Id, 0);
+                                    
+                                    // Speed buff on kill
+                                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 60, 1));
+                                    
+                                    // Sync cooldowns to client
+                                    sendToPlayer(new PacketSyncCooldowns(rpgData.getAllCooldowns()), player);
+                                    
+                                    player.displayClientMessage(Component.literal("§c§l☠ HEADSHOT KILL! §r§a(All cooldowns reset! +" + String.format("%.0f", (damageMultiplier - 1.0f) * 100) + "% damage)"), true);
+                                } else {
+                                    player.displayClientMessage(Component.literal("§c§l☠ HEADSHOT! §r§7(+" + String.format("%.0f", (damageMultiplier - 1.0f) * 100) + "% damage: " + String.format("%.1f", finalDamage) + ")"), true);
+                                }
                             } else {
-                                player.displayClientMessage(Component.literal("§c§l☠ HEADSHOT!"), true);
+                                player.displayClientMessage(Component.literal("§eTarget lost!"), true);
                             }
+                            
+                            // Remove charge state and un-root player
+                            activeHeadshotCharges.remove(player.getUUID());
+                            player.setDeltaMovement(player.getDeltaMovement()); // Restore movement
+                            
                         } else {
-                            player.displayClientMessage(Component.literal("§eNo valid target for headshot!"), true);
+                            // START CHARGING - Find and lock onto nearest enemy
+                            LivingEntity target = findNearestEnemy(player, 60.0);
+                            
+                            if (target != null) {
+                                float baseDamage = 15.0f + damageBonus * 2.0f;
+                                
+                                // Start charging state
+                                HeadshotCharge charge = new HeadshotCharge(player, level, target, baseDamage);
+                                activeHeadshotCharges.put(player.getUUID(), charge);
+                                
+                                // Root player (set movement to zero and apply slowness)
+                                player.setDeltaMovement(0, player.getDeltaMovement().y, 0);
+                                player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 200, 255, false, false));
+                                
+                                player.displayClientMessage(Component.literal("§c§l⌖ CHARGING HEADSHOT... §r§7(Press again to fire)"), true);
+                            } else {
+                                player.displayClientMessage(Component.literal("§eNo valid target for headshot!"), true);
+                            }
+                        }
                         }
                     }
                 }
@@ -2158,46 +2206,62 @@ public class ModMessages {
      * Spawn vault visual effect - ENHANCED directional dash with trail
      */
     private static void spawnVaultEffect(ServerLevel level, Vec3 center, Vec3 direction) {
-        // Golden/yellow energy theme
-        float r = 1.0f, g = 0.85f, b = 0.4f;
+        // Lime green energy theme (0.5, 1.0, 0.2 is lime green)
+        float lime_r = 0.5f, lime_g = 1.0f, lime_b = 0.2f;
         
-        // ===== DASH TRAIL =====
+        // ===== LIME GREEN SPIRAL RISING UPWARD =====
         Vec3 normalizedDir = direction.normalize();
-        for (int layer = 0; layer < 3; layer++) {
-            for (int i = 0; i < 25; i++) {
-                double progress = (double) i / 25;
-                double trailLength = 3.0;
-                Vec3 pos = center.add(normalizedDir.scale(progress * trailLength));
-                
-                // Spread based on layer
-                double spread = layer * 0.15;
-                double offsetX = (RANDOM.nextDouble() - 0.5) * spread;
-                double offsetY = (RANDOM.nextDouble() - 0.5) * spread;
-                double offsetZ = (RANDOM.nextDouble() - 0.5) * spread;
-                
-                float size = 0.5f - (float) progress * 0.3f;
-                level.sendParticles(createDustParticle(r, g, b, size),
-                        pos.x + offsetX, pos.y + 1 + offsetY, pos.z + offsetZ,
-                        1, 0.02, 0.02, 0.02, 0);
-            }
+        int spiralPoints = 40;
+        for (int i = 0; i < spiralPoints; i++) {
+            double progress = (double) i / spiralPoints;
+            
+            // Spiral parameters
+            double spiralAngle = progress * 4 * Math.PI; // 2 full rotations
+            double spiralRadius = 0.6 + progress * 0.4; // Expanding radius
+            double height = progress * 3.0; // Rising 3 blocks
+            
+            // Calculate spiral position
+            double x = center.x + Math.cos(spiralAngle) * spiralRadius;
+            double y = center.y + height;
+            double z = center.z + Math.sin(spiralAngle) * spiralRadius;
+            
+            // Gradient from lime to lighter green
+            float g_value = lime_g - (float) progress * 0.2f; // 1.0 → 0.8
+            float b_value = lime_b + (float) progress * 0.3f; // 0.2 → 0.5
+            
+            level.sendParticles(createDustParticle(lime_r, g_value, b_value, 0.9f),
+                    x, y, z, 2, 0.05, 0.05, 0.05, 0.01);
         }
         
-        // ===== END ROD STREAK =====
-        for (int i = 0; i < 15; i++) {
-            double progress = (double) i / 15;
-            Vec3 pos = center.add(normalizedDir.scale(progress * 2.5));
+        // ===== DIRECTIONAL DASH TRAIL =====
+        for (int i = 0; i < 20; i++) {
+            double progress = (double) i / 20;
+            double trailLength = 2.5;
+            Vec3 pos = center.add(normalizedDir.scale(progress * trailLength));
+            
+            // Lime green trail matching spiral
+            level.sendParticles(createDustParticle(lime_r, lime_g, lime_b, 0.7f),
+                    pos.x, pos.y + 1.0, pos.z, 3, 0.15, 0.15, 0.15, 0.02);
+        }
+        
+        // ===== END ROD CORE (for highlight) =====
+        for (int i = 0; i < 12; i++) {
+            double progress = (double) i / 12;
+            Vec3 pos = center.add(normalizedDir.scale(progress * 2.0));
             level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
                     pos.x, pos.y + 1, pos.z, 1, 0.05, 0.05, 0.05, 0);
         }
         
-        // ===== LAUNCH BURST =====
-        // Ring at launch point
-        for (int p = 0; p < 16; p++) {
-            double angle = (double) p / 16 * 2 * Math.PI;
-            double x = center.x + Math.cos(angle) * 0.8;
-            double z = center.z + Math.sin(angle) * 0.8;
-            level.sendParticles(createDustParticle(1.0f, 0.9f, 0.5f, 0.5f),
-                    x, center.y + 0.8, z, 1, 0.05, 0.05, 0.05, 0);
+        // ===== LAUNCH BURST - LIME GREEN CIRCLE =====
+        for (int ring = 0; ring < 2; ring++) {
+            double radius = 0.6 + ring * 0.3;
+            for (int p = 0; p < 16; p++) {
+                double angle = (double) p / 16 * 2 * Math.PI;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                level.sendParticles(createDustParticle(lime_r, lime_g, lime_b, 0.8f),
+                        x, center.y + 0.5, z, 1, 0.03, 0.03, 0.03, 0);
+            }
         }
         
         // Sweep effect
@@ -4395,6 +4459,75 @@ public class ModMessages {
     // ===== NEW MARKSMAN HELPER METHODS =====
     
     /**
+     * Find the nearest enemy to the player (not just in sight, but closest overall)
+     */
+    private static LivingEntity findNearestEnemy(ServerPlayer player, double maxRange) {
+        AABB searchBox = player.getBoundingBox().inflate(maxRange);
+        List<Entity> entities = player.level().getEntities(player, searchBox,
+                e -> e instanceof LivingEntity && !(e instanceof ServerPlayer) && e != player);
+        
+        LivingEntity nearest = null;
+        double nearestDist = Double.MAX_VALUE;
+        
+        for (Entity entity : entities) {
+            if (entity instanceof LivingEntity living && living.isAlive()) {
+                double dist = player.position().distanceTo(entity.position());
+                if (dist < nearestDist && dist <= maxRange) {
+                    nearestDist = dist;
+                    nearest = living;
+                }
+            }
+        }
+        
+        return nearest;
+    }
+    
+    /**
+     * Spawn RED LASER SIGHT between player and target (particle line with pulse effect)
+     */
+    private static void spawnHeadshotLaserSight(ServerLevel level, Vec3 start, Vec3 end, int chargeTime, int maxChargeTime) {
+        Vec3 direction = end.subtract(start);
+        double distance = direction.length();
+        direction = direction.normalize();
+        
+        // Calculate intensity based on charge (pulses faster as charge increases)
+        float chargePercent = (float) chargeTime / maxChargeTime;
+        float intensity = 0.6f + (chargePercent * 0.4f); // 0.6 to 1.0
+        
+        // Red laser line (intense red gradient)
+        int particleCount = (int) (distance * 5); // Dense line
+        for (int i = 0; i < particleCount; i++) {
+            double progress = (double) i / particleCount;
+            Vec3 pos = start.add(direction.scale(progress * distance));
+            
+            // Core red laser (brighter as charge increases)
+            level.sendParticles(createDustParticle(1.0f, 0.05f, 0.05f, intensity),
+                    pos.x, pos.y, pos.z, 1, 0.01, 0.01, 0.01, 0);
+            
+            // Pulse effect - outer red glow
+            if (i % 3 == 0) {
+                level.sendParticles(createDustParticle(0.9f, 0.1f, 0.1f, intensity * 0.5f),
+                        pos.x + (RANDOM.nextDouble() - 0.5) * 0.05,
+                        pos.y + (RANDOM.nextDouble() - 0.5) * 0.05,
+                        pos.z + (RANDOM.nextDouble() - 0.5) * 0.05,
+                        1, 0.02, 0.02, 0.02, 0);
+            }
+        }
+        
+        // Targeting reticle at target head (intensifies with charge)
+        double reticleRadius = 0.3;
+        int reticlePoints = 12;
+        for (int i = 0; i < reticlePoints; i++) {
+            double angle = (double) i / reticlePoints * 2 * Math.PI;
+            double x = end.x + Math.cos(angle) * reticleRadius;
+            double z = end.z + Math.sin(angle) * reticleRadius;
+            
+            level.sendParticles(createDustParticle(1.0f, 0.1f, 0.1f, intensity),
+                    x, end.y, z, 1, 0.01, 0.01, 0.01, 0);
+        }
+    }
+    
+    /**
      * Check if an entity is marked
      */
     private static boolean isMarkedEnemy(LivingEntity entity) {
@@ -4499,14 +4632,90 @@ public class ModMessages {
     }
     
     /**
-     * Update Headshot charge - returns false when it should be removed
-     * Note: Charge system requires client-side hold detection which is not implemented.
-     * The HeadshotCharge data class is kept for future implementation of the charge mechanic.
+     * Update Headshot charge - shows laser sight, roots player, increases charge
+     * Returns false when charge should be removed (target dies, max charge, etc.)
      */
     private static boolean updateHeadshotCharge(HeadshotCharge charge) {
-        // Charges are processed instantly in the current implementation
-        // A full implementation would track charge duration and apply damage multiplier
-        return false;
+        // Check if target is still alive
+        if (charge.target == null || !charge.target.isAlive()) {
+            charge.owner.displayClientMessage(Component.literal("§eTarget lost!"), true);
+            // Un-root player
+            charge.owner.setDeltaMovement(charge.owner.getDeltaMovement());
+            return false;
+        }
+        
+        // Check if player is still valid
+        if (!charge.owner.isAlive()) {
+            return false;
+        }
+        
+        // Increase charge time
+        charge.chargeTime++;
+        
+        // Root player (prevent movement)
+        charge.owner.setDeltaMovement(charge.owner.getDeltaMovement().x * 0.0, charge.owner.getDeltaMovement().y, charge.owner.getDeltaMovement().z * 0.0);
+        
+        // Show RED LASER SIGHT between player and target
+        Vec3 playerEyePos = charge.owner.position().add(0, charge.owner.getEyeHeight(), 0);
+        Vec3 targetHeadPos = charge.target.position().add(0, charge.target.getBbHeight() * 0.8, 0);
+        spawnHeadshotLaserSight(charge.level, playerEyePos, targetHeadPos, charge.chargeTime, charge.maxChargeTime);
+        
+        // Show charge indication particles at player
+        if (charge.chargeTime % 5 == 0) {
+            float chargePercent = (float) charge.chargeTime / charge.maxChargeTime;
+            int particleCount = (int) (chargePercent * 20); // Growing particles
+            charge.level.sendParticles(createDustParticle(1.0f, 0.1f, 0.1f, 0.8f),
+                    charge.owner.getX(), charge.owner.getY() + 1.0, charge.owner.getZ(),
+                    particleCount, 0.3, 0.3, 0.3, 0.05);
+        }
+        
+        // Auto-fire at max charge
+        if (charge.chargeTime >= charge.maxChargeTime) {
+            // Max charge reached - auto fire
+            float baseDamage = charge.baseDamage;
+            float damageMultiplier = charge.getDamageMultiplier(); // Should be 2.0 (100% bonus)
+            
+            // Check for marked enemy bonus
+            float markBonus = isMarkedEnemy(charge.target) ? MARK_DAMAGE_BONUS : 1.0f;
+            
+            // Apply damage with full charge multiplier
+            float finalDamage = baseDamage * markBonus * damageMultiplier;
+            
+            // Deal hitscan damage
+            charge.target.hurt(charge.owner.damageSources().playerAttack(charge.owner), finalDamage);
+            
+            // Check if target was killed
+            boolean targetKilled = !charge.target.isAlive() || charge.target.getHealth() <= 0;
+            
+            // Spawn headshot hitscan visual
+            spawnHeadshotEffect(charge.level, playerEyePos, targetHeadPos);
+            
+            if (targetKilled) {
+                // Reset all other cooldowns on kill
+                var rpgData = charge.owner.getData(ModAttachments.PLAYER_RPG);
+                String ability1Id = "marksman_ability_1";
+                String ability2Id = "marksman_ability_2";
+                String ability3Id = "marksman_ability_3";
+                rpgData.setAbilityCooldown(ability1Id, 0);
+                rpgData.setAbilityCooldown(ability2Id, 0);
+                rpgData.setAbilityCooldown(ability3Id, 0);
+                
+                // Speed buff on kill
+                charge.owner.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 60, 1));
+                
+                // Sync cooldowns to client
+                sendToPlayer(new PacketSyncCooldowns(rpgData.getAllCooldowns()), charge.owner);
+                
+                charge.owner.displayClientMessage(Component.literal("§c§l☠ HEADSHOT KILL! §r§a(All cooldowns reset! +100% damage)"), true);
+            } else {
+                charge.owner.displayClientMessage(Component.literal("§c§l☠ FULL CHARGE HEADSHOT! §r§7(+100% damage: " + String.format("%.1f", finalDamage) + ")"), true);
+            }
+            
+            return false; // Remove charge
+        }
+        
+        // Continue charging
+        return true;
     }
     
     /**
@@ -4535,7 +4744,37 @@ public class ModMessages {
     }
     
     /**
-     * Spawn Snipe launch effect
+     * Spawn Snipe hitscan effect - subtle dust gradient targeting line (NO lava, NO flash)
+     */
+    private static void spawnSnipeHitscanEffect(ServerLevel level, Vec3 start, Vec3 end) {
+        Vec3 direction = end.subtract(start);
+        double distance = direction.length();
+        direction = direction.normalize();
+        
+        // Subtle targeting line with dust gradient (orange → red → dark red)
+        int particleCount = (int) (distance * 3); // Smooth line
+        for (int i = 0; i < particleCount; i++) {
+            double progress = (double) i / particleCount;
+            Vec3 pos = start.add(direction.scale(progress * distance));
+            
+            // Gradient from orange to dark red along the line
+            float r = 1.0f;
+            float g = 0.5f - (float) progress * 0.4f; // 0.5 → 0.1
+            float b = 0.1f - (float) progress * 0.05f; // 0.1 → 0.05
+            
+            level.sendParticles(createDustParticle(r, g, b, 0.4f), // Subtle opacity
+                    pos.x, pos.y, pos.z, 1, 0.02, 0.02, 0.02, 0);
+        }
+        
+        // Impact point - subtle glow (if target hit)
+        if (distance < 80.0) { // Only if we hit something close
+            level.sendParticles(createDustParticle(1.0f, 0.2f, 0.1f, 0.8f),
+                    end.x, end.y, end.z, 8, 0.2, 0.2, 0.2, 0.05);
+        }
+    }
+    
+    /**
+     * Spawn Snipe launch effect (DEPRECATED - now using hitscan)
      */
     private static void spawnSnipeLaunchEffect(ServerLevel level, Vec3 start, Vec3 direction) {
         // Orange/red muzzle flash
@@ -4623,36 +4862,54 @@ public class ModMessages {
     }
     
     /**
-     * Spawn Grapple effect
+     * Spawn Grapple effect - brown→gray arc with connecting points
      */
     private static void spawnGrappleEffect(ServerLevel level, Vec3 start, Vec3 end) {
         Vec3 direction = end.subtract(start);
         double distance = direction.length();
         direction = direction.normalize();
         
-        // Chain/rope particles along the path
-        for (int i = 0; i < (int) (distance * 4); i++) {
-            double progress = (double) i / (distance * 4);
+        // Create arcing path (parabola) for more dynamic visual
+        int pointCount = (int) (distance * 5);
+        for (int i = 0; i < pointCount; i++) {
+            double progress = (double) i / pointCount;
+            
+            // Parabolic arc calculation
+            double arcHeight = distance * 0.15; // Arc peaks at 15% of distance
+            double y_offset = 4 * arcHeight * progress * (1 - progress);
+            
             Vec3 pos = start.add(direction.scale(progress * distance));
+            pos = pos.add(0, y_offset, 0);
             
-            // Main chain
-            level.sendParticles(createDustParticle(0.4f, 0.4f, 0.45f, 0.6f),
-                    pos.x, pos.y, pos.z, 1, 0.02, 0.02, 0.02, 0);
+            // Gradient from brown to gray along the rope
+            float brown_r = 0.6f - (float) progress * 0.2f; // 0.6 → 0.4
+            float brown_g = 0.4f - (float) progress * 0.1f; // 0.4 → 0.3
+            float brown_b = 0.25f + (float) progress * 0.15f; // 0.25 → 0.4
             
-            // Sparkle every few points
-            if (i % 4 == 0) {
+            // Main chain/rope with gradient
+            level.sendParticles(createDustParticle(brown_r, brown_g, brown_b, 0.8f),
+                    pos.x, pos.y, pos.z, 2, 0.03, 0.03, 0.03, 0);
+            
+            // Connection points (nodes) every few particles
+            if (i % 5 == 0) {
+                level.sendParticles(createDustParticle(0.5f, 0.5f, 0.55f, 1.0f), // Gray nodes
+                        pos.x, pos.y, pos.z, 3, 0.05, 0.05, 0.05, 0.01);
                 level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
                         pos.x, pos.y, pos.z, 1, 0.02, 0.02, 0.02, 0);
             }
         }
         
-        // Hook impact at end
-        level.sendParticles(createDustParticle(0.5f, 0.5f, 0.55f, 1.0f),
-                end.x, end.y, end.z, 15, 0.3, 0.3, 0.3, 0.08);
+        // Hook impact at end - metallic gray burst
+        level.sendParticles(createDustParticle(0.5f, 0.5f, 0.55f, 1.2f),
+                end.x, end.y, end.z, 20, 0.4, 0.4, 0.4, 0.1);
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
-                end.x, end.y, end.z, 10, 0.2, 0.2, 0.2, 0.1);
+                end.x, end.y, end.z, 15, 0.3, 0.3, 0.3, 0.15);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                end.x, end.y, end.z, 1, 0.1, 0.1, 0.1, 0);
         
-        // Launch effect at start
+        // Launch effect at start - brown dust cloud
+        level.sendParticles(createDustParticle(0.6f, 0.4f, 0.25f, 0.9f),
+                start.x, start.y, start.z, 12, 0.25, 0.25, 0.25, 0.03);
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.POOF,
                 start.x, start.y, start.z, 8, 0.2, 0.2, 0.2, 0.02);
     }
@@ -4825,7 +5082,7 @@ public class ModMessages {
             this.damage = damage;
             this.ticksAlive = 0;
             this.maxTicks = 100; // 5 seconds max flight time
-            this.speed = 0.4f; // Slow moving
+            this.speed = 1.2f; // 3x faster (was 0.4f)
             this.hitEntities = new ArrayList<>();
         }
     }
@@ -4844,10 +5101,10 @@ public class ModMessages {
         // Move projectile
         arrow.position = arrow.position.add(arrow.direction.scale(arrow.speed));
         
-        // Check for entity collision (pierce through multiple)
+        // Check for entity collision (pierce through multiple) - 3x bigger hitbox
         AABB hitbox = new AABB(
-                arrow.position.x - 0.8, arrow.position.y - 0.8, arrow.position.z - 0.8,
-                arrow.position.x + 0.8, arrow.position.y + 0.8, arrow.position.z + 0.8);
+                arrow.position.x - 2.4, arrow.position.y - 2.4, arrow.position.z - 2.4,
+                arrow.position.x + 2.4, arrow.position.y + 2.4, arrow.position.z + 2.4);
         
         List<Entity> entities = arrow.level.getEntities(arrow.owner, hitbox,
                 e -> e instanceof LivingEntity && e != arrow.owner);
@@ -4880,15 +5137,17 @@ public class ModMessages {
             return false;
         }
         
-        // Spawn trail particles - LARGE arrow with radiating dust circles
+        // Spawn trail particles - LARGE arrow (3x size) with elongated gradient dust trail
         if (arrow.ticksAlive % 1 == 0) { // Every tick
-            // Main arrow trail (green ranger theme)
-            arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.25f, 0.9f),
-                    arrow.position.x, arrow.position.y, arrow.position.z, 5, 0.15, 0.15, 0.15, 0.02);
+            // Main arrow trail with gradient (cyan → white)
+            arrow.level.sendParticles(createDustParticle(0.0f, 0.9f, 0.9f, 1.2f), // Cyan
+                    arrow.position.x, arrow.position.y, arrow.position.z, 8, 0.45, 0.45, 0.45, 0.03);
+            arrow.level.sendParticles(createDustParticle(0.8f, 1.0f, 1.0f, 1.0f), // White
+                    arrow.position.x, arrow.position.y, arrow.position.z, 5, 0.3, 0.3, 0.3, 0.02);
             
-            // Radiating dust circles around the arrow (at least same size as arrow)
-            double circleRadius = 0.8; // Large circles
-            int circlePoints = 12;
+            // Radiating dust circles around the arrow (3x larger)
+            double circleRadius = 2.4; // 3x larger circles (was 0.8)
+            int circlePoints = 16; // More points for smoother circle
             for (int i = 0; i < circlePoints; i++) {
                 double angle = (double) i / circlePoints * 2 * Math.PI;
                 Vec3 perpVec1 = new Vec3(
@@ -4897,13 +5156,22 @@ public class ModMessages {
                         0
                 );
                 Vec3 circlePos = arrow.position.add(perpVec1);
-                arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.25f, 0.6f),
-                        circlePos.x, circlePos.y, circlePos.z, 1, 0.05, 0.05, 0.05, 0);
+                // Gradient from cyan to light blue
+                arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.95f, 0.7f),
+                        circlePos.x, circlePos.y, circlePos.z, 2, 0.1, 0.1, 0.1, 0);
             }
             
-            // Additional glow trail
+            // Side wisps extending outward (elongated trail)
+            for (int side = -1; side <= 1; side += 2) {
+                Vec3 perpVec = arrow.direction.cross(new Vec3(0, 1, 0)).normalize();
+                Vec3 wispPos = arrow.position.add(perpVec.scale(side * 1.5));
+                arrow.level.sendParticles(createDustParticle(0.5f, 0.95f, 1.0f, 0.6f),
+                        wispPos.x, wispPos.y, wispPos.z, 3, 0.2, 0.2, 0.2, 0.02);
+            }
+            
+            // Core glow (END_ROD for highlight)
             arrow.level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
-                    arrow.position.x, arrow.position.y, arrow.position.z, 2, 0.1, 0.1, 0.1, 0.01);
+                    arrow.position.x, arrow.position.y, arrow.position.z, 3, 0.3, 0.3, 0.3, 0.02);
         }
         
         return true;
