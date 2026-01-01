@@ -4249,6 +4249,7 @@ public class ModMessages {
     
     /**
      * Summon a friendly eagle (using Allay - flying scout that follows player)
+     * Eagle provides Night Vision and marks enemies with Glowing + has special swooping ability
      */
     private static boolean summonFriendlyEagle(ServerPlayer player, ServerLevel level, Vec3 center) {
         // Use Allay as the "eagle" - flying creature that follows player and glows
@@ -4265,10 +4266,12 @@ public class ModMessages {
         eagle.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 600, 2));
         eagle.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 600, 0)); // Unique - regenerates
         
-        // Mark as summoned beast
+        // Mark as summoned beast with special eagle ability flag
         eagle.getPersistentData().putBoolean("rpgclasses_summoned_beast", true);
+        eagle.getPersistentData().putBoolean("rpgclasses_eagle_scout", true); // Special eagle marker
         eagle.getPersistentData().putLong("rpgclasses_summon_time", level.getGameTime());
         eagle.getPersistentData().putUUID("rpgclasses_owner", player.getUUID());
+        eagle.getPersistentData().putLong("rpgclasses_last_swoop", 0L); // Track last swoop time
         
         // Give the allay a special item to hold (feather for eagle theme)
         net.minecraft.world.item.ItemStack featherStack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FEATHER);
