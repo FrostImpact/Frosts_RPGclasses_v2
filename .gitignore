@@ -33,3 +33,6 @@ logs/
 
 # Generated sources
 src/generated/
+
+# Compiled class files
+*.class
