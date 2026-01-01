@@ -11,6 +11,9 @@ import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncStats;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketUseAbility;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketResetStats;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketMarksmanFocusMode;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncSkillTreeData;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketResetSkillTree;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketRequestSkillTreeData;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatModifier;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
@@ -487,23 +490,87 @@ public class ModMessages {
                         if (context.player() instanceof ServerPlayer serverPlayer) {
                             var rpgData = serverPlayer.getData(ModAttachments.PLAYER_RPG);
                             
-                            if (rpgData.useSkillPoint()) {
-                                // TODO: Apply skill point to skill tree node
-                                LOGGER.info("Player {} allocated skill point to {} in tree {}", 
-                                        serverPlayer.getName().getString(), 
-                                        packet.skillNodeId(), 
-                                        packet.skillTreeId());
-                                
-                                // Sync back to client
-                                sendToPlayer(new PacketSyncRPGData(
-                                        rpgData.getCurrentClass(),
-                                        rpgData.getLevel(),
-                                        rpgData.getClassLevel(),
-                                        rpgData.getClassExperience(),
-                                        rpgData.getAvailableStatPoints(),
-                                        rpgData.getAvailableSkillPoints()
-                                ), serverPlayer);
+                            // Validate the skill tree and node exist
+                            var optionalTree = net.frostimpact.rpgclasses_v2.skilltree.SkillTreeRegistry.getSkillTree(packet.skillTreeId());
+                            if (optionalTree.isEmpty()) {
+                                LOGGER.warn("Player {} tried to allocate to invalid tree: {}", 
+                                        serverPlayer.getName().getString(), packet.skillTreeId());
+                                return;
                             }
+                            
+                            var skillTree = optionalTree.get();
+                            var optionalNode = skillTree.getNode(packet.skillNodeId());
+                            if (optionalNode.isEmpty()) {
+                                LOGGER.warn("Player {} tried to allocate to invalid node: {} in tree {}", 
+                                        serverPlayer.getName().getString(), packet.skillNodeId(), packet.skillTreeId());
+                                return;
+                            }
+                            
+                            var node = optionalNode.get();
+                            
+                            // Check if player has available skill points
+                            if (!rpgData.useSkillPoint()) {
+                                serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                        "§cNo skill points available!"), true);
+                                return;
+                            }
+                            
+                            // Get current allocated level
+                            int currentLevel = rpgData.getSkillNodeLevel(packet.skillTreeId(), packet.skillNodeId());
+                            
+                            // Check if already maxed
+                            if (currentLevel >= node.getMaxLevel()) {
+                                // Refund the point
+                                rpgData.addSkillPoints(1);
+                                serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                        "§cSkill already maxed out!"), true);
+                                return;
+                            }
+                            
+                            // Check player level requirement
+                            if (rpgData.getClassLevel() < node.getRequiredLevel()) {
+                                // Refund the point
+                                rpgData.addSkillPoints(1);
+                                serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                        "§cRequires class level " + node.getRequiredLevel() + "!"), true);
+                                return;
+                            }
+                            
+                            // Check prerequisites
+                            for (String reqId : node.getRequirements()) {
+                                if (rpgData.getSkillNodeLevel(packet.skillTreeId(), reqId) < 1) {
+                                    // Refund the point
+                                    rpgData.addSkillPoints(1);
+                                    serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                            "§cPrerequisites not met!"), true);
+                                    return;
+                                }
+                            }
+                            
+                            // All checks passed - allocate the point
+                            rpgData.incrementSkillNodeLevel(packet.skillTreeId(), packet.skillNodeId(), node.getMaxLevel());
+                            
+                            LOGGER.info("Player {} allocated skill point to {} in tree {} (now level {}/{})", 
+                                    serverPlayer.getName().getString(), 
+                                    packet.skillNodeId(), 
+                                    packet.skillTreeId(),
+                                    currentLevel + 1,
+                                    node.getMaxLevel());
+                            
+                            // Sync back to client
+                            sendToPlayer(new PacketSyncRPGData(
+                                    rpgData.getCurrentClass(),
+                                    rpgData.getLevel(),
+                                    rpgData.getClassLevel(),
+                                    rpgData.getClassExperience(),
+                                    rpgData.getAvailableStatPoints(),
+                                    rpgData.getAvailableSkillPoints()
+                            ), serverPlayer);
+                            
+                            // Send updated skill tree allocations
+                            sendToPlayer(new PacketSyncSkillTreeData(rpgData.getAllSkillTreeAllocations()), serverPlayer);
+                            
+                            // TODO: Apply skill node effects/bonuses
                         }
                     });
                 }
@@ -587,6 +654,69 @@ public class ModMessages {
                     });
                 }
         );
+        
+        // Register PacketRequestSkillTreeData - client requests skill tree data sync
+        registrar.playToServer(
+                PacketRequestSkillTreeData.TYPE,
+                PacketRequestSkillTreeData.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        if (context.player() instanceof ServerPlayer serverPlayer) {
+                            var rpgData = serverPlayer.getData(ModAttachments.PLAYER_RPG);
+                            sendToPlayer(new PacketSyncSkillTreeData(rpgData.getAllSkillTreeAllocations()), serverPlayer);
+                            LOGGER.debug("Synced skill tree data to player {}", serverPlayer.getName().getString());
+                        }
+                    });
+                }
+        );
+        
+        // Register PacketResetSkillTree - handles skill tree reset from client
+        registrar.playToServer(
+                PacketResetSkillTree.TYPE,
+                PacketResetSkillTree.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        if (context.player() instanceof ServerPlayer serverPlayer) {
+                            var rpgData = serverPlayer.getData(ModAttachments.PLAYER_RPG);
+                            
+                            // Reset the specified tree and refund points
+                            int refundedPoints = rpgData.resetSkillTree(packet.skillTreeId());
+                            rpgData.addSkillPoints(refundedPoints);
+                            
+                            LOGGER.info("Player {} reset skill tree {}, refunded {} points", 
+                                    serverPlayer.getName().getString(), packet.skillTreeId(), refundedPoints);
+                            
+                            // Sync back to client
+                            sendToPlayer(new PacketSyncRPGData(
+                                    rpgData.getCurrentClass(),
+                                    rpgData.getLevel(),
+                                    rpgData.getClassLevel(),
+                                    rpgData.getClassExperience(),
+                                    rpgData.getAvailableStatPoints(),
+                                    rpgData.getAvailableSkillPoints()
+                            ), serverPlayer);
+                            
+                            // Send updated skill tree allocations
+                            sendToPlayer(new PacketSyncSkillTreeData(rpgData.getAllSkillTreeAllocations()), serverPlayer);
+                            
+                            serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                    "§aSkill tree reset! Refunded " + refundedPoints + " points."), true);
+                        }
+                    });
+                }
+        );
+        
+        // Register PacketSyncSkillTreeData - syncs skill tree data from server to client
+        registrar.playToClient(
+                PacketSyncSkillTreeData.TYPE,
+                PacketSyncSkillTreeData.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        // This is handled on client side by SkillTreeScreen
+                        LOGGER.debug("Received skill tree data sync");
+                    });
+                }
+        );
     }
 
     public static void sendToPlayer(PacketSyncMana packet, ServerPlayer player) {
@@ -606,6 +736,10 @@ public class ModMessages {
     }
     
     public static void sendToPlayer(PacketSyncSeekerCharges packet, ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+    
+    public static void sendToPlayer(PacketSyncSkillTreeData packet, ServerPlayer player) {
         PacketDistributor.sendToPlayer(player, packet);
     }
 
@@ -630,6 +764,14 @@ public class ModMessages {
     }
     
     public static void sendToServer(PacketMarksmanFocusMode packet) {
+        PacketDistributor.sendToServer(packet);
+    }
+    
+    public static void sendToServer(PacketRequestSkillTreeData packet) {
+        PacketDistributor.sendToServer(packet);
+    }
+    
+    public static void sendToServer(PacketResetSkillTree packet) {
         PacketDistributor.sendToServer(packet);
     }
     
@@ -801,10 +943,10 @@ public class ModMessages {
                         // Create large piercing arrow projectile
                         spawnLargePiercingArrowProjectile(player, level, startPos, lookVec, damage);
                         
-                        // Launch effect
+                        // Launch effect - green ranger theme
                         level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
                                 startPos.x, startPos.y, startPos.z, 2, 0.3, 0.3, 0.3, 0);
-                        spawnDustParticlesBurst(level, startPos, 2.0, 0.2f, 0.85f, 0.25f, 15);
+                        spawnDustParticlesBurst(level, startPos, 2.0, 0.2f, 0.85f, 0.3f, 15);
                     }
                     case 2 -> { // Spread Shot - Fixed direction based on player look angle
                         Vec3 lookVec = player.getLookAngle();
@@ -4107,6 +4249,7 @@ public class ModMessages {
     
     /**
      * Summon a friendly eagle (using Allay - flying scout that follows player)
+     * Eagle provides Night Vision and marks enemies with Glowing + has special swooping ability
      */
     private static boolean summonFriendlyEagle(ServerPlayer player, ServerLevel level, Vec3 center) {
         // Use Allay as the "eagle" - flying creature that follows player and glows
@@ -4123,10 +4266,12 @@ public class ModMessages {
         eagle.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 600, 2));
         eagle.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 600, 0)); // Unique - regenerates
         
-        // Mark as summoned beast
+        // Mark as summoned beast with special eagle ability flag
         eagle.getPersistentData().putBoolean("rpgclasses_summoned_beast", true);
+        eagle.getPersistentData().putBoolean("rpgclasses_eagle_scout", true); // Special eagle marker
         eagle.getPersistentData().putLong("rpgclasses_summon_time", level.getGameTime());
         eagle.getPersistentData().putUUID("rpgclasses_owner", player.getUUID());
+        eagle.getPersistentData().putLong("rpgclasses_last_swoop", 0L); // Track last swoop time
         
         // Give the allay a special item to hold (feather for eagle theme)
         net.minecraft.world.item.ItemStack featherStack = new net.minecraft.world.item.ItemStack(net.minecraft.world.item.Items.FEATHER);
@@ -5130,8 +5275,8 @@ public class ModMessages {
                 arrow.owner));
         
         if (blockHit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
-            // Impact effect
-            arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.25f, 1.2f),
+            // Impact effect - bright green ranger theme
+            arrow.level.sendParticles(createDustParticle(0.2f, 0.9f, 0.3f, 1.2f),
                     blockHit.getLocation().x, blockHit.getLocation().y, blockHit.getLocation().z,
                     25, 0.4, 0.4, 0.4, 0.15);
             return false;
@@ -5139,10 +5284,10 @@ public class ModMessages {
         
         // Spawn trail particles - LARGE arrow (3x size) with elongated gradient dust trail
         if (arrow.ticksAlive % 1 == 0) { // Every tick
-            // Main arrow trail with gradient (cyan → white)
-            arrow.level.sendParticles(createDustParticle(0.0f, 0.9f, 0.9f, 1.2f), // Cyan
+            // Main arrow trail with gradient (green → light green) - ranger theme
+            arrow.level.sendParticles(createDustParticle(0.15f, 0.9f, 0.25f, 1.2f), // Bright green
                     arrow.position.x, arrow.position.y, arrow.position.z, 8, 0.45, 0.45, 0.45, 0.03);
-            arrow.level.sendParticles(createDustParticle(0.8f, 1.0f, 1.0f, 1.0f), // White
+            arrow.level.sendParticles(createDustParticle(0.25f, 1.0f, 0.35f, 1.0f), // Light green
                     arrow.position.x, arrow.position.y, arrow.position.z, 5, 0.3, 0.3, 0.3, 0.02);
             
             // Radiating dust circles around the arrow (3x larger)
@@ -5156,8 +5301,8 @@ public class ModMessages {
                         0
                 );
                 Vec3 circlePos = arrow.position.add(perpVec1);
-                // Gradient from cyan to light blue
-                arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.95f, 0.7f),
+                // Gradient from green to yellow-green
+                arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.3f, 0.7f),
                         circlePos.x, circlePos.y, circlePos.z, 2, 0.1, 0.1, 0.1, 0);
             }
             
@@ -5165,7 +5310,7 @@ public class ModMessages {
             for (int side = -1; side <= 1; side += 2) {
                 Vec3 perpVec = arrow.direction.cross(new Vec3(0, 1, 0)).normalize();
                 Vec3 wispPos = arrow.position.add(perpVec.scale(side * 1.5));
-                arrow.level.sendParticles(createDustParticle(0.5f, 0.95f, 1.0f, 0.6f),
+                arrow.level.sendParticles(createDustParticle(0.3f, 0.95f, 0.4f, 0.6f),
                         wispPos.x, wispPos.y, wispPos.z, 3, 0.2, 0.2, 0.2, 0.02);
             }
             

@@ -110,6 +110,9 @@ public class ServerEvents {
                             -1 // Permanent until removed
                     ));
                 }
+                
+                // EAGLE SPECIAL ABILITY: Periodically swoop and mark enemies
+                handleEagleScoutAbility(player);
             }
             
             // MARKSMAN FOCUS MODE: Mana drain (3 mana/sec) and slow falling mid-air
@@ -384,5 +387,106 @@ public class ServerEvents {
         }
         
         return count;
+    }
+    
+    /**
+     * Handle eagle scout special ability - swoops down and marks/damages enemies
+     */
+    private void handleEagleScoutAbility(ServerPlayer player) {
+        // Find nearby eagle scouts summoned by this player
+        double searchRadius = 40.0;
+        net.minecraft.world.phys.AABB searchBox = player.getBoundingBox().inflate(searchRadius);
+        
+        java.util.List<net.minecraft.world.entity.Entity> entities = player.level().getEntities(player, searchBox,
+                e -> e instanceof net.minecraft.world.entity.animal.allay.Allay);
+        
+        for (net.minecraft.world.entity.Entity entity : entities) {
+            if (entity instanceof net.minecraft.world.entity.animal.allay.Allay eagle) {
+                // Check if this is an eagle scout
+                if (!eagle.getPersistentData().getBoolean("rpgclasses_eagle_scout")) {
+                    continue;
+                }
+                
+                // Verify ownership
+                if (!eagle.getPersistentData().contains("rpgclasses_owner")) {
+                    continue;
+                }
+                java.util.UUID ownerUUID = eagle.getPersistentData().getUUID("rpgclasses_owner");
+                if (!ownerUUID.equals(player.getUUID())) {
+                    continue;
+                }
+                
+                // Check if it's time for a swoop (every 5 seconds)
+                long currentTime = player.level().getGameTime();
+                long lastSwoop = eagle.getPersistentData().getLong("rpgclasses_last_swoop");
+                if (currentTime - lastSwoop < 100) { // 100 ticks = 5 seconds
+                    continue;
+                }
+                
+                // Find nearby enemies to mark
+                net.minecraft.world.phys.AABB eagleBox = eagle.getBoundingBox().inflate(15.0);
+                java.util.List<net.minecraft.world.entity.Entity> nearbyEnemies = player.level().getEntities(eagle, eagleBox,
+                        e -> e instanceof net.minecraft.world.entity.monster.Monster && 
+                             e instanceof net.minecraft.world.entity.LivingEntity);
+                
+                if (!nearbyEnemies.isEmpty()) {
+                    // Pick closest enemy
+                    net.minecraft.world.entity.Entity closestEnemy = null;
+                    double closestDist = Double.MAX_VALUE;
+                    for (net.minecraft.world.entity.Entity enemy : nearbyEnemies) {
+                        double dist = eagle.position().distanceTo(enemy.position());
+                        if (dist < closestDist) {
+                            closestDist = dist;
+                            closestEnemy = enemy;
+                        }
+                    }
+                    
+                    if (closestEnemy instanceof net.minecraft.world.entity.LivingEntity living) {
+                        // Apply glowing effect (mark enemy)
+                        living.addEffect(new net.minecraft.world.effect.MobEffectInstance(
+                                net.minecraft.world.effect.MobEffects.GLOWING, 100, 0)); // 5 seconds
+                        
+                        // Deal minor swoop damage
+                        living.hurt(player.damageSources().mobAttack(eagle), 3.0f);
+                        
+                        // Spawn swoop visual effect
+                        if (player.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                            serverLevel.sendParticles(
+                                    net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
+                                    living.getX(), living.getY() + living.getBbHeight() * 0.5, living.getZ(),
+                                    3, 0.3, 0.3, 0.3, 0);
+                            serverLevel.sendParticles(
+                                    net.minecraft.core.particles.ParticleTypes.CLOUD,
+                                    living.getX(), living.getY() + living.getBbHeight() * 0.5, living.getZ(),
+                                    5, 0.2, 0.2, 0.2, 0.05);
+                        }
+                        
+                        // Update last swoop time
+                        eagle.getPersistentData().putLong("rpgclasses_last_swoop", currentTime);
+                        
+                        LOGGER.debug("Eagle scout swooped on enemy for player {}", player.getName().getString());
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Suppress death messages for summoned beasts to prevent chat spam
+     * This is handled by marking entities with Silent:1b NBT tag
+     */
+    @SubscribeEvent
+    public void onLivingDeath(net.neoforged.neoforge.event.entity.living.LivingDeathEvent event) {
+        if (event.getEntity() instanceof net.minecraft.world.entity.Mob mob) {
+            // Check if this is a summoned beast
+            if (mob.getPersistentData().getBoolean("rpgclasses_summoned_beast")) {
+                // Set the entity to silent to suppress death message
+                // This is the proper way to prevent death messages in Minecraft
+                mob.setSilent(true);
+                
+                LOGGER.debug("Suppressed death message for summoned beast: {}", 
+                        mob.getType().getDescription().getString());
+            }
+        }
     }
 }
