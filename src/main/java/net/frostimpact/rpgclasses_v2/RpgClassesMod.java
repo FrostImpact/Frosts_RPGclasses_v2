@@ -5,6 +5,7 @@ import net.frostimpact.rpgclasses_v2.client.overlay.CooldownOverlay;
 import net.frostimpact.rpgclasses_v2.client.overlay.HealthBarOverlay;
 import net.frostimpact.rpgclasses_v2.client.overlay.LevelDisplayOverlay;
 import net.frostimpact.rpgclasses_v2.client.overlay.ManaBarOverlay;
+import net.frostimpact.rpgclasses_v2.client.overlay.RageBarOverlay;
 import net.frostimpact.rpgclasses_v2.client.overlay.SeekerChargeOverlay;
 import net.frostimpact.rpgclasses_v2.event.ServerEvents;
 import net.frostimpact.rpgclasses_v2.item.ModItems;
@@ -84,6 +85,10 @@ public class RpgClassesMod {
         event.registerAbove(VanillaGuiLayers.HOTBAR,
             net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, "jagged_blade_overlay"),
             new net.frostimpact.rpgclasses_v2.client.overlay.JaggedBladeOverlay());
+        
+        event.registerAbove(VanillaGuiLayers.HOTBAR,
+            net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MOD_ID, "rage_bar_overlay"),
+            new RageBarOverlay());
     }
     
     private void registerKeybindings(net.neoforged.neoforge.client.event.RegisterKeyMappingsEvent event) {

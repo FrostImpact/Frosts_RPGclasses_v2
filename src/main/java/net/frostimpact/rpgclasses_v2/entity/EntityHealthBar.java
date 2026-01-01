@@ -39,20 +39,8 @@ public class EntityHealthBar {
             return;
         }
         
-        // Only show health bar if the player has hit this entity
-        if (!HitEntityTracker.hasLocalPlayerHitEntity(entity.getUUID())) {
-            // Debug: Log why we're not showing the health bar
-            org.slf4j.LoggerFactory.getLogger("EntityHealthBar").trace(
-                "Not rendering health bar for {} - not hit by player", 
-                entity.getType().getDescription().getString());
-            return;
-        }
-        
-        // Debug: Log that we're rendering
-        org.slf4j.LoggerFactory.getLogger("EntityHealthBar").debug(
-            "Rendering health bar for {} at distance {}", 
-            entity.getType().getDescription().getString(),
-            mc.player != null ? mc.player.distanceTo(entity) : 0);
+        // ALWAYS show health bar for all living entities within range
+        // (removed the hit tracking requirement)
 
         renderHealthBar(event.getPoseStack(), event.getMultiBufferSource(), entity, event.getPackedLight());
     }

@@ -92,7 +92,7 @@ public class ClassRegistry {
         
         // Warrior subclasses
         RPGClass berserker = new RPGClass("berserker", "Berserker",
-                "A rage-fueled warrior who trades defense for overwhelming offense", "warrior",
+                "A rage-fueled warrior with RAGE system. RAGE fills from damage (5% dealt, 10 per hit taken). At 100 RAGE, enter enraged state: +25% speed, +30% damage, 5% lifesteal. RAGE decays when enraged.", "warrior",
                 "rpgclasses_v2:textures/gui/icons/berserker.png", true, "warrior", 10);
         berserker.addBaseStat(StatType.DAMAGE, new StatModifier("berserker_damage", StatType.DAMAGE, 10.0, -1));
         berserker.addBaseStat(StatType.ATTACK_SPEED, new StatModifier("berserker_speed", StatType.ATTACK_SPEED, 15.0, -1));

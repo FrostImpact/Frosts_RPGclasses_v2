@@ -38,6 +38,17 @@ public class PlayerRPGData {
     
     // Transient field - not persisted, only used for runtime state
     private transient boolean inFocusMode = false; // For Marksman FOCUS mode
+    
+    // Berserker RAGE system - transient fields (runtime state)
+    private transient int rage = 0; // Current RAGE (0-100)
+    private transient boolean enraged = false; // Whether in enraged state
+    private transient boolean enhancedEnraged = false; // Unbound Carnage enhanced enraged state
+    private transient long enhancedEnragedEndTime = 0; // When enhanced enraged ends
+    private transient boolean exhausted = false; // Post-Unbound Carnage exhaustion
+    private transient long exhaustedEndTime = 0; // When exhaustion ends
+    private transient long lastRageFromDamageTaken = 0; // Cooldown for RAGE from taking damage
+    private transient int axeThrowCharges = 2; // Axe Throw charges
+    private transient long lastAxeThrowTime = 0; // For 1.5s delay between uses
 
     public PlayerRPGData() {
         this.mana = 100;
@@ -324,5 +335,103 @@ public class PlayerRPGData {
         }
         skillTreeAllocations.clear();
         return totalPoints;
+    }
+    
+    // ===== BERSERKER RAGE SYSTEM =====
+    public static final int MAX_RAGE = 100;
+    public static final int RAGE_DECAY_RATE = 2; // Per second while enraged
+    public static final int RAGE_DAMAGE_TAKEN_AMOUNT = 10;
+    public static final int RAGE_DAMAGE_TAKEN_COOLDOWN_TICKS = 60; // 3 seconds
+    
+    public int getRage() {
+        return rage;
+    }
+    
+    public void setRage(int rage) {
+        this.rage = Math.max(0, Math.min(rage, MAX_RAGE));
+    }
+    
+    public void addRage(int amount) {
+        if (!enraged && !enhancedEnraged && !exhausted) {
+            this.rage = Math.min(MAX_RAGE, this.rage + amount);
+        }
+    }
+    
+    public void decayRage(int amount) {
+        this.rage = Math.max(0, this.rage - amount);
+    }
+    
+    public boolean isEnraged() {
+        return enraged;
+    }
+    
+    public void setEnraged(boolean enraged) {
+        this.enraged = enraged;
+    }
+    
+    public boolean isEnhancedEnraged() {
+        return enhancedEnraged;
+    }
+    
+    public void setEnhancedEnraged(boolean enhancedEnraged) {
+        this.enhancedEnraged = enhancedEnraged;
+    }
+    
+    public long getEnhancedEnragedEndTime() {
+        return enhancedEnragedEndTime;
+    }
+    
+    public void setEnhancedEnragedEndTime(long enhancedEnragedEndTime) {
+        this.enhancedEnragedEndTime = enhancedEnragedEndTime;
+    }
+    
+    public boolean isExhausted() {
+        return exhausted;
+    }
+    
+    public void setExhausted(boolean exhausted) {
+        this.exhausted = exhausted;
+    }
+    
+    public long getExhaustedEndTime() {
+        return exhaustedEndTime;
+    }
+    
+    public void setExhaustedEndTime(long exhaustedEndTime) {
+        this.exhaustedEndTime = exhaustedEndTime;
+    }
+    
+    public long getLastRageFromDamageTaken() {
+        return lastRageFromDamageTaken;
+    }
+    
+    public void setLastRageFromDamageTaken(long lastRageFromDamageTaken) {
+        this.lastRageFromDamageTaken = lastRageFromDamageTaken;
+    }
+    
+    public int getAxeThrowCharges() {
+        return axeThrowCharges;
+    }
+    
+    public void setAxeThrowCharges(int charges) {
+        this.axeThrowCharges = Math.max(0, Math.min(charges, 2));
+    }
+    
+    public void useAxeThrowCharge() {
+        if (axeThrowCharges > 0) {
+            axeThrowCharges--;
+        }
+    }
+    
+    public void restoreAxeThrowCharge() {
+        this.axeThrowCharges = Math.min(2, this.axeThrowCharges + 1);
+    }
+    
+    public long getLastAxeThrowTime() {
+        return lastAxeThrowTime;
+    }
+    
+    public void setLastAxeThrowTime(long lastAxeThrowTime) {
+        this.lastAxeThrowTime = lastAxeThrowTime;
     }
 }
