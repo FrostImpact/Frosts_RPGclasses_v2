@@ -104,6 +104,13 @@ public class ClassRegistry {
         paladin.addBaseStat(StatType.MAX_HEALTH, new StatModifier("paladin_health", StatType.MAX_HEALTH, 15.0, -1));
         paladin.addBaseStat(StatType.DEFENSE, new StatModifier("paladin_defense", StatType.DEFENSE, 5.0, -1));
         register(paladin);
+        
+        RPGClass ravager = new RPGClass("ravager", "Ravager",
+                "A brutal warrior who inflicts bleeding wounds on enemies. Cannot gain attack speed - converts to bleed duration.", "warrior",
+                "rpgclasses_v2:textures/gui/icons/ravager.png", true, "warrior", 10);
+        ravager.addBaseStat(StatType.DAMAGE, new StatModifier("ravager_damage", StatType.DAMAGE, 8.0, -1));
+        ravager.addBaseStat(StatType.MAX_HEALTH, new StatModifier("ravager_health", StatType.MAX_HEALTH, 10.0, -1));
+        register(ravager);
 
         // ===== MAGE CLASS =====
         RPGClass mage = new RPGClass("mage", "Mage",
