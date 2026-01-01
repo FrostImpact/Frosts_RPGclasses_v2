@@ -66,6 +66,12 @@ public class ModMessages {
     private static final float MARK_DAMAGE_BONUS = 1.3f; // 30% bonus damage to marked targets
     private static final int MARK_DURATION_TICKS = 140; // 7 seconds
     
+    // Berserker ability constants
+    private static final int AXE_THROW_DELAY_TICKS = 30; // 1.5 seconds between axe throws
+    private static final int AXE_MAX_OUT_TICKS = 40; // 2 seconds before axe returns
+    private static final float RAGE_GAIN_PERCENT = 0.05f; // 5% of damage dealt
+    private static final float LIFESTEAL_PERCENT = 0.05f; // 5% of damage dealt while enraged
+    
     // Active timed effects for Rain of Arrows
     private static final Map<UUID, RainOfArrowsEffect> activeRainEffects = new ConcurrentHashMap<>();
     // Active seeker projectiles (homing missiles)
@@ -1468,7 +1474,7 @@ public class ModMessages {
                     case 1 -> { // Axe Throw - throwing axe that returns
                         // Check charge cooldown (1.5s delay between uses)
                         long currentTime = level.getGameTime();
-                        if (currentTime - rpgData.getLastAxeThrowTime() < 30) { // 1.5 seconds = 30 ticks
+                        if (currentTime - rpgData.getLastAxeThrowTime() < AXE_THROW_DELAY_TICKS) {
                             player.displayClientMessage(Component.literal("§eAxe Throw is on delay!"), true);
                             return;
                         }
@@ -6763,7 +6769,7 @@ public class ModMessages {
             this.direction = direction.normalize();
             this.damage = damage;
             this.ticksAlive = 0;
-            this.maxOutTicks = 40; // 2 seconds out before returning
+            this.maxOutTicks = AXE_MAX_OUT_TICKS;
             this.speed = 0.7f;
             this.returning = false;
             this.hitEntitiesOutbound = new ArrayList<>();
@@ -7158,7 +7164,7 @@ public class ModMessages {
             return;
         }
         
-        int rageGain = (int) (damageDealt * 0.05f);
+        int rageGain = (int) (damageDealt * RAGE_GAIN_PERCENT);
         if (rageGain > 0) {
             rpgData.addRage(rageGain);
         }
@@ -7196,7 +7202,7 @@ public class ModMessages {
         
         // Only lifesteal while enraged (not enhanced enraged)
         if (rpgData.isEnraged() || rpgData.isEnhancedEnraged()) {
-            float healAmount = damageDealt * 0.05f;
+            float healAmount = damageDealt * LIFESTEAL_PERCENT;
             if (healAmount > 0) {
                 player.heal(healAmount);
             }
