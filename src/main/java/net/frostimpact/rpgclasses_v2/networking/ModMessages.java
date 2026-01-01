@@ -801,10 +801,10 @@ public class ModMessages {
                         // Create large piercing arrow projectile
                         spawnLargePiercingArrowProjectile(player, level, startPos, lookVec, damage);
                         
-                        // Launch effect
+                        // Launch effect - green ranger theme
                         level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
                                 startPos.x, startPos.y, startPos.z, 2, 0.3, 0.3, 0.3, 0);
-                        spawnDustParticlesBurst(level, startPos, 2.0, 0.2f, 0.85f, 0.25f, 15);
+                        spawnDustParticlesBurst(level, startPos, 2.0, 0.2f, 0.85f, 0.3f, 15);
                     }
                     case 2 -> { // Spread Shot - Fixed direction based on player look angle
                         Vec3 lookVec = player.getLookAngle();
@@ -5130,8 +5130,8 @@ public class ModMessages {
                 arrow.owner));
         
         if (blockHit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
-            // Impact effect
-            arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.25f, 1.2f),
+            // Impact effect - bright green ranger theme
+            arrow.level.sendParticles(createDustParticle(0.2f, 0.9f, 0.3f, 1.2f),
                     blockHit.getLocation().x, blockHit.getLocation().y, blockHit.getLocation().z,
                     25, 0.4, 0.4, 0.4, 0.15);
             return false;
@@ -5139,10 +5139,10 @@ public class ModMessages {
         
         // Spawn trail particles - LARGE arrow (3x size) with elongated gradient dust trail
         if (arrow.ticksAlive % 1 == 0) { // Every tick
-            // Main arrow trail with gradient (cyan → white)
-            arrow.level.sendParticles(createDustParticle(0.0f, 0.9f, 0.9f, 1.2f), // Cyan
+            // Main arrow trail with gradient (green → light green) - ranger theme
+            arrow.level.sendParticles(createDustParticle(0.15f, 0.9f, 0.25f, 1.2f), // Bright green
                     arrow.position.x, arrow.position.y, arrow.position.z, 8, 0.45, 0.45, 0.45, 0.03);
-            arrow.level.sendParticles(createDustParticle(0.8f, 1.0f, 1.0f, 1.0f), // White
+            arrow.level.sendParticles(createDustParticle(0.25f, 1.0f, 0.35f, 1.0f), // Light green
                     arrow.position.x, arrow.position.y, arrow.position.z, 5, 0.3, 0.3, 0.3, 0.02);
             
             // Radiating dust circles around the arrow (3x larger)
@@ -5156,8 +5156,8 @@ public class ModMessages {
                         0
                 );
                 Vec3 circlePos = arrow.position.add(perpVec1);
-                // Gradient from cyan to light blue
-                arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.95f, 0.7f),
+                // Gradient from green to yellow-green
+                arrow.level.sendParticles(createDustParticle(0.2f, 0.85f, 0.3f, 0.7f),
                         circlePos.x, circlePos.y, circlePos.z, 2, 0.1, 0.1, 0.1, 0);
             }
             
@@ -5165,7 +5165,7 @@ public class ModMessages {
             for (int side = -1; side <= 1; side += 2) {
                 Vec3 perpVec = arrow.direction.cross(new Vec3(0, 1, 0)).normalize();
                 Vec3 wispPos = arrow.position.add(perpVec.scale(side * 1.5));
-                arrow.level.sendParticles(createDustParticle(0.5f, 0.95f, 1.0f, 0.6f),
+                arrow.level.sendParticles(createDustParticle(0.3f, 0.95f, 0.4f, 0.6f),
                         wispPos.x, wispPos.y, wispPos.z, 3, 0.2, 0.2, 0.2, 0.02);
             }
             
