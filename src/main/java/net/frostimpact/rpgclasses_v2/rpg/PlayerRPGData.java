@@ -18,7 +18,9 @@ public class PlayerRPGData {
             Codec.INT.fieldOf("level").forGetter(d -> d.level),
             Codec.INT.fieldOf("classLevel").forGetter(d -> d.classLevel),
             Codec.INT.fieldOf("classExperience").forGetter(d -> d.classExperience),
-            Codec.INT.fieldOf("seekerCharges").forGetter(d -> d.seekerCharges)
+            Codec.INT.fieldOf("seekerCharges").forGetter(d -> d.seekerCharges),
+            Codec.unboundedMap(Codec.STRING, Codec.unboundedMap(Codec.STRING, Codec.INT))
+                .optionalFieldOf("skillTreeAllocations", new HashMap<>()).forGetter(d -> d.skillTreeAllocations)
         ).apply(instance, PlayerRPGData::new)
     );
 
@@ -32,6 +34,7 @@ public class PlayerRPGData {
     private int classLevel;
     private int classExperience;
     private int seekerCharges; // For Hawkeye SEEKER ability
+    private Map<String, Map<String, Integer>> skillTreeAllocations; // treeId -> (nodeId -> level)
     
     // Transient field - not persisted, only used for runtime state
     private transient boolean inFocusMode = false; // For Marksman FOCUS mode
@@ -48,11 +51,12 @@ public class PlayerRPGData {
         this.classExperience = 0;
         this.seekerCharges = 0;
         this.inFocusMode = false;
+        this.skillTreeAllocations = new HashMap<>();
     }
 
     private PlayerRPGData(int mana, int maxMana, Map<String, Integer> cooldowns, String currentClass, 
                          int availableStatPoints, int availableSkillPoints, int level, int classLevel, 
-                         int classExperience, int seekerCharges) {
+                         int classExperience, int seekerCharges, Map<String, Map<String, Integer>> skillTreeAllocations) {
         this.mana = mana;
         this.maxMana = maxMana;
         this.cooldowns = new HashMap<>(cooldowns);
@@ -63,6 +67,10 @@ public class PlayerRPGData {
         this.classLevel = classLevel;
         this.classExperience = classExperience;
         this.seekerCharges = seekerCharges;
+        this.skillTreeAllocations = new HashMap<>();
+        for (Map.Entry<String, Map<String, Integer>> entry : skillTreeAllocations.entrySet()) {
+            this.skillTreeAllocations.put(entry.getKey(), new HashMap<>(entry.getValue()));
+        }
     }
 
     public int getMana() {
@@ -233,5 +241,88 @@ public class PlayerRPGData {
     
     public void setInFocusMode(boolean inFocusMode) {
         this.inFocusMode = inFocusMode;
+    }
+    
+    // Skill Tree Allocations methods
+    /**
+     * Get the allocated level for a specific skill node in a tree
+     */
+    public int getSkillNodeLevel(String treeId, String nodeId) {
+        Map<String, Integer> treeAllocations = skillTreeAllocations.get(treeId);
+        if (treeAllocations == null) {
+            return 0;
+        }
+        return treeAllocations.getOrDefault(nodeId, 0);
+    }
+    
+    /**
+     * Set the allocated level for a specific skill node
+     */
+    public void setSkillNodeLevel(String treeId, String nodeId, int level) {
+        skillTreeAllocations.computeIfAbsent(treeId, k -> new HashMap<>()).put(nodeId, level);
+    }
+    
+    /**
+     * Increment the allocated level for a specific skill node (up to max)
+     */
+    public void incrementSkillNodeLevel(String treeId, String nodeId, int maxLevel) {
+        Map<String, Integer> treeAllocations = skillTreeAllocations.computeIfAbsent(treeId, k -> new HashMap<>());
+        int currentLevel = treeAllocations.getOrDefault(nodeId, 0);
+        if (currentLevel < maxLevel) {
+            treeAllocations.put(nodeId, currentLevel + 1);
+        }
+    }
+    
+    /**
+     * Get all allocations for a specific tree
+     */
+    public Map<String, Integer> getTreeAllocations(String treeId) {
+        return new HashMap<>(skillTreeAllocations.getOrDefault(treeId, new HashMap<>()));
+    }
+    
+    /**
+     * Get all skill tree allocations
+     */
+    public Map<String, Map<String, Integer>> getAllSkillTreeAllocations() {
+        Map<String, Map<String, Integer>> copy = new HashMap<>();
+        for (Map.Entry<String, Map<String, Integer>> entry : skillTreeAllocations.entrySet()) {
+            copy.put(entry.getKey(), new HashMap<>(entry.getValue()));
+        }
+        return copy;
+    }
+    
+    /**
+     * Reset all allocations for a specific tree (returns number of points refunded)
+     */
+    public int resetSkillTree(String treeId) {
+        Map<String, Integer> treeAllocations = skillTreeAllocations.get(treeId);
+        if (treeAllocations == null) {
+            return 0;
+        }
+        
+        // Count total allocated points in this tree
+        int totalPoints = 0;
+        for (int level : treeAllocations.values()) {
+            totalPoints += level;
+        }
+        
+        // Clear the tree
+        skillTreeAllocations.remove(treeId);
+        
+        return totalPoints;
+    }
+    
+    /**
+     * Reset all skill tree allocations (returns total points refunded)
+     */
+    public int resetAllSkillTrees() {
+        int totalPoints = 0;
+        for (Map<String, Integer> treeAllocations : skillTreeAllocations.values()) {
+            for (int level : treeAllocations.values()) {
+                totalPoints += level;
+            }
+        }
+        skillTreeAllocations.clear();
+        return totalPoints;
     }
 }

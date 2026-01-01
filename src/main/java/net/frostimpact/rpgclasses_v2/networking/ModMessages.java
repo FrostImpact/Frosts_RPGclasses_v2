@@ -11,6 +11,9 @@ import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncStats;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketUseAbility;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketResetStats;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketMarksmanFocusMode;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncSkillTreeData;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketResetSkillTree;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketRequestSkillTreeData;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatModifier;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
@@ -487,23 +490,87 @@ public class ModMessages {
                         if (context.player() instanceof ServerPlayer serverPlayer) {
                             var rpgData = serverPlayer.getData(ModAttachments.PLAYER_RPG);
                             
-                            if (rpgData.useSkillPoint()) {
-                                // TODO: Apply skill point to skill tree node
-                                LOGGER.info("Player {} allocated skill point to {} in tree {}", 
-                                        serverPlayer.getName().getString(), 
-                                        packet.skillNodeId(), 
-                                        packet.skillTreeId());
-                                
-                                // Sync back to client
-                                sendToPlayer(new PacketSyncRPGData(
-                                        rpgData.getCurrentClass(),
-                                        rpgData.getLevel(),
-                                        rpgData.getClassLevel(),
-                                        rpgData.getClassExperience(),
-                                        rpgData.getAvailableStatPoints(),
-                                        rpgData.getAvailableSkillPoints()
-                                ), serverPlayer);
+                            // Validate the skill tree and node exist
+                            var optionalTree = net.frostimpact.rpgclasses_v2.skilltree.SkillTreeRegistry.getSkillTree(packet.skillTreeId());
+                            if (optionalTree.isEmpty()) {
+                                LOGGER.warn("Player {} tried to allocate to invalid tree: {}", 
+                                        serverPlayer.getName().getString(), packet.skillTreeId());
+                                return;
                             }
+                            
+                            var skillTree = optionalTree.get();
+                            var optionalNode = skillTree.getNode(packet.skillNodeId());
+                            if (optionalNode.isEmpty()) {
+                                LOGGER.warn("Player {} tried to allocate to invalid node: {} in tree {}", 
+                                        serverPlayer.getName().getString(), packet.skillNodeId(), packet.skillTreeId());
+                                return;
+                            }
+                            
+                            var node = optionalNode.get();
+                            
+                            // Check if player has available skill points
+                            if (!rpgData.useSkillPoint()) {
+                                serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                        "§cNo skill points available!"), true);
+                                return;
+                            }
+                            
+                            // Get current allocated level
+                            int currentLevel = rpgData.getSkillNodeLevel(packet.skillTreeId(), packet.skillNodeId());
+                            
+                            // Check if already maxed
+                            if (currentLevel >= node.getMaxLevel()) {
+                                // Refund the point
+                                rpgData.addSkillPoints(1);
+                                serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                        "§cSkill already maxed out!"), true);
+                                return;
+                            }
+                            
+                            // Check player level requirement
+                            if (rpgData.getClassLevel() < node.getRequiredLevel()) {
+                                // Refund the point
+                                rpgData.addSkillPoints(1);
+                                serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                        "§cRequires class level " + node.getRequiredLevel() + "!"), true);
+                                return;
+                            }
+                            
+                            // Check prerequisites
+                            for (String reqId : node.getRequirements()) {
+                                if (rpgData.getSkillNodeLevel(packet.skillTreeId(), reqId) < 1) {
+                                    // Refund the point
+                                    rpgData.addSkillPoints(1);
+                                    serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                            "§cPrerequisites not met!"), true);
+                                    return;
+                                }
+                            }
+                            
+                            // All checks passed - allocate the point
+                            rpgData.incrementSkillNodeLevel(packet.skillTreeId(), packet.skillNodeId(), node.getMaxLevel());
+                            
+                            LOGGER.info("Player {} allocated skill point to {} in tree {} (now level {}/{})", 
+                                    serverPlayer.getName().getString(), 
+                                    packet.skillNodeId(), 
+                                    packet.skillTreeId(),
+                                    currentLevel + 1,
+                                    node.getMaxLevel());
+                            
+                            // Sync back to client
+                            sendToPlayer(new PacketSyncRPGData(
+                                    rpgData.getCurrentClass(),
+                                    rpgData.getLevel(),
+                                    rpgData.getClassLevel(),
+                                    rpgData.getClassExperience(),
+                                    rpgData.getAvailableStatPoints(),
+                                    rpgData.getAvailableSkillPoints()
+                            ), serverPlayer);
+                            
+                            // Send updated skill tree allocations
+                            sendToPlayer(new PacketSyncSkillTreeData(rpgData.getAllSkillTreeAllocations()), serverPlayer);
+                            
+                            // TODO: Apply skill node effects/bonuses
                         }
                     });
                 }
@@ -587,6 +654,69 @@ public class ModMessages {
                     });
                 }
         );
+        
+        // Register PacketRequestSkillTreeData - client requests skill tree data sync
+        registrar.playToServer(
+                PacketRequestSkillTreeData.TYPE,
+                PacketRequestSkillTreeData.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        if (context.player() instanceof ServerPlayer serverPlayer) {
+                            var rpgData = serverPlayer.getData(ModAttachments.PLAYER_RPG);
+                            sendToPlayer(new PacketSyncSkillTreeData(rpgData.getAllSkillTreeAllocations()), serverPlayer);
+                            LOGGER.debug("Synced skill tree data to player {}", serverPlayer.getName().getString());
+                        }
+                    });
+                }
+        );
+        
+        // Register PacketResetSkillTree - handles skill tree reset from client
+        registrar.playToServer(
+                PacketResetSkillTree.TYPE,
+                PacketResetSkillTree.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        if (context.player() instanceof ServerPlayer serverPlayer) {
+                            var rpgData = serverPlayer.getData(ModAttachments.PLAYER_RPG);
+                            
+                            // Reset the specified tree and refund points
+                            int refundedPoints = rpgData.resetSkillTree(packet.skillTreeId());
+                            rpgData.addSkillPoints(refundedPoints);
+                            
+                            LOGGER.info("Player {} reset skill tree {}, refunded {} points", 
+                                    serverPlayer.getName().getString(), packet.skillTreeId(), refundedPoints);
+                            
+                            // Sync back to client
+                            sendToPlayer(new PacketSyncRPGData(
+                                    rpgData.getCurrentClass(),
+                                    rpgData.getLevel(),
+                                    rpgData.getClassLevel(),
+                                    rpgData.getClassExperience(),
+                                    rpgData.getAvailableStatPoints(),
+                                    rpgData.getAvailableSkillPoints()
+                            ), serverPlayer);
+                            
+                            // Send updated skill tree allocations
+                            sendToPlayer(new PacketSyncSkillTreeData(rpgData.getAllSkillTreeAllocations()), serverPlayer);
+                            
+                            serverPlayer.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                    "§aSkill tree reset! Refunded " + refundedPoints + " points."), true);
+                        }
+                    });
+                }
+        );
+        
+        // Register PacketSyncSkillTreeData - syncs skill tree data from server to client
+        registrar.playToClient(
+                PacketSyncSkillTreeData.TYPE,
+                PacketSyncSkillTreeData.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        // This is handled on client side by SkillTreeScreen
+                        LOGGER.debug("Received skill tree data sync");
+                    });
+                }
+        );
     }
 
     public static void sendToPlayer(PacketSyncMana packet, ServerPlayer player) {
@@ -606,6 +736,10 @@ public class ModMessages {
     }
     
     public static void sendToPlayer(PacketSyncSeekerCharges packet, ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+    
+    public static void sendToPlayer(PacketSyncSkillTreeData packet, ServerPlayer player) {
         PacketDistributor.sendToPlayer(player, packet);
     }
 
@@ -630,6 +764,14 @@ public class ModMessages {
     }
     
     public static void sendToServer(PacketMarksmanFocusMode packet) {
+        PacketDistributor.sendToServer(packet);
+    }
+    
+    public static void sendToServer(PacketRequestSkillTreeData packet) {
+        PacketDistributor.sendToServer(packet);
+    }
+    
+    public static void sendToServer(PacketResetSkillTree packet) {
         PacketDistributor.sendToServer(packet);
     }
     

@@ -71,6 +71,9 @@ public class SkillTreeScreen extends Screen {
 
         // Load the skill tree
         loadSkillTree(currentSkillTreeId);
+        
+        // Request skill tree data from server
+        ModMessages.sendToServer(new net.frostimpact.rpgclasses_v2.networking.packet.PacketRequestSkillTreeData());
 
         LOGGER.debug("Initialized skill tree screen for: {}", currentSkillTreeId);
     }
@@ -312,6 +315,17 @@ public class SkillTreeScreen extends Screen {
      * Get the allocated level for a skill node
      */
     private int getAllocatedLevel(String nodeId) {
+        // First check server-synced data
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            var rpgData = mc.player.getData(ModAttachments.PLAYER_RPG);
+            int serverLevel = rpgData.getSkillNodeLevel(currentSkillTreeId, nodeId);
+            if (serverLevel > 0) {
+                return serverLevel;
+            }
+        }
+        
+        // Fall back to local tracking (for optimistic updates)
         String key = currentSkillTreeId + ":" + nodeId;
         return allocatedSkillLevels.getOrDefault(key, 0);
     }
@@ -469,25 +483,57 @@ public class SkillTreeScreen extends Screen {
 
     private void drawClassButton(GuiGraphics guiGraphics, RPGClass rpgClass, int x, int y, int width, boolean isCurrent, boolean isHovered) {
         int classColor = getClassColor(rpgClass.getId());
+        
+        // Check if this class matches player's current class
+        Minecraft mc = Minecraft.getInstance();
+        String playerClass = "NONE";
+        if (mc.player != null) {
+            var rpgData = mc.player.getData(ModAttachments.PLAYER_RPG);
+            playerClass = rpgData.getCurrentClass();
+        }
+        
+        boolean isPlayerClass = rpgClass.getId().equalsIgnoreCase(playerClass);
+        boolean isLocked = !isPlayerClass;
 
-        // Button background
-        int bgColor = isCurrent ? (classColor | 0xAA000000) : (isHovered ? 0x66333333 : 0x44222222);
+        // Button background - grey out if locked
+        int bgColor;
+        if (isLocked) {
+            bgColor = 0x44222222; // Dark grey for locked
+        } else {
+            bgColor = isCurrent ? (classColor | 0xAA000000) : (isHovered ? 0x66333333 : 0x44222222);
+        }
         guiGraphics.fill(x, y, x + width, y + CLASS_BUTTON_HEIGHT, bgColor);
 
-        // Button border
-        int borderColor = isCurrent ? classColor : (isHovered ? 0xFFFFFFFF : 0xFF666666);
+        // Button border - grey for locked
+        int borderColor;
+        if (isLocked) {
+            borderColor = 0xFF444444; // Grey for locked
+        } else {
+            borderColor = isCurrent ? classColor : (isHovered ? 0xFFFFFFFF : 0xFF666666);
+        }
         guiGraphics.fill(x, y, x + width, y + 1, borderColor);
         guiGraphics.fill(x, y + CLASS_BUTTON_HEIGHT - 1, x + width, y + CLASS_BUTTON_HEIGHT, borderColor);
         guiGraphics.fill(x, y, x + 1, y + CLASS_BUTTON_HEIGHT, borderColor);
         guiGraphics.fill(x + width - 1, y, x + width, y + CLASS_BUTTON_HEIGHT, borderColor);
 
-        // Class emoji and name
+        // Class emoji and name - dimmed if locked
         String emoji = getClassEmoji(rpgClass.getId());
-        guiGraphics.drawString(this.font, emoji, x + 5, y + 8, 0xFFFFFFFF, false);
+        int emojiColor = isLocked ? 0xFF666666 : 0xFFFFFFFF;
+        guiGraphics.drawString(this.font, emoji, x + 5, y + 8, emojiColor, false);
 
         String name = rpgClass.getName();
-        int textColor = isCurrent ? 0xFFFFDD00 : 0xFFFFFFFF;
+        int textColor;
+        if (isLocked) {
+            textColor = 0xFF888888; // Grey for locked
+        } else {
+            textColor = isCurrent ? 0xFFFFDD00 : 0xFFFFFFFF;
+        }
         guiGraphics.drawString(this.font, name, x + 20, y + 8, textColor, false);
+        
+        // Add lock icon if locked
+        if (isLocked) {
+            guiGraphics.drawString(this.font, "🔒", x + width - 22, y + 8, 0xFFAA4444, false);
+        }
 
         // Expansion indicator
         boolean hasSubclasses = !ClassRegistry.getSubclasses(rpgClass.getId()).isEmpty();
@@ -539,11 +585,26 @@ public class SkillTreeScreen extends Screen {
         for (RPGClass rpgClass : mainClasses) {
             int buttonX = panelX + 10;
             int buttonWidth = CLASS_PANEL_WIDTH - 20;
+            
+            // Check if this tree is locked (not player's current class)
+            Minecraft mc = Minecraft.getInstance();
+            String playerClass = "NONE";
+            if (mc.player != null) {
+                var rpgData = mc.player.getData(ModAttachments.PLAYER_RPG);
+                playerClass = rpgData.getCurrentClass();
+            }
+            boolean isLocked = !rpgClass.getId().equalsIgnoreCase(playerClass);
 
             // Check if clicking on main class button
             if (mouseX >= buttonX && mouseX < buttonX + buttonWidth &&
                     mouseY >= buttonY && mouseY < buttonY + CLASS_BUTTON_HEIGHT) {
 
+                if (isLocked) {
+                    // Show locked message
+                    showMessage("§cLocked! You are not a " + rpgClass.getName());
+                    return true;
+                }
+                
                 if (button == 0) {
                     // Left-click: Switch to this class's skill tree
                     switchToSkillTree(rpgClass.getId(), rpgClass.getName());
@@ -568,6 +629,12 @@ public class SkillTreeScreen extends Screen {
                     if (mouseX >= buttonX + 10 && mouseX < buttonX + buttonWidth - 10 &&
                             mouseY >= buttonY && mouseY < buttonY + SUBCLASS_BUTTON_HEIGHT) {
 
+                        if (isLocked) {
+                            // Show locked message
+                            showMessage("§cLocked! You are not a " + subclass.getName());
+                            return true;
+                        }
+                        
                         if (button == 0) {
                             // Switch to subclass skill tree
                             switchToSkillTree(subclass.getId(), subclass.getName());
