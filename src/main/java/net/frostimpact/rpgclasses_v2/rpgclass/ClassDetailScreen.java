@@ -406,18 +406,18 @@ public class ClassDetailScreen extends Screen {
         
         switch (classId.toLowerCase()) {
             case "warrior" -> {
-                abilities.add(new ClassAbility("Power Strike", "Z", "active",
-                        "Deliver a powerful melee strike that deals 150% damage and briefly stuns the target.",
-                        20, 3));
+                abilities.add(new ClassAbility("Heavy Cleave", "Z", "active",
+                        "Melee: 120° arc dealing 110% damage. Shift-cast: Launch an arc-shaped projectile dealing 50% damage.",
+                        20, 5));
                 abilities.add(new ClassAbility("Battle Cry", "X", "active",
-                        "Let out a war cry that increases your damage by 25% and attack speed by 15% for 10 seconds.",
+                        "Let out a war cry that increases your damage by 25% and attack speed by 15% for 6 seconds. Enhanced visual effects.",
                         30, 15));
                 abilities.add(new ClassAbility("Whirlwind", "C", "active",
-                        "Spin in a circle dealing damage to all nearby enemies. Hits up to 5 times.",
-                        40, 8));
-                abilities.add(new ClassAbility("Berserker Rage", "V", "ultimate",
-                        "Enter a rage state, gaining 50% damage and 30% attack speed but taking 20% more damage for 15 seconds.",
-                        60, 45));
+                        "Continuous spinning attack dealing 30% damage per hit, up to 5 hits over 1 second. Reduced 3-block range with slash animations.",
+                        30, 8));
+                abilities.add(new ClassAbility("Leap", "V", "ultimate",
+                        "Charge up and leap into the air. Targeting a location within 10 blocks, crash down dealing 200% damage in an area. Slows enemies for 2s.",
+                        50, 20));
             }
             case "mage" -> {
                 abilities.add(new ClassAbility("Fireball", "Z", "active",
@@ -536,6 +536,23 @@ public class ClassDetailScreen extends Screen {
                 abilities.add(new ClassAbility("Beast Stampede", "V", "ultimate",
                         "Summon a line of charging beasts, knocking up and dealing devastating damage.",
                         60, 30));
+            }
+            case "ravager" -> {
+                abilities.add(new ClassAbility("Bleed Mastery (Passive)", "", "passive",
+                        "Cannot gain attack speed - converts to bleed duration. Attacks inflict BLEED. GRIEVOUS WOUNDS replaces BLEED and prevents healing.",
+                        0, 0));
+                abilities.add(new ClassAbility("Tearing Hook", "Z", "active",
+                        "Launch a hook that stuns and pulls an enemy to you (or you to them if sneaking). Hook always displays even without target.",
+                        15, 6));
+                abilities.add(new ClassAbility("Razor", "X", "active",
+                        "Arc slash in front dealing damage and applying GRIEVOUS WOUNDS stacks to enemies in a 110° arc. Animated blade slashes.",
+                        15, 5));
+                abilities.add(new ClassAbility("Rupture", "C", "active",
+                        "Throw a blade that sticks to enemy, then explodes after 2.5s. Damage scales with GRIEVOUS WOUNDS stacks.",
+                        30, 12));
+                abilities.add(new ClassAbility("Heartstopper", "V", "ultimate",
+                        "Charge for 3s then slam in a rectangle. Deals 200% damage, knockup, and heals based on BLEED/GRIEVOUS WOUNDS. Tracks current position.",
+                        50, 20));
             }
             default -> {
                 abilities.add(new ClassAbility("Basic Attack", "Z", "passive",
