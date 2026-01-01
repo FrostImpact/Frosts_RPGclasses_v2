@@ -47,12 +47,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Map;
 import java.util.UUID;
 
 public class ModMessages {
     private static final Logger LOGGER = LoggerFactory.getLogger(ModMessages.class);
     private static final Random RANDOM = new Random();
+    private static final AtomicInteger whirlwindCounter = new AtomicInteger(0);
     
     // Ability constants
     private static final int ULTIMATE_ARROW_MULTIPLIER = 3;
@@ -5831,8 +5833,8 @@ public class ModMessages {
      * Deal Whirlwind damage - 30% damage per hit, over 3 seconds
      */
     private static void dealWhirlwindDamage(ServerPlayer player, ServerLevel level, float damagePerHit, double range, int maxHits) {
-        // Generate unique key for this whirlwind instance
-        String whirlwindKey = player.getUUID().toString() + "_" + System.currentTimeMillis();
+        // Generate unique key for this whirlwind instance using player UUID + atomic counter
+        String whirlwindKey = player.getUUID().toString() + "_" + whirlwindCounter.incrementAndGet();
         Map<UUID, Integer> hitCounts = new ConcurrentHashMap<>();
         whirlwindHitCounts.put(whirlwindKey, hitCounts);
         
