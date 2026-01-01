@@ -46,9 +46,19 @@ public class HitEntityTracker {
             if (player.level().isClientSide()) {
                 // Client-side: add to client tracking
                 clientHitEntities.add(targetUUID);
+                org.slf4j.LoggerFactory.getLogger("HitEntityTracker").debug(
+                    "CLIENT: Player {} hit entity {} ({})", 
+                    player.getName().getString(), 
+                    target.getType().getDescription().getString(),
+                    targetUUID);
             } else {
                 // Server-side: add to server tracking
                 playerHitEntities.computeIfAbsent(playerUUID, k -> ConcurrentHashMap.newKeySet()).add(targetUUID);
+                org.slf4j.LoggerFactory.getLogger("HitEntityTracker").debug(
+                    "SERVER: Player {} hit entity {} ({})", 
+                    player.getName().getString(), 
+                    target.getType().getDescription().getString(),
+                    targetUUID);
             }
         }
     }
