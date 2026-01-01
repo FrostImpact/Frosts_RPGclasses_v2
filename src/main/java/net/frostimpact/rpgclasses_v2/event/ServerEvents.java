@@ -267,6 +267,17 @@ public class ServerEvents {
             // Sync seeker charges for Hawkeye class
             ModMessages.sendToPlayer(new PacketSyncSeekerCharges(rpgData.getSeekerCharges()), player);
             
+            // Sync RAGE data for Berserker class
+            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("berserker")) {
+                ModMessages.sendToPlayer(new net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncRage(
+                        rpgData.getRage(),
+                        rpgData.isEnraged(),
+                        rpgData.isEnhancedEnraged(),
+                        rpgData.isExhausted(),
+                        rpgData.getAxeThrowCharges()
+                ), player);
+            }
+            
             // Initialize last level tracking
             lastPlayerLevels.put(player.getUUID(), player.experienceLevel);
             
@@ -570,10 +581,20 @@ public class ServerEvents {
     /**
      * Handle Berserker RAGE gain from taking damage
      * Also handles Unbound Carnage immortality
+     * Also prevents fall damage for Warrior Leap
      */
     @SubscribeEvent
     public void onPlayerTakeDamage(net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Pre event) {
         if (event.getEntity() instanceof ServerPlayer player) {
+            // Prevent fall damage after Warrior Leap
+            if (event.getSource().is(net.minecraft.world.damagesource.DamageTypes.FALL)) {
+                if (player.getPersistentData().getBoolean("warrior_leap_no_fall_damage")) {
+                    event.setCanceled(true);
+                    player.getPersistentData().remove("warrior_leap_no_fall_damage");
+                    return;
+                }
+            }
+            
             var rpgData = player.getData(ModAttachments.PLAYER_RPG);
             String currentClass = rpgData.getCurrentClass();
             

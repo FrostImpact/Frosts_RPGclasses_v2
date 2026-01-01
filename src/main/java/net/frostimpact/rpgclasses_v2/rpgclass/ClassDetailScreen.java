@@ -413,11 +413,28 @@ public class ClassDetailScreen extends Screen {
                         "Let out a war cry that increases your damage by 25% and attack speed by 15% for 6 seconds. Enhanced visual effects.",
                         30, 15));
                 abilities.add(new ClassAbility("Whirlwind", "C", "active",
-                        "Continuous spinning attack dealing 30% damage per hit, up to 5 hits over 1 second. Reduced 3-block range with slash animations.",
+                        "Continuous spinning attack dealing 30% damage per hit, up to 8 hits over 3 seconds. 4-block range with slash animations.",
                         30, 8));
                 abilities.add(new ClassAbility("Leap", "V", "ultimate",
-                        "Charge up and leap into the air. Targeting a location within 10 blocks, crash down dealing 200% damage in an area. Slows enemies for 2s.",
+                        "Leap into the air for 3s, then launch towards your cursor (max 10 blocks). Crash down dealing 200% damage in an area. Slows enemies for 2s. No fall damage.",
                         50, 20));
+            }
+            case "berserker" -> {
+                abilities.add(new ClassAbility("RAGE System (Passive)", "", "passive",
+                        "Gain RAGE from damage (5% dealt, 10 per hit taken, 3s cooldown). At 100 RAGE, become ENRAGED: +25% speed, +30% damage, 5% lifesteal. RAGE decays while enraged.",
+                        0, 0));
+                abilities.add(new ClassAbility("Axe Throw", "Z", "active",
+                        "Throw a spinning axe that pierces enemies and returns. 60% damage per hit. 2 charges, restores 1 charge when axe returns.",
+                        15, 7));
+                abilities.add(new ClassAbility("Blood Oath", "X", "active",
+                        "Sacrifice 20% of max HP to gain 30 RAGE. Cannot use below 30% HP.",
+                        20, 5));
+                abilities.add(new ClassAbility("Frenzy", "C", "active",
+                        "Continuously send out slashes of varying angles in front of you, dealing 20% damage per hit. Base 8 slashes over 3s. Shift-cast: Consume 5 RAGE per extra slash. Gray slashes normally, orange for RAGE slashes.",
+                        3, 12));
+                abilities.add(new ClassAbility("Unbound Carnage", "V", "ultimate",
+                        "Enter enhanced ENRAGED state for 20s: +50% speed, +60% damage, 10% lifesteal, cannot die (min 1 HP). Afterwards, 10s EXHAUSTION: -20% speed, no RAGE gain.",
+                        40, 25));
             }
             case "mage" -> {
                 abilities.add(new ClassAbility("Fireball", "Z", "active",

@@ -5,6 +5,7 @@ import net.frostimpact.rpgclasses_v2.networking.packet.PacketAllocateStatPoint;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSelectClass;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncCooldowns;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMana;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncRage;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncRPGData;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncSeekerCharges;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncStats;
@@ -384,6 +385,23 @@ public class ModMessages {
                     });
                 }
         );
+        
+        registrar.playToClient(
+                PacketSyncRage.TYPE,
+                PacketSyncRage.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        if (context.player() != null) {
+                            var rpgData = context.player().getData(ModAttachments.PLAYER_RPG);
+                            rpgData.setRage(packet.rage());
+                            rpgData.setEnraged(packet.enraged());
+                            rpgData.setEnhancedEnraged(packet.enhancedEnraged());
+                            rpgData.setExhausted(packet.exhausted());
+                            rpgData.setAxeThrowCharges(packet.axeThrowCharges());
+                        }
+                    });
+                }
+        );
 
         registrar.playToServer(
                 PacketAllocateStatPoint.TYPE,
@@ -459,6 +477,12 @@ public class ModMessages {
                             
                             // Set new class
                             rpgData.setCurrentClass(classId);
+                            
+                            // Initialize Berserker-specific data
+                            if (classId.equalsIgnoreCase("berserker")) {
+                                rpgData.setAxeThrowCharges(2); // Start with 2 charges
+                                rpgData.setRage(0); // Start with 0 rage
+                            }
                             
                             // Apply new class base stats
                             for (var entry : rpgClass.getAllBaseStats().entrySet()) {
@@ -767,6 +791,10 @@ public class ModMessages {
         PacketDistributor.sendToPlayer(player, packet);
     }
     
+    public static void sendToPlayer(PacketSyncRage packet, ServerPlayer player) {
+        PacketDistributor.sendToPlayer(player, packet);
+    }
+    
     public static void sendToPlayer(PacketSyncSkillTreeData packet, ServerPlayer player) {
         PacketDistributor.sendToPlayer(player, packet);
     }
@@ -837,12 +865,17 @@ public class ModMessages {
             manaCost = 5 * seekerCharges;
         }
         
-        // Check cooldown
-        int cooldown = rpgData.getAbilityCooldown(abilityId);
-        if (cooldown > 0) {
-            player.displayClientMessage(
-                    Component.literal("§e" + abilityName + " §7is on cooldown (§c" + (cooldown / 20) + "s§7)"), true);
-            return;
+        // Special handling for Berserker Axe Throw (slot 1) - uses charge system instead of cooldown
+        boolean isBerserkerAxeThrow = currentClass.equalsIgnoreCase("berserker") && abilitySlot == 1;
+        
+        // Check cooldown (skip for Berserker Axe Throw - uses charge system)
+        if (!isBerserkerAxeThrow) {
+            int cooldown = rpgData.getAbilityCooldown(abilityId);
+            if (cooldown > 0) {
+                player.displayClientMessage(
+                        Component.literal("§e" + abilityName + " §7is on cooldown (§c" + (cooldown / 20) + "s§7)"), true);
+                return;
+            }
         }
         
         // Check mana
@@ -857,9 +890,11 @@ public class ModMessages {
         int adjustedCooldownTicks = (int) (baseCooldownTicks * (1.0 - cooldownReduction / 100.0));
         adjustedCooldownTicks = Math.max(adjustedCooldownTicks, 20); // Minimum 1 second cooldown
         
-        // Use mana and set cooldown
+        // Use mana and set cooldown (skip cooldown for Berserker Axe Throw - uses charge system)
         rpgData.useMana(manaCost);
-        rpgData.setAbilityCooldown(abilityId, adjustedCooldownTicks);
+        if (!isBerserkerAxeThrow) {
+            rpgData.setAbilityCooldown(abilityId, adjustedCooldownTicks);
+        }
         
         // Execute the ability effect
         performAbilityEffect(player, currentClass, abilitySlot, stats);
@@ -1518,6 +1553,7 @@ public class ModMessages {
                         
                         // Gain 30 RAGE
                         rpgData.addRage(30);
+                        syncRageToClient(player);
                         
                         // Blood visual effect
                         spawnBloodOathEffect(level, playerPos);
@@ -1538,6 +1574,7 @@ public class ModMessages {
                             int currentRage = rpgData.getRage();
                             extraSlashes = currentRage / 5;
                             rpgData.setRage(0); // Consume all RAGE
+                            syncRageToClient(player);
                         }
                         
                         int totalSlashes = baseSlashes + extraSlashes;
@@ -1559,6 +1596,7 @@ public class ModMessages {
                         rpgData.setEnraged(false); // Switch from normal enraged
                         rpgData.setEnhancedEnraged(true);
                         rpgData.setEnhancedEnragedEndTime(level.getGameTime() + 200); // 10 seconds
+                        syncRageToClient(player);
                         
                         // Apply enhanced buffs: +35% speed, +35% damage
                         player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 2)); // Stronger speed
@@ -6423,7 +6461,7 @@ public class ModMessages {
                 long currentTime = level.getGameTime();
                 long airTime = currentTime - leapTime;
                 
-                // After 3 seconds (60 ticks) in air, crash down to targeted location
+                // After 3 seconds (60 ticks) in air, launch towards targeted location
                 if (airTime >= 60) {
                     // Calculate target position based on current look direction (max 10 blocks)
                     Vec3 lookVec = player.getLookAngle();
@@ -6435,10 +6473,18 @@ public class ModMessages {
                             (int) targetPos.x, (int) targetPos.z);
                     targetPos = new Vec3(targetPos.x, targetGroundY, targetPos.z);
                     
-                    // Teleport player to target and crash down
-                    player.teleportTo(targetPos.x, targetPos.y + 0.5, targetPos.z);
-                    player.setDeltaMovement(0, -2.0, 0); // Fast downward crash
+                    // Calculate launch velocity towards target
+                    Vec3 currentPos = player.position();
+                    Vec3 toTarget = targetPos.subtract(currentPos).normalize();
+                    
+                    // Launch player towards target with strong velocity
+                    double launchSpeed = 2.5; // Fast horizontal launch
+                    double downwardSpeed = -1.5; // Downward component
+                    player.setDeltaMovement(toTarget.x * launchSpeed, downwardSpeed, toTarget.z * launchSpeed);
                     player.hurtMarked = true;
+                    
+                    // Mark to prevent fall damage
+                    player.getPersistentData().putBoolean("warrior_leap_no_fall_damage", true);
                     
                     // Deal 200% damage and slow for 2s at impact
                     float damage = player.getPersistentData().getFloat("warrior_leap_damage");
@@ -6446,7 +6492,7 @@ public class ModMessages {
                     applyEffectToNearbyEnemies(player, MobEffects.MOVEMENT_SLOWDOWN, 40, 1, 5.0); // 2 seconds slow
                     
                     // Landing effect with lighter red
-                    spawnLeapLandingEffect(level, targetPos);
+                    spawnLeapLandingEffect(level, player.position());
                     
                     // Clear flags
                     player.getPersistentData().remove("warrior_leaping");
@@ -6454,6 +6500,7 @@ public class ModMessages {
                     player.getPersistentData().remove("warrior_leap_damage");
                     player.getPersistentData().remove("warrior_leap_yaw");
                     player.getPersistentData().remove("warrior_leap_pitch");
+                    player.getPersistentData().remove("warrior_leap_no_fall_damage");
                     
                     // Remove slow falling
                     player.removeEffect(MobEffects.SLOW_FALLING);
@@ -6472,6 +6519,7 @@ public class ModMessages {
                     player.getPersistentData().remove("warrior_leap_damage");
                     player.getPersistentData().remove("warrior_leap_yaw");
                     player.getPersistentData().remove("warrior_leap_pitch");
+                    player.getPersistentData().remove("warrior_leap_no_fall_damage");
                     player.removeEffect(MobEffects.SLOW_FALLING);
                 }
             }
@@ -6564,12 +6612,15 @@ public class ModMessages {
         Vec3 forward = new Vec3(-Math.sin(yawRad), 0, Math.cos(yawRad));
         Vec3 right = new Vec3(Math.cos(yawRad), 0, Math.sin(yawRad));
         
+        // Rectangle starts at center (1 block in front of player) and extends forward
+        // The back edge of the rectangle is at the center position
+        
         // Draw rectangle outline
         int lengthPoints = 12;
         int widthPoints = 8;
         
         for (int i = 0; i <= lengthPoints; i++) {
-            double progress = (double) i / lengthPoints - 0.5;
+            double progress = (double) i / lengthPoints; // 0 to 1 instead of -0.5 to 0.5
             Vec3 pos1 = center.add(forward.scale(progress * length)).add(right.scale(-width / 2));
             Vec3 pos2 = center.add(forward.scale(progress * length)).add(right.scale(width / 2));
             
@@ -6581,8 +6632,8 @@ public class ModMessages {
         
         for (int i = 0; i <= widthPoints; i++) {
             double progress = (double) i / widthPoints - 0.5;
-            Vec3 pos1 = center.add(forward.scale(-length / 2)).add(right.scale(progress * width));
-            Vec3 pos2 = center.add(forward.scale(length / 2)).add(right.scale(progress * width));
+            Vec3 pos1 = center.add(right.scale(progress * width)); // Back edge at center
+            Vec3 pos2 = center.add(forward.scale(length)).add(right.scale(progress * width)); // Front edge
             
             level.sendParticles(createDustParticle(0.8f, 0.0f, 0.0f, 0.6f),
                     pos1.x, pos1.y + 0.1, pos1.z, 1, 0.02, 0.01, 0.02, 0);
@@ -6614,7 +6665,8 @@ public class ModMessages {
                 double forwardDist = toEntity.dot(forward);
                 double rightDist = toEntity.dot(right);
                 
-                if (Math.abs(forwardDist) <= length / 2 && Math.abs(rightDist) <= width / 2) {
+                // Rectangle starts at center and extends forward (0 to length)
+                if (forwardDist >= 0 && forwardDist <= length && Math.abs(rightDist) <= width / 2) {
                     living.hurt(player.damageSources().playerAttack(player), damage);
                     
                     // Knockup
@@ -6650,7 +6702,8 @@ public class ModMessages {
                 double forwardDist = toEntity.dot(forward);
                 double rightDist = toEntity.dot(right);
                 
-                if (Math.abs(forwardDist) <= length / 2 && Math.abs(rightDist) <= width / 2) {
+                // Rectangle starts at center and extends forward (0 to length)
+                if (forwardDist >= 0 && forwardDist <= length && Math.abs(rightDist) <= width / 2) {
                     UUID entityId = entity.getUUID();
                     
                     // Count BLEED
@@ -6679,9 +6732,9 @@ public class ModMessages {
         Vec3 forward = new Vec3(-Math.sin(yawRad), 0, Math.cos(yawRad));
         Vec3 right = new Vec3(Math.cos(yawRad), 0, Math.sin(yawRad));
         
-        // Fill rectangle with particles
+        // Fill rectangle with particles - starts at center and extends forward
         for (int i = 0; i < 50; i++) {
-            double forwardOffset = (RANDOM.nextDouble() - 0.5) * length;
+            double forwardOffset = RANDOM.nextDouble() * length; // 0 to length
             double rightOffset = (RANDOM.nextDouble() - 0.5) * width;
             Vec3 pos = center.add(forward.scale(forwardOffset)).add(right.scale(rightOffset));
             
@@ -6691,15 +6744,16 @@ public class ModMessages {
                     pos.x, pos.y + 0.1, pos.z, 3, 0.1, 0.3, 0.1, 0.05);
         }
         
-        // Bleed particles
+        // Bleed particles - adjust center forward by half length to match new rectangle position
+        Vec3 effectCenter = center.add(forward.scale(length / 2));
         level.sendParticles(new net.minecraft.core.particles.BlockParticleOption(
                 net.minecraft.core.particles.ParticleTypes.BLOCK,
                 net.minecraft.world.level.block.Blocks.RED_CONCRETE.defaultBlockState()),
-                center.x, center.y + 1, center.z, 40, length / 4, 0.5, width / 4, 0.2);
+                effectCenter.x, effectCenter.y + 1, effectCenter.z, 40, length / 4, 0.5, width / 4, 0.2);
         
         // Explosion
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,
-                center.x, center.y + 0.5, center.z, 5, length / 4, 0.2, width / 4, 0);
+                effectCenter.x, effectCenter.y + 0.5, effectCenter.z, 5, length / 4, 0.2, width / 4, 0);
     }
     
     /**
@@ -6798,8 +6852,25 @@ public class ModMessages {
             proj.ticksAlive++;
             
             if (!updateAxeThrowProjectile(proj)) {
-                // Projectile returned - restore charge
-                proj.owner.getData(ModAttachments.PLAYER_RPG).restoreAxeThrowCharge();
+                // Projectile returned - restore charge and apply cooldown
+                var rpgData = proj.owner.getData(ModAttachments.PLAYER_RPG);
+                rpgData.restoreAxeThrowCharge();
+                
+                // Apply cooldown when charge is restored (7 seconds base)
+                String abilityId = "berserker_ability_1";
+                int baseCooldownTicks = AbilityUtils.getAbilityCooldownTicks("berserker", 1);
+                
+                // Apply cooldown reduction stat
+                var stats = proj.owner.getData(ModAttachments.PLAYER_STATS);
+                int cooldownReduction = stats.getIntStatValue(StatType.COOLDOWN_REDUCTION);
+                int adjustedCooldownTicks = (int) (baseCooldownTicks * (1.0 - cooldownReduction / 100.0));
+                adjustedCooldownTicks = Math.max(adjustedCooldownTicks, 20); // Minimum 1 second cooldown
+                
+                rpgData.setAbilityCooldown(abilityId, adjustedCooldownTicks);
+                
+                // Sync cooldowns to client
+                sendToPlayer(new PacketSyncCooldowns(rpgData.getAllCooldowns()), proj.owner);
+                
                 iterator.remove();
             }
         }
@@ -7073,6 +7144,9 @@ public class ModMessages {
                     // Apply exhaustion debuffs
                     player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 200, 0)); // -20% speed
                     
+                    // Sync RAGE state to client
+                    syncRageToClient(player);
+                    
                     player.displayClientMessage(Component.literal("§8§lEXHAUSTED... §7Cannot generate RAGE"), true);
                 }
                 // Decay rage while enhanced enraged
@@ -7086,6 +7160,7 @@ public class ModMessages {
             if (rpgData.isExhausted()) {
                 if (currentTime >= rpgData.getExhaustedEndTime()) {
                     rpgData.setExhausted(false);
+                    syncRageToClient(player);
                     player.displayClientMessage(Component.literal("§aExhaustion ended. §6RAGE generation restored!"), true);
                 }
                 continue;
@@ -7096,6 +7171,7 @@ public class ModMessages {
                 // Decay rage every 0.5 seconds
                 if (currentTime % 10 == 0) {
                     rpgData.decayRage(PlayerRPGData.RAGE_DECAY_RATE);
+                    syncRageToClient(player);
                     
                     if (rpgData.getRage() <= 0) {
                         // Exit enraged state
@@ -7107,6 +7183,7 @@ public class ModMessages {
                 // Check if rage reached 100 - enter enraged state
                 if (rpgData.getRage() >= PlayerRPGData.MAX_RAGE) {
                     rpgData.setEnraged(true);
+                    syncRageToClient(player);
                     
                     // Apply enraged buffs: +25% speed, +30% damage
                     player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 600, 1)); // Speed II
@@ -7151,6 +7228,20 @@ public class ModMessages {
     }
     
     /**
+     * Sync Berserker RAGE data to client
+     */
+    private static void syncRageToClient(ServerPlayer player) {
+        var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+        sendToPlayer(new PacketSyncRage(
+                rpgData.getRage(),
+                rpgData.isEnraged(),
+                rpgData.isEnhancedEnraged(),
+                rpgData.isExhausted(),
+                rpgData.getAxeThrowCharges()
+        ), player);
+    }
+    
+    /**
      * Add RAGE from dealing damage (5% of damage dealt)
      */
     public static void addRageFromDamageDealt(ServerPlayer player, float damageDealt) {
@@ -7167,6 +7258,7 @@ public class ModMessages {
         int rageGain = (int) (damageDealt * RAGE_GAIN_PERCENT);
         if (rageGain > 0) {
             rpgData.addRage(rageGain);
+            syncRageToClient(player);
         }
     }
     
@@ -7188,6 +7280,7 @@ public class ModMessages {
         if (currentTime - rpgData.getLastRageFromDamageTaken() >= PlayerRPGData.RAGE_DAMAGE_TAKEN_COOLDOWN_TICKS) {
             rpgData.addRage(PlayerRPGData.RAGE_DAMAGE_TAKEN_AMOUNT);
             rpgData.setLastRageFromDamageTaken(currentTime);
+            syncRageToClient(player);
         }
     }
     
