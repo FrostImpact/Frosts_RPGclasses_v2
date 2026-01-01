@@ -267,6 +267,17 @@ public class ServerEvents {
             // Sync seeker charges for Hawkeye class
             ModMessages.sendToPlayer(new PacketSyncSeekerCharges(rpgData.getSeekerCharges()), player);
             
+            // Sync RAGE data for Berserker class
+            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("berserker")) {
+                ModMessages.sendToPlayer(new net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncRage(
+                        rpgData.getRage(),
+                        rpgData.isEnraged(),
+                        rpgData.isEnhancedEnraged(),
+                        rpgData.isExhausted(),
+                        rpgData.getAxeThrowCharges()
+                ), player);
+            }
+            
             // Initialize last level tracking
             lastPlayerLevels.put(player.getUUID(), player.experienceLevel);
             
