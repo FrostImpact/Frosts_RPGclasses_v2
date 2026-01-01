@@ -15,10 +15,10 @@ public final class AbilityUtils {
     public static String getAbilityName(String classId, int slot) {
         return switch (classId.toLowerCase()) {
             case "warrior" -> switch (slot) {
-                case 1 -> "Power Strike";
+                case 1 -> "Heavy Cleave";
                 case 2 -> "Battle Cry";
                 case 3 -> "Whirlwind";
-                case 4 -> "Berserker Rage";
+                case 4 -> "Leap";
                 default -> "Unknown";
             };
             case "mage" -> switch (slot) {
@@ -77,6 +77,13 @@ public final class AbilityUtils {
                 case 4 -> "Beast Stampede";
                 default -> "Unknown";
             };
+            case "ravager" -> switch (slot) {
+                case 1 -> "Tearing Hook";
+                case 2 -> "Razor";
+                case 3 -> "Rupture";
+                case 4 -> "Heartstopper";
+                default -> "Unknown";
+            };
             default -> "Ability " + slot;
         };
     }
@@ -89,8 +96,8 @@ public final class AbilityUtils {
             case "warrior" -> switch (slot) {
                 case 1 -> 20;
                 case 2 -> 30;
-                case 3 -> 40;
-                case 4 -> 60;
+                case 3 -> 30;
+                case 4 -> 50;
                 default -> 0;
             };
             case "mage" -> switch (slot) {
@@ -149,6 +156,13 @@ public final class AbilityUtils {
                 case 4 -> 60;  // Stampede
                 default -> 0;
             };
+            case "ravager" -> switch (slot) {
+                case 1 -> 15;  // Tearing Hook
+                case 2 -> 15;  // Razor
+                case 3 -> 30;  // Rupture
+                case 4 -> 50;  // Heartstopper
+                default -> 0;
+            };
             default -> 0;
         };
     }
@@ -159,10 +173,10 @@ public final class AbilityUtils {
     public static int getAbilityCooldownTicks(String classId, int slot) {
         return switch (classId.toLowerCase()) {
             case "warrior" -> switch (slot) {
-                case 1 -> 60;   // 3s
-                case 2 -> 300;  // 15s
-                case 3 -> 160;  // 8s
-                case 4 -> 900;  // 45s
+                case 1 -> 100;  // 5s - Heavy Cleave
+                case 2 -> 300;  // 15s - Battle Cry
+                case 3 -> 160;  // 8s - Whirlwind
+                case 4 -> 400;  // 20s - Leap
                 default -> 40;
             };
             case "mage" -> switch (slot) {
@@ -221,6 +235,13 @@ public final class AbilityUtils {
                 case 4 -> 600;  // 30s - Stampede (REDUCED from 45s)
                 default -> 40;
             };
+            case "ravager" -> switch (slot) {
+                case 1 -> 120;  // 6s - Tearing Hook
+                case 2 -> 100;  // 5s - Razor
+                case 3 -> 240;  // 12s - Rupture
+                case 4 -> 400;  // 20s - Heartstopper
+                default -> 40;
+            };
             default -> 40;
         };
     }
@@ -244,7 +265,7 @@ public final class AbilityUtils {
     public static String getClassIcon(String classId) {
         if (classId == null) return "⭐";
         return switch (classId.toLowerCase()) {
-            case "warrior" -> "⚔";
+            case "warrior", "ravager" -> "⚔";
             case "mage" -> "✨";
             case "rogue" -> "🗡";
             case "ranger" -> "🏹";
@@ -273,7 +294,7 @@ public final class AbilityUtils {
     public static int getClassColor(String classId) {
         if (classId == null) return 0xAAAAAA;
         return switch (classId.toLowerCase()) {
-            case "warrior", "berserker" -> 0xFF4444;
+            case "warrior", "berserker", "ravager" -> 0xFF4444;
             case "paladin" -> 0xFFDD44;
             case "mage", "pyromancer", "frostmage" -> 0xAA00FF;
             case "rogue", "assassin", "shadowdancer" -> 0x55FF55;

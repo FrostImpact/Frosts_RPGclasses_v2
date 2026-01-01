@@ -47,6 +47,24 @@ public class ServerEvents {
         
         // Tick timed ability effects (Rain of Arrows, Seeker projectiles)
         ModMessages.tickTimedEffects();
+        
+        // Get any server level for global updates
+        if (!event.getServer().getAllLevels().iterator().hasNext()) {
+            return;
+        }
+        net.minecraft.server.level.ServerLevel serverLevel = event.getServer().getAllLevels().iterator().next();
+        
+        // Update status effects for Ravager (BLEED, GRIEVOUS WOUNDS)
+        ModMessages.updateStatusEffects(serverLevel);
+        
+        // Update Warrior Leaps
+        ModMessages.updateWarriorLeaps(serverLevel);
+        
+        // Update Ravager Heartstoppers
+        ModMessages.updateRavagerHeartstoppers(serverLevel);
+        
+        // Update Tearing Hook pulls
+        ModMessages.updateTearingHookPulls(serverLevel);
 
         event.getServer().getPlayerList().getPlayers().forEach(player -> {
             // Tick cooldowns
