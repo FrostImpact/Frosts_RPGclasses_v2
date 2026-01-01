@@ -84,6 +84,13 @@ public final class AbilityUtils {
                 case 4 -> "Heartstopper";
                 default -> "Unknown";
             };
+            case "berserker" -> switch (slot) {
+                case 1 -> "Axe Throw";
+                case 2 -> "Blood Oath";
+                case 3 -> "Frenzy";
+                case 4 -> "Unbound Carnage";
+                default -> "Unknown";
+            };
             default -> "Ability " + slot;
         };
     }
@@ -163,6 +170,13 @@ public final class AbilityUtils {
                 case 4 -> 50;  // Heartstopper
                 default -> 0;
             };
+            case "berserker" -> switch (slot) {
+                case 1 -> 15;  // Axe Throw - 15 MP per usage
+                case 2 -> 20;  // Blood Oath - 20 MP
+                case 3 -> 3;   // Frenzy - 3 MP per slash
+                case 4 -> 40;  // Unbound Carnage - 40 MP
+                default -> 0;
+            };
             default -> 0;
         };
     }
@@ -240,6 +254,13 @@ public final class AbilityUtils {
                 case 2 -> 100;  // 5s - Razor
                 case 3 -> 240;  // 12s - Rupture
                 case 4 -> 400;  // 20s - Heartstopper
+                default -> 40;
+            };
+            case "berserker" -> switch (slot) {
+                case 1 -> 140;  // 7s - Axe Throw (per charge reset)
+                case 2 -> 100;  // 5s - Blood Oath
+                case 3 -> 240;  // 12s - Frenzy
+                case 4 -> 500;  // 25s - Unbound Carnage
                 default -> 40;
             };
             default -> 40;

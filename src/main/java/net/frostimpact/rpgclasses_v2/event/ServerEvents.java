@@ -65,6 +65,9 @@ public class ServerEvents {
         
         // Update Tearing Hook pulls
         ModMessages.updateTearingHookPulls(serverLevel);
+        
+        // Update Berserker RAGE system
+        ModMessages.updateBerserkerRage(serverLevel);
 
         event.getServer().getPlayerList().getPlayers().forEach(player -> {
             // Tick cooldowns
@@ -521,14 +524,18 @@ public class ServerEvents {
      * Handle Ravager passive - Jagged Blade
      * Applies BLEED on normal attacks
      * Converts attack speed bonuses to BLEED duration
+     * 
+     * Also handles Berserker RAGE gain and lifesteal
      */
     @SubscribeEvent
     public void onPlayerAttack(net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Post event) {
         // Check if damage source is a player
         if (event.getSource().getEntity() instanceof ServerPlayer player) {
-            // Check if player is Ravager class
             var rpgData = player.getData(ModAttachments.PLAYER_RPG);
-            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("ravager")) {
+            String currentClass = rpgData.getCurrentClass();
+            
+            // Ravager BLEED passive
+            if (currentClass != null && currentClass.equalsIgnoreCase("ravager")) {
                 // Apply BLEED to target
                 if (event.getEntity() instanceof net.minecraft.world.entity.LivingEntity target) {
                     // Calculate BLEED duration based on attack speed
@@ -544,6 +551,49 @@ public class ServerEvents {
                     
                     LOGGER.debug("Ravager {} applied BLEED for {} ticks (attack speed bonus: {})", 
                             player.getName().getString(), bleedDuration, attackSpeedBonus);
+                }
+            }
+            
+            // Berserker RAGE gain and lifesteal
+            if (currentClass != null && currentClass.equalsIgnoreCase("berserker")) {
+                float damageDealt = event.getNewDamage();
+                
+                // Add RAGE from damage dealt (5% of damage)
+                ModMessages.addRageFromDamageDealt(player, damageDealt);
+                
+                // Apply lifesteal if enraged (5% of damage)
+                ModMessages.applyBerserkerLifesteal(player, damageDealt);
+            }
+        }
+    }
+    
+    /**
+     * Handle Berserker RAGE gain from taking damage
+     * Also handles Unbound Carnage immortality
+     */
+    @SubscribeEvent
+    public void onPlayerTakeDamage(net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Pre event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+            String currentClass = rpgData.getCurrentClass();
+            
+            if (currentClass != null && currentClass.equalsIgnoreCase("berserker")) {
+                // Add RAGE from taking damage (10 per hit, 3s cooldown)
+                if (player.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                    ModMessages.addRageFromDamageTaken(player, serverLevel);
+                }
+                
+                // Handle Unbound Carnage immortality
+                if (rpgData.isEnhancedEnraged()) {
+                    // Check if damage would kill the player
+                    float incomingDamage = event.getNewDamage();
+                    if (player.getHealth() - incomingDamage <= 0) {
+                        // Set damage to bring player to 1 HP instead of killing
+                        float newDamage = player.getHealth() - 1.0f;
+                        if (newDamage < 0) newDamage = 0;
+                        event.setNewDamage(newDamage);
+                        player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6§lUNBOUND CARNAGE §cblocks lethal damage!"), true);
+                    }
                 }
             }
         }

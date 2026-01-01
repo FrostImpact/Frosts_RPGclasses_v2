@@ -903,31 +903,20 @@ public class ModMessages {
                         // Red particle spheres radiating from player
                         spawnBattleCryEffect(level, playerPos.add(0, 1, 0));
                     }
-                    case 3 -> { // Whirlwind - 30% damage per hit, max 5 hits, reduced range
+                    case 3 -> { // Whirlwind - 30% damage per hit, max 8 hits over 3 seconds
                         float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
-                        dealWhirlwindDamage(player, level, (baseDamage * 0.3f) + damageBonus * 0.3f, 3.0, 5);
-                        // Red spinning effect with continuous animation
-                        spawnWhirlwindEffect(level, playerPos.add(0, 1, 0), 3.0, player.getYRot());
+                        // Increased to 8 hits over 3 seconds for an actual whirlwind feel
+                        dealWhirlwindDamage(player, level, (baseDamage * 0.3f) + damageBonus * 0.3f, 4.0, 8);
+                        // Red spinning effect with continuous animation - 3 seconds
+                        spawnWhirlwindEffect(level, playerPos.add(0, 1, 0), 4.0, player.getYRot());
                     }
-                    case 4 -> { // Leap - charge up, leap to target location within 10 blocks, crash down
-                        // Calculate target position based on look direction (max 10 blocks away)
+                    case 4 -> { // Leap - after 3s in air, target location within 10 blocks, 200% damage, 2s slow
                         Vec3 lookVec = player.getLookAngle();
                         Vec3 horizontalLook = new Vec3(lookVec.x, 0, lookVec.z).normalize();
-                        Vec3 targetPos = playerPos.add(horizontalLook.scale(Math.min(10.0, 8.0))); // 8 blocks forward by default
                         
-                        // Store target position for landing
-                        player.getPersistentData().putDouble("warrior_leap_target_x", targetPos.x);
-                        player.getPersistentData().putDouble("warrior_leap_target_y", targetPos.y);
-                        player.getPersistentData().putDouble("warrior_leap_target_z", targetPos.z);
-                        
-                        // Calculate velocity to reach target (parabolic arc)
-                        Vec3 toTarget = targetPos.subtract(playerPos);
-                        double horizontalDist = Math.sqrt(toTarget.x * toTarget.x + toTarget.z * toTarget.z);
-                        double verticalDist = toTarget.y;
-                        
-                        // Simple arc physics - launch upward and forward
-                        double upwardVelocity = 1.0; // Fixed upward velocity
-                        double forwardVelocity = horizontalDist / 15.0; // Adjust for arc
+                        // Launch player upward for 3 second air time
+                        double upwardVelocity = 1.2; // Strong upward launch
+                        double forwardVelocity = 0.3; // Minimal forward movement initially
                         
                         Vec3 velocity = new Vec3(
                                 horizontalLook.x * forwardVelocity,
@@ -942,12 +931,21 @@ public class ModMessages {
                         player.getPersistentData().putBoolean("warrior_leaping", true);
                         player.getPersistentData().putLong("warrior_leap_time", level.getGameTime());
                         
-                        // Store damage for landing
+                        // Store damage for landing (200% of player's damage)
                         float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
                         player.getPersistentData().putFloat("warrior_leap_damage", baseDamage * 2.0f + damageBonus * 2.0f);
                         
+                        // Store look direction for targeting during air time
+                        player.getPersistentData().putFloat("warrior_leap_yaw", player.getYRot());
+                        player.getPersistentData().putFloat("warrior_leap_pitch", player.getXRot());
+                        
+                        // Apply slow falling during air time (3 seconds = 60 ticks)
+                        player.addEffect(new MobEffectInstance(MobEffects.SLOW_FALLING, 60, 0));
+                        
                         // Launch particles with lighter red
                         spawnLeapLaunchEffect(level, playerPos);
+                        
+                        player.displayClientMessage(Component.literal("§c§lLEAP! §7Target location with your view..."), true);
                     }
                 }
             }
@@ -1461,6 +1459,109 @@ public class ModMessages {
                         player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 60, 10));
                         
                         player.displayClientMessage(Component.literal("§c§lCHARGING HEARTSTOPPER..."), true);
+                    }
+                }
+            }
+            case "berserker" -> {
+                var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+                switch (slot) {
+                    case 1 -> { // Axe Throw - throwing axe that returns
+                        // Check charge cooldown (1.5s delay between uses)
+                        long currentTime = level.getGameTime();
+                        if (currentTime - rpgData.getLastAxeThrowTime() < 30) { // 1.5 seconds = 30 ticks
+                            player.displayClientMessage(Component.literal("§eAxe Throw is on delay!"), true);
+                            return;
+                        }
+                        
+                        // Check charges
+                        if (rpgData.getAxeThrowCharges() <= 0) {
+                            player.displayClientMessage(Component.literal("§cNo Axe Throw charges!"), true);
+                            return;
+                        }
+                        
+                        rpgData.useAxeThrowCharge();
+                        rpgData.setLastAxeThrowTime(currentTime);
+                        
+                        Vec3 lookVec = player.getLookAngle();
+                        Vec3 startPos = playerPos.add(0, player.getEyeHeight() - 0.5, 0); // Chest level, not eye level
+                        float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+                        float axeDamage = baseDamage * 0.6f + damageBonus * 0.6f;
+                        
+                        // Spawn axe projectile
+                        spawnAxeThrowProjectile(player, level, startPos, lookVec, axeDamage);
+                        
+                        // Orange launch effect
+                        spawnDustParticlesBurst(level, startPos, 1.0, 1.0f, 0.5f, 0.0f, 10);
+                        
+                        player.displayClientMessage(Component.literal("§6Axe Throw! §7(" + rpgData.getAxeThrowCharges() + " charges left)"), true);
+                    }
+                    case 2 -> { // Blood Oath - sacrifice HP for RAGE
+                        float maxHealth = player.getMaxHealth();
+                        float currentHealth = player.getHealth();
+                        float healthThreshold = maxHealth * 0.3f;
+                        
+                        // Check if below 30% HP
+                        if (currentHealth <= healthThreshold) {
+                            player.displayClientMessage(Component.literal("§cCannot use Blood Oath below 30% HP!"), true);
+                            return;
+                        }
+                        
+                        // Sacrifice 20% of total HP
+                        float sacrifice = maxHealth * 0.2f;
+                        player.hurt(player.damageSources().magic(), sacrifice);
+                        
+                        // Gain 30 RAGE
+                        rpgData.addRage(30);
+                        
+                        // Blood visual effect
+                        spawnBloodOathEffect(level, playerPos);
+                        
+                        player.displayClientMessage(Component.literal("§4Blood Oath! §c-" + String.format("%.0f", sacrifice) + " HP §6+30 RAGE"), true);
+                    }
+                    case 3 -> { // Frenzy - multiple slashes, consumes RAGE if shifting
+                        boolean isSneaking = player.isCrouching();
+                        float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+                        float slashDamage = baseDamage * 0.2f + damageBonus * 0.2f;
+                        
+                        // Base 8 slashes at 0 rage over 3s
+                        int baseSlashes = 8;
+                        int extraSlashes = 0;
+                        
+                        if (isSneaking) {
+                            // Consumes RAGE for extra slashes (5 RAGE per extra slash)
+                            int currentRage = rpgData.getRage();
+                            extraSlashes = currentRage / 5;
+                            rpgData.setRage(0); // Consume all RAGE
+                        }
+                        
+                        int totalSlashes = baseSlashes + extraSlashes;
+                        
+                        // Schedule slashes over 3 seconds
+                        spawnFrenzySlashes(player, level, playerPos, slashDamage, totalSlashes, isSneaking);
+                        
+                        player.displayClientMessage(Component.literal("§6FRENZY! §7(" + totalSlashes + " slashes)"), true);
+                    }
+                    case 4 -> { // Unbound Carnage - enhanced enraged state
+                        // Check if already in enhanced enraged or enraged state
+                        if (rpgData.isEnhancedEnraged()) {
+                            player.displayClientMessage(Component.literal("§cAlready in Unbound Carnage!"), true);
+                            return;
+                        }
+                        
+                        // Fill RAGE to 100 and enter enhanced enraged state
+                        rpgData.setRage(100);
+                        rpgData.setEnraged(false); // Switch from normal enraged
+                        rpgData.setEnhancedEnraged(true);
+                        rpgData.setEnhancedEnragedEndTime(level.getGameTime() + 200); // 10 seconds
+                        
+                        // Apply enhanced buffs: +35% speed, +35% damage
+                        player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 200, 2)); // Stronger speed
+                        player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 200, 2)); // Stronger damage
+                        
+                        // Visual effect
+                        spawnUnboundCarnageEffect(level, playerPos);
+                        
+                        player.displayClientMessage(Component.literal("§6§l⚡ UNBOUND CARNAGE! ⚡"), true);
                     }
                 }
             }
@@ -5633,74 +5734,48 @@ public class ModMessages {
     }
     
     /**
-     * Spawn Battle Cry effect
+     * Spawn Battle Cry effect - focused on form, not quantity
      */
     private static void spawnBattleCryEffect(ServerLevel level, Vec3 center) {
-        // Initial explosion burst
+        // Initial flash
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
-                center.x, center.y, center.z, 3, 0.1, 0.1, 0.1, 0);
+                center.x, center.y, center.z, 1, 0, 0, 0, 0);
         
-        // Multiple expanding shockwaves with animation
-        for (int wave = 0; wave < 8; wave++) {
+        // Three expanding ring waves - clean, defined shape
+        for (int wave = 0; wave < 3; wave++) {
             final int waveIndex = wave;
             level.getServer().tell(new net.minecraft.server.TickTask(
-                    level.getServer().getTickCount() + wave * 2,
+                    level.getServer().getTickCount() + wave * 4,
                     () -> {
-                        double radius = 0.5 + waveIndex * 0.4;
-                        int points = 20 + waveIndex * 4;
+                        double radius = 1.0 + waveIndex * 1.0;
+                        int points = 12; // Reduced for cleaner shape
                         for (int p = 0; p < points; p++) {
                             double angle = (double) p / points * 2 * Math.PI;
                             double x = center.x + Math.cos(angle) * radius;
                             double z = center.z + Math.sin(angle) * radius;
                             
-                            // Lighter red with gradient
-                            float brightness = 1.0f - (waveIndex * 0.08f);
-                            level.sendParticles(createDustParticle(1.0f, brightness * 0.2f, brightness * 0.2f, 1.0f),
-                                    x, center.y + RANDOM.nextDouble() * 0.8, z, 3, 0.05, 0.1, 0.05, 0.02);
+                            // Single clean particle per point
+                            level.sendParticles(createDustParticle(1.0f, 0.2f, 0.2f, 1.2f),
+                                    x, center.y + 0.1, z, 1, 0, 0, 0, 0);
                         }
                     }
             ));
         }
         
-        // Upward spiraling particles
-        for (int i = 0; i < 40; i++) {
-            final int spiralIndex = i;
-            level.getServer().tell(new net.minecraft.server.TickTask(
-                    level.getServer().getTickCount() + i / 4,
-                    () -> {
-                        double progress = (double) spiralIndex / 40;
-                        double spiralAngle = progress * 6 * Math.PI;
-                        double spiralRadius = 1.5 * (1.0 - progress);
-                        double x = center.x + Math.cos(spiralAngle) * spiralRadius;
-                        double z = center.z + Math.sin(spiralAngle) * spiralRadius;
-                        
-                        level.sendParticles(createDustParticle(1.0f, 0.3f, 0.3f, 1.2f),
-                                x, center.y + progress * 3.0, z, 2, 0.05, 0.05, 0.05, 0.01);
-                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME,
-                                x, center.y + progress * 3.0, z, 1, 0.02, 0.02, 0.02, 0.01);
-                    }
-            ));
+        // Single upward column effect
+        for (int i = 0; i < 8; i++) {
+            double y = center.y + i * 0.35;
+            level.sendParticles(createDustParticle(1.0f, 0.3f, 0.1f, 1.0f),
+                    center.x, y, center.z, 2, 0.15, 0.05, 0.15, 0.01);
         }
         
-        // Ground impact rings
-        for (int ring = 0; ring < 5; ring++) {
-            double ringRadius = 0.8 + ring * 0.4;
-            int points = 24;
-            for (int p = 0; p < points; p++) {
-                double angle = (double) p / points * 2 * Math.PI;
-                double x = center.x + Math.cos(angle) * ringRadius;
-                double z = center.z + Math.sin(angle) * ringRadius;
-                
-                level.sendParticles(createDustParticle(1.0f, 0.1f, 0.1f, 0.9f),
-                        x, center.y - 0.3, z, 2, 0.03, 0.02, 0.03, 0.01);
-                level.sendParticles(net.minecraft.core.particles.ParticleTypes.LAVA,
-                        x, center.y - 0.2, z, 1, 0.02, 0.02, 0.02, 0);
-            }
-        }
+        // Crit burst for visual impact
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                center.x, center.y + 1, center.z, 8, 0.5, 0.3, 0.5, 0.15);
     }
     
     /**
-     * Deal Whirlwind damage - 30% damage per hit, max 5 hits
+     * Deal Whirlwind damage - 30% damage per hit, over 3 seconds
      */
     private static void dealWhirlwindDamage(ServerPlayer player, ServerLevel level, float damagePerHit, double range, int maxHits) {
         AABB searchBox = player.getBoundingBox().inflate(range);
@@ -5709,12 +5784,13 @@ public class ModMessages {
         
         Map<UUID, Integer> hitCounts = new HashMap<>();
         
-        // Schedule hits over time (5 hits over 1 second)
+        // Schedule hits over 3 seconds (60 ticks)
+        int ticksPerHit = 60 / maxHits;
         for (int hit = 0; hit < maxHits; hit++) {
             final int hitIndex = hit;
             // Schedule each hit with a delay
             level.getServer().tell(new net.minecraft.server.TickTask(
-                    level.getServer().getTickCount() + hit * 4, // 4 ticks = 0.2s between hits
+                    level.getServer().getTickCount() + hit * ticksPerHit,
                     () -> {
                         for (Entity entity : entities) {
                             if (entity instanceof LivingEntity living && living.isAlive()) {
@@ -5735,11 +5811,11 @@ public class ModMessages {
     }
     
     /**
-     * Spawn Whirlwind effect
+     * Spawn Whirlwind effect - lasts 3 seconds like an actual whirlwind
      */
     private static void spawnWhirlwindEffect(ServerLevel level, Vec3 center, double radius, float yaw) {
-        // Continuous spinning animation over 1 second (20 ticks = 5 hits * 4 ticks each)
-        int totalTicks = 20;
+        // Continuous spinning animation over 3 seconds (60 ticks)
+        int totalTicks = 60;
         double yawRad = Math.toRadians(yaw);
         
         for (int tick = 0; tick < totalTicks; tick++) {
@@ -5748,13 +5824,13 @@ public class ModMessages {
                     level.getServer().getTickCount() + tick,
                     () -> {
                         double spinProgress = (double) tickIndex / totalTicks;
-                        double spinAngle = spinProgress * 4 * Math.PI; // 2 full rotations
+                        double spinAngle = spinProgress * 12 * Math.PI; // 6 full rotations over 3 seconds
                         
                         // Spawn slash arcs at different angles during spin
                         for (int slash = 0; slash < 2; slash++) {
                             double slashAngle = spinAngle + slash * Math.PI;
-                            int arcParticles = 12;
-                            double arcDegrees = 80;
+                            int arcParticles = 8; // Reduced for cleaner visuals
+                            double arcDegrees = 90;
                             double halfArc = Math.toRadians(arcDegrees / 2.0);
                             
                             for (int i = 0; i < arcParticles; i++) {
@@ -5771,23 +5847,23 @@ public class ModMessages {
                             }
                         }
                         
-                        // Add spinning ring effect
-                        int ringPoints = 16;
-                        for (int p = 0; p < ringPoints; p++) {
-                            double angle = (double) p / ringPoints * 2 * Math.PI + spinAngle;
-                            double x = center.x + Math.cos(angle) * radius * 0.8;
-                            double z = center.z + Math.sin(angle) * radius * 0.8;
-                            
-                            level.sendParticles(createDustParticle(1.0f, 0.15f, 0.15f, 0.8f),
-                                    x, center.y, z, 1, 0.03, 0.03, 0.03, 0.01);
-                            level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
-                                    x, center.y, z, 1, 0.05, 0.05, 0.05, 0.01);
+                        // Add spinning ring effect - more spread out
+                        if (tickIndex % 2 == 0) {
+                            int ringPoints = 12;
+                            for (int p = 0; p < ringPoints; p++) {
+                                double angle = (double) p / ringPoints * 2 * Math.PI + spinAngle;
+                                double x = center.x + Math.cos(angle) * radius * 0.9;
+                                double z = center.z + Math.sin(angle) * radius * 0.9;
+                                
+                                level.sendParticles(createDustParticle(1.0f, 0.15f, 0.15f, 0.8f),
+                                        x, center.y, z, 1, 0.03, 0.03, 0.03, 0.01);
+                            }
                         }
                         
-                        // Add SWEEP_ATTACK particles for slash effect
-                        if (tickIndex % 4 == 0) { // Every hit
+                        // Add SWEEP_ATTACK particles for slash effect - every ~8 ticks
+                        if (tickIndex % 8 == 0) {
                             level.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
-                                    center.x, center.y, center.z, 3, 0.5, 0.3, 0.5, 0);
+                                    center.x, center.y, center.z, 2, 0.5, 0.3, 0.5, 0);
                         }
                     }
             ));
@@ -5995,7 +6071,7 @@ public class ModMessages {
     }
     
     /**
-     * Apply Razor damage with GRIEVOUS WOUNDS in arc
+     * Apply Razor damage with GRIEVOUS WOUNDS in 180 degree arc
      */
     private static void applyRazorDamageInArc(ServerPlayer player, ServerLevel level, float damage, double range, float yaw) {
         AABB searchBox = player.getBoundingBox().inflate(range);
@@ -6003,7 +6079,7 @@ public class ModMessages {
                 e -> e instanceof LivingEntity && e != player);
         
         double yawRad = Math.toRadians(yaw);
-        double arcDegrees = 110; // Wide arc in front
+        double arcDegrees = 180; // 180 degree arc as specified
         double halfArc = Math.toRadians(arcDegrees / 2.0);
         
         for (Entity entity : entities) {
@@ -6029,11 +6105,11 @@ public class ModMessages {
     }
     
     /**
-     * Spawn Razor effect - arc attack with animated blades
+     * Spawn Razor effect - 180 degree arc attack with animated blades
      */
     private static void spawnRazorEffect(ServerLevel level, Vec3 center, double radius, float yaw) {
         double yawRad = Math.toRadians(yaw);
-        double arcDegrees = 110;
+        double arcDegrees = 180; // 180 degree arc
         double halfArc = Math.toRadians(arcDegrees / 2.0);
         
         // Animated blade slashes over time
@@ -6192,30 +6268,55 @@ public class ModMessages {
             return false;
         }
         
-        // Spawn blade trail particles (visual blade shape in flight)
+        // Spawn sword-shaped trail particles (actual sword visual in flight)
         if (proj.ticksAlive % 2 == 0) {
-            // Draw a mini blade shape
-            for (int i = 0; i < 3; i++) {
-                double offsetY = i * 0.1;
-                proj.level.sendParticles(createDustParticle(0.7f, 0.0f, 0.0f, 0.9f),
-                        proj.position.x, proj.position.y - offsetY, proj.position.z, 
-                        1, 0.02, 0.02, 0.02, 0);
+            // Draw a larger sword blade shape with handle
+            // Blade - vertical line of particles
+            for (int i = 0; i < 6; i++) {
+                double offsetY = i * 0.15 - 0.3;
+                float size = (i < 5) ? 0.8f : 0.5f; // Tip is smaller
+                proj.level.sendParticles(createDustParticle(0.8f, 0.1f, 0.1f, size),
+                        proj.position.x, proj.position.y + offsetY, proj.position.z, 
+                        1, 0.03, 0.02, 0.03, 0);
             }
-            // Metal edge
+            // Handle/hilt
+            proj.level.sendParticles(createDustParticle(0.4f, 0.3f, 0.2f, 0.6f),
+                    proj.position.x, proj.position.y - 0.45, proj.position.z, 
+                    2, 0.05, 0.02, 0.05, 0);
+            // Cross guard
+            proj.level.sendParticles(createDustParticle(0.5f, 0.4f, 0.2f, 0.5f),
+                    proj.position.x + 0.1, proj.position.y - 0.35, proj.position.z, 
+                    1, 0.01, 0.01, 0.01, 0);
+            proj.level.sendParticles(createDustParticle(0.5f, 0.4f, 0.2f, 0.5f),
+                    proj.position.x - 0.1, proj.position.y - 0.35, proj.position.z, 
+                    1, 0.01, 0.01, 0.01, 0);
+            // Metal blade edge particles - larger
             proj.level.sendParticles(new net.minecraft.core.particles.BlockParticleOption(
                     net.minecraft.core.particles.ParticleTypes.BLOCK,
                     net.minecraft.world.level.block.Blocks.IRON_BLOCK.defaultBlockState()),
-                    proj.position.x, proj.position.y, proj.position.z, 1, 0.05, 0.05, 0.05, 0);
+                    proj.position.x, proj.position.y + 0.2, proj.position.z, 3, 0.1, 0.2, 0.1, 0.02);
+            // Blood trail behind sword
+            proj.level.sendParticles(createDustParticle(0.6f, 0.0f, 0.0f, 0.7f),
+                    proj.position.x - proj.direction.x * 0.5, proj.position.y, proj.position.z - proj.direction.z * 0.5, 
+                    3, 0.1, 0.1, 0.1, 0.02);
         }
+        
+        // Rotating spin effect every tick
+        double spinAngle = (proj.ticksAlive * 0.5) % (2 * Math.PI);
+        double spinRadius = 0.3;
+        double spinX = proj.position.x + Math.cos(spinAngle) * spinRadius;
+        double spinZ = proj.position.z + Math.sin(spinAngle) * spinRadius;
+        proj.level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                spinX, proj.position.y, spinZ, 1, 0.02, 0.02, 0.02, 0);
         
         return true;
     }
     
     /**
-     * Spawn Rupture explosion
+     * Spawn Rupture explosion - bigger effects
      */
     private static void spawnRuptureExplosion(ServerLevel level, Vec3 center, ServerPlayer owner, float damage) {
-        double radius = 3.0;
+        double radius = 4.0; // Increased radius
         
         // Deal damage in small AOE
         AABB searchBox = new AABB(
@@ -6241,17 +6342,37 @@ public class ModMessages {
             }
         }
         
-        // Explosion visual
-        level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,
+        // Bigger explosion visual with multiple explosions
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,
                 center.x, center.y, center.z, 1, 0, 0, 0, 0);
         
-        level.sendParticles(createDustParticle(0.7f, 0.0f, 0.0f, 1.5f),
-                center.x, center.y, center.z, 40, 0.8, 0.8, 0.8, 0.2);
+        // Multiple smaller explosions around
+        for (int i = 0; i < 4; i++) {
+            double offsetX = (RANDOM.nextDouble() - 0.5) * 2;
+            double offsetZ = (RANDOM.nextDouble() - 0.5) * 2;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,
+                    center.x + offsetX, center.y, center.z + offsetZ, 1, 0, 0, 0, 0);
+        }
         
+        // Large blood burst
+        level.sendParticles(createDustParticle(0.8f, 0.0f, 0.0f, 1.8f),
+                center.x, center.y, center.z, 60, 1.2, 1.0, 1.2, 0.25);
+        
+        // Blood concrete particles
         level.sendParticles(new net.minecraft.core.particles.BlockParticleOption(
                 net.minecraft.core.particles.ParticleTypes.BLOCK,
                 net.minecraft.world.level.block.Blocks.RED_CONCRETE.defaultBlockState()),
-                center.x, center.y, center.z, 30, 0.6, 0.6, 0.6, 0.15);
+                center.x, center.y, center.z, 50, 1.0, 0.8, 1.0, 0.2);
+        
+        // Iron/metal shrapnel from sword
+        level.sendParticles(new net.minecraft.core.particles.BlockParticleOption(
+                net.minecraft.core.particles.ParticleTypes.BLOCK,
+                net.minecraft.world.level.block.Blocks.IRON_BLOCK.defaultBlockState()),
+                center.x, center.y, center.z, 20, 0.8, 0.6, 0.8, 0.15);
+        
+        // Crit particles
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                center.x, center.y + 0.5, center.z, 25, 1.0, 0.5, 1.0, 0.3);
     }
     
     /**
@@ -6287,28 +6408,65 @@ public class ModMessages {
     }
     
     /**
-     * Update Leap landing detection
+     * Update Leap landing detection - 3s air time, then crash down at targeted location
      */
     public static void updateWarriorLeaps(ServerLevel level) {
         for (ServerPlayer player : level.players()) {
             if (player.getPersistentData().getBoolean("warrior_leaping")) {
-                if (player.onGround()) {
-                    // Landed! Deal 200% damage and slow for 2s
-                    float damage = player.getPersistentData().getFloat("warrior_leap_damage");
+                long leapTime = player.getPersistentData().getLong("warrior_leap_time");
+                long currentTime = level.getGameTime();
+                long airTime = currentTime - leapTime;
+                
+                // After 3 seconds (60 ticks) in air, crash down to targeted location
+                if (airTime >= 60) {
+                    // Calculate target position based on current look direction (max 10 blocks)
+                    Vec3 lookVec = player.getLookAngle();
+                    Vec3 horizontalLook = new Vec3(lookVec.x, 0, lookVec.z).normalize();
+                    Vec3 targetPos = player.position().add(horizontalLook.scale(10.0));
                     
+                    // Find ground level at target position
+                    int targetGroundY = level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.WORLD_SURFACE, 
+                            (int) targetPos.x, (int) targetPos.z);
+                    targetPos = new Vec3(targetPos.x, targetGroundY, targetPos.z);
+                    
+                    // Teleport player to target and crash down
+                    player.teleportTo(targetPos.x, targetPos.y + 0.5, targetPos.z);
+                    player.setDeltaMovement(0, -2.0, 0); // Fast downward crash
+                    player.hurtMarked = true;
+                    
+                    // Deal 200% damage and slow for 2s at impact
+                    float damage = player.getPersistentData().getFloat("warrior_leap_damage");
                     dealDamageToNearbyEnemies(player, damage, 5.0);
-                    applyEffectToNearbyEnemies(player, MobEffects.MOVEMENT_SLOWDOWN, 40, 2, 5.0); // 2 seconds, level 2
+                    applyEffectToNearbyEnemies(player, MobEffects.MOVEMENT_SLOWDOWN, 40, 1, 5.0); // 2 seconds slow
                     
                     // Landing effect with lighter red
+                    spawnLeapLandingEffect(level, targetPos);
+                    
+                    // Clear flags
+                    player.getPersistentData().remove("warrior_leaping");
+                    player.getPersistentData().remove("warrior_leap_time");
+                    player.getPersistentData().remove("warrior_leap_damage");
+                    player.getPersistentData().remove("warrior_leap_yaw");
+                    player.getPersistentData().remove("warrior_leap_pitch");
+                    
+                    // Remove slow falling
+                    player.removeEffect(MobEffects.SLOW_FALLING);
+                    
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§c§l💥 CRASH DOWN!"), true);
+                } else if (player.onGround() && airTime > 10) {
+                    // If player lands early (after at least 0.5s), still do crash effect
+                    float damage = player.getPersistentData().getFloat("warrior_leap_damage");
+                    dealDamageToNearbyEnemies(player, damage, 5.0);
+                    applyEffectToNearbyEnemies(player, MobEffects.MOVEMENT_SLOWDOWN, 40, 1, 5.0);
                     spawnLeapLandingEffect(level, player.position());
                     
                     // Clear flags
                     player.getPersistentData().remove("warrior_leaping");
                     player.getPersistentData().remove("warrior_leap_time");
                     player.getPersistentData().remove("warrior_leap_damage");
-                    player.getPersistentData().remove("warrior_leap_target_x");
-                    player.getPersistentData().remove("warrior_leap_target_y");
-                    player.getPersistentData().remove("warrior_leap_target_z");
+                    player.getPersistentData().remove("warrior_leap_yaw");
+                    player.getPersistentData().remove("warrior_leap_pitch");
+                    player.removeEffect(MobEffects.SLOW_FALLING);
                 }
             }
         }
@@ -6353,28 +6511,31 @@ public class ModMessages {
                 long currentTime = level.getGameTime();
                 long elapsed = currentTime - startTime;
                 
-                // Use CURRENT player position (not cast position) to account for momentum
+                // Use CURRENT player position plus 1 block in front
                 Vec3 currentPos = player.position();
                 float currentYaw = player.getYRot();
+                double yawRad = Math.toRadians(currentYaw);
+                Vec3 forward = new Vec3(-Math.sin(yawRad), 0, Math.cos(yawRad));
+                Vec3 aoeCenterPos = currentPos.add(forward.scale(1.0)); // 1 block in front
                 
-                // Show red rectangle AOE indicator at current position
+                // Show red rectangle AOE indicator at position 1 block in front
                 if (elapsed % 10 == 0) {
-                    spawnHeartstopperAOEIndicator(level, currentPos, currentYaw);
+                    spawnHeartstopperAOEIndicator(level, aoeCenterPos, currentYaw);
                 }
                 
                 // After 3 seconds (60 ticks), execute
                 if (elapsed >= 60) {
                     float damage = player.getPersistentData().getFloat("ravager_heartstopper_damage");
                     
-                    // Deal damage in rectangular AOE at CURRENT position
-                    dealHeartstopperDamage(player, level, currentPos, currentYaw, damage);
+                    // Deal damage in rectangular AOE 1 block in front of player
+                    dealHeartstopperDamage(player, level, aoeCenterPos, currentYaw, damage);
                     
                     // Heal for BLEED and GRIEVOUS WOUNDS stacks
-                    float healing = calculateHeartstopperHealing(level, currentPos, currentYaw);
+                    float healing = calculateHeartstopperHealing(level, aoeCenterPos, currentYaw);
                     player.heal(healing);
                     
-                    // Final slam effect at current position
-                    spawnHeartstopperSlamEffect(level, currentPos, currentYaw);
+                    // Final slam effect 1 block in front
+                    spawnHeartstopperSlamEffect(level, aoeCenterPos, currentYaw);
                     
                     // Clear flags
                     player.getPersistentData().remove("ravager_heartstopper_charging");
@@ -6574,5 +6735,488 @@ public class ModMessages {
                 iterator.remove();
             }
         }
+    }
+    
+    // ===== BERSERKER ABILITY HELPER METHODS AND DATA STRUCTURES =====
+    
+    /**
+     * Axe Throw projectile data
+     */
+    public static class AxeThrowProjectile {
+        public final ServerPlayer owner;
+        public final ServerLevel level;
+        public Vec3 position;
+        public Vec3 direction;
+        public final float damage;
+        public int ticksAlive;
+        public final int maxOutTicks; // Max ticks before returning
+        public final float speed;
+        public boolean returning;
+        public final List<UUID> hitEntitiesOutbound;
+        public final List<UUID> hitEntitiesReturn;
+        public final Vec3 startPos;
+        
+        public AxeThrowProjectile(ServerPlayer owner, ServerLevel level, Vec3 startPos, Vec3 direction, float damage) {
+            this.owner = owner;
+            this.level = level;
+            this.position = startPos;
+            this.direction = direction.normalize();
+            this.damage = damage;
+            this.ticksAlive = 0;
+            this.maxOutTicks = 40; // 2 seconds out before returning
+            this.speed = 0.7f;
+            this.returning = false;
+            this.hitEntitiesOutbound = new ArrayList<>();
+            this.hitEntitiesReturn = new ArrayList<>();
+            this.startPos = startPos;
+        }
+    }
+    
+    private static final List<AxeThrowProjectile> activeAxeProjectiles = new ArrayList<>();
+    
+    /**
+     * Spawn Axe Throw projectile
+     */
+    private static void spawnAxeThrowProjectile(ServerPlayer player, ServerLevel level, Vec3 startPos, Vec3 direction, float damage) {
+        AxeThrowProjectile projectile = new AxeThrowProjectile(player, level, startPos, direction, damage);
+        activeAxeProjectiles.add(projectile);
+    }
+    
+    /**
+     * Update all Axe Throw projectiles
+     */
+    public static void updateAxeThrowProjectiles() {
+        Iterator<AxeThrowProjectile> iterator = activeAxeProjectiles.iterator();
+        while (iterator.hasNext()) {
+            AxeThrowProjectile proj = iterator.next();
+            proj.ticksAlive++;
+            
+            if (!updateAxeThrowProjectile(proj)) {
+                // Projectile returned - restore charge
+                proj.owner.getData(ModAttachments.PLAYER_RPG).restoreAxeThrowCharge();
+                iterator.remove();
+            }
+        }
+    }
+    
+    /**
+     * Update single Axe Throw projectile
+     */
+    private static boolean updateAxeThrowProjectile(AxeThrowProjectile proj) {
+        if (!proj.owner.isAlive()) {
+            return false;
+        }
+        
+        // Calculate current target position (player's chest)
+        Vec3 playerChest = proj.owner.position().add(0, proj.owner.getEyeHeight() - 0.5, 0);
+        
+        if (!proj.returning) {
+            // Move outward
+            proj.position = proj.position.add(proj.direction.scale(proj.speed));
+            
+            // Check for block collision
+            var blockHit = proj.level.clip(new net.minecraft.world.level.ClipContext(
+                    proj.position.subtract(proj.direction.scale(0.3)),
+                    proj.position,
+                    net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                    net.minecraft.world.level.ClipContext.Fluid.NONE,
+                    proj.owner));
+            
+            if (blockHit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+                proj.returning = true;
+            }
+            
+            // Check if max distance reached
+            if (proj.ticksAlive >= proj.maxOutTicks) {
+                proj.returning = true;
+            }
+        } else {
+            // Return to player
+            Vec3 toPlayer = playerChest.subtract(proj.position).normalize();
+            proj.position = proj.position.add(toPlayer.scale(proj.speed * 1.2)); // Slightly faster return
+            
+            // Check if returned to player
+            if (proj.position.distanceTo(playerChest) < 1.5) {
+                return false; // Remove projectile
+            }
+        }
+        
+        // Check for entity collision (pierce through)
+        AABB hitbox = new AABB(
+                proj.position.x - 0.8, proj.position.y - 0.8, proj.position.z - 0.8,
+                proj.position.x + 0.8, proj.position.y + 0.8, proj.position.z + 0.8);
+        
+        List<Entity> entities = proj.level.getEntities(proj.owner, hitbox,
+                e -> e instanceof LivingEntity && e != proj.owner);
+        
+        List<UUID> hitList = proj.returning ? proj.hitEntitiesReturn : proj.hitEntitiesOutbound;
+        
+        for (Entity entity : entities) {
+            if (entity instanceof LivingEntity living && !hitList.contains(entity.getUUID())) {
+                living.hurt(proj.owner.damageSources().playerAttack(proj.owner), proj.damage);
+                hitList.add(entity.getUUID());
+                
+                // Impact particles - orange
+                proj.level.sendParticles(createDustParticle(1.0f, 0.5f, 0.0f, 1.0f),
+                        entity.getX(), entity.getY() + entity.getBbHeight() * 0.5, entity.getZ(),
+                        10, 0.3, 0.3, 0.3, 0.1);
+                proj.level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                        entity.getX(), entity.getY() + entity.getBbHeight() * 0.5, entity.getZ(),
+                        5, 0.2, 0.2, 0.2, 0.1);
+            }
+        }
+        
+        // Spawn visual effect - spinning axe particles and line to player
+        if (proj.ticksAlive % 2 == 0) {
+            // Spinning axe effect
+            int spinParticles = 8;
+            double spinAngle = (proj.ticksAlive * 0.5) % (2 * Math.PI);
+            for (int i = 0; i < spinParticles; i++) {
+                double angle = spinAngle + (i / (double) spinParticles) * 2 * Math.PI;
+                double radius = 0.4;
+                double x = proj.position.x + Math.cos(angle) * radius;
+                double z = proj.position.z + Math.sin(angle) * radius;
+                
+                proj.level.sendParticles(createDustParticle(1.0f, 0.5f, 0.0f, 0.8f),
+                        x, proj.position.y, z, 1, 0.02, 0.02, 0.02, 0);
+            }
+            
+            // Draw particle line to player's chest
+            Vec3 lineDir = playerChest.subtract(proj.position);
+            double lineDist = lineDir.length();
+            lineDir = lineDir.normalize();
+            int linePoints = (int) (lineDist * 2);
+            for (int i = 0; i < linePoints; i += 2) {
+                double progress = (double) i / linePoints;
+                Vec3 linePos = proj.position.add(lineDir.scale(progress * lineDist));
+                proj.level.sendParticles(createDustParticle(1.0f, 0.6f, 0.2f, 0.4f),
+                        linePos.x, linePos.y, linePos.z, 1, 0.02, 0.02, 0.02, 0);
+            }
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Spawn Blood Oath effect
+     */
+    private static void spawnBloodOathEffect(ServerLevel level, Vec3 center) {
+        // Blood particles burst from player
+        level.sendParticles(new net.minecraft.core.particles.BlockParticleOption(
+                net.minecraft.core.particles.ParticleTypes.BLOCK,
+                net.minecraft.world.level.block.Blocks.RED_CONCRETE.defaultBlockState()),
+                center.x, center.y + 1, center.z, 40, 0.5, 0.5, 0.5, 0.2);
+        
+        // Dark red aura
+        for (int ring = 0; ring < 3; ring++) {
+            double radius = 0.8 + ring * 0.3;
+            int points = 16;
+            for (int p = 0; p < points; p++) {
+                double angle = (double) p / points * 2 * Math.PI;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                
+                level.sendParticles(createDustParticle(0.6f, 0.0f, 0.0f, 1.0f),
+                        x, center.y + 0.5 + ring * 0.3, z, 2, 0.05, 0.1, 0.05, 0.02);
+            }
+        }
+        
+        // Upward spiral effect
+        for (int i = 0; i < 20; i++) {
+            double progress = i / 20.0;
+            double spiralAngle = progress * 4 * Math.PI;
+            double spiralRadius = 0.5 * (1.0 - progress);
+            double x = center.x + Math.cos(spiralAngle) * spiralRadius;
+            double z = center.z + Math.sin(spiralAngle) * spiralRadius;
+            
+            level.sendParticles(createDustParticle(1.0f, 0.3f, 0.0f, 0.8f),
+                    x, center.y + progress * 2.5, z, 2, 0.03, 0.03, 0.03, 0.01);
+        }
+    }
+    
+    /**
+     * Spawn Frenzy slashes
+     */
+    private static void spawnFrenzySlashes(ServerPlayer player, ServerLevel level, Vec3 center, float damage, int totalSlashes, boolean rageSlashes) {
+        int durationTicks = 60; // 3 seconds
+        int ticksPerSlash = durationTicks / totalSlashes;
+        
+        for (int slash = 0; slash < totalSlashes; slash++) {
+            final int slashIndex = slash;
+            level.getServer().tell(new net.minecraft.server.TickTask(
+                    level.getServer().getTickCount() + slash * ticksPerSlash,
+                    () -> {
+                        if (!player.isAlive()) return;
+                        
+                        // Calculate random slash angle
+                        float baseYaw = player.getYRot();
+                        float randomAngle = (RANDOM.nextFloat() - 0.5f) * 120; // -60 to +60 degrees
+                        float slashYaw = baseYaw + randomAngle;
+                        
+                        // Deal damage in small arc
+                        dealDamageInArc(player, damage, 3.0, 60.0);
+                        
+                        // Spawn slash visual
+                        spawnFrenzySlashEffect(level, player.position().add(0, 1, 0), slashYaw, rageSlashes && slashIndex >= 8);
+                    }
+            ));
+        }
+    }
+    
+    /**
+     * Spawn single Frenzy slash effect
+     */
+    private static void spawnFrenzySlashEffect(ServerLevel level, Vec3 center, float yaw, boolean isRageSlash) {
+        double yawRad = Math.toRadians(yaw);
+        double arcDegrees = 60;
+        double halfArc = Math.toRadians(arcDegrees / 2.0);
+        double radius = 3.0;
+        
+        int arcParticles = 15;
+        for (int i = 0; i < arcParticles; i++) {
+            double angle = -halfArc + (i / (double) arcParticles) * (2 * halfArc);
+            double finalAngle = yawRad + angle + Math.PI / 2;
+            double dist = radius * (0.7 + RANDOM.nextDouble() * 0.3);
+            double x = center.x + Math.cos(finalAngle) * dist;
+            double z = center.z + Math.sin(finalAngle) * dist;
+            double y = center.y + (RANDOM.nextDouble() - 0.5) * 0.8;
+            
+            // Gray for normal, orange for RAGE slashes
+            if (isRageSlash) {
+                level.sendParticles(createDustParticle(1.0f, 0.5f, 0.0f, 0.9f),
+                        x, y, z, 2, 0.08, 0.08, 0.08, 0.02);
+            } else {
+                level.sendParticles(createDustParticle(0.5f, 0.5f, 0.5f, 0.9f),
+                        x, y, z, 2, 0.08, 0.08, 0.08, 0.02);
+            }
+        }
+        
+        // Sweep attack particle
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
+                center.x, center.y, center.z, 1, 0.3, 0.2, 0.3, 0);
+    }
+    
+    /**
+     * Spawn Unbound Carnage effect
+     */
+    private static void spawnUnboundCarnageEffect(ServerLevel level, Vec3 center) {
+        // Massive explosion of orange particles
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,
+                center.x, center.y + 1, center.z, 1, 0, 0, 0, 0);
+        
+        // Multiple expanding rings of orange
+        for (int wave = 0; wave < 5; wave++) {
+            final int waveIndex = wave;
+            level.getServer().tell(new net.minecraft.server.TickTask(
+                    level.getServer().getTickCount() + wave * 3,
+                    () -> {
+                        double radius = 1.0 + waveIndex * 0.8;
+                        int points = 24;
+                        for (int p = 0; p < points; p++) {
+                            double angle = (double) p / points * 2 * Math.PI;
+                            double x = center.x + Math.cos(angle) * radius;
+                            double z = center.z + Math.sin(angle) * radius;
+                            
+                            level.sendParticles(createDustParticle(1.0f, 0.5f, 0.0f, 1.2f),
+                                    x, center.y + 0.5, z, 3, 0.05, 0.1, 0.05, 0.02);
+                        }
+                    }
+            ));
+        }
+        
+        // Upward flame burst
+        for (int i = 0; i < 30; i++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double dist = RANDOM.nextDouble() * 1.5;
+            double x = center.x + Math.cos(angle) * dist;
+            double z = center.z + Math.sin(angle) * dist;
+            
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLAME,
+                    x, center.y + 0.5, z, 1, 0.1, 0.5, 0.1, 0.1);
+        }
+        
+        // Orange dust burst
+        spawnDustParticlesBurst(level, center.add(0, 1, 0), 3.0, 1.0f, 0.5f, 0.0f, 50);
+        
+        // Crit particles
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                center.x, center.y + 1, center.z, 30, 1.0, 0.5, 1.0, 0.3);
+    }
+    
+    /**
+     * Update Berserker RAGE system (called every tick)
+     */
+    public static void updateBerserkerRage(ServerLevel level) {
+        for (ServerPlayer player : level.players()) {
+            var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+            if (rpgData.getCurrentClass() == null || !rpgData.getCurrentClass().equalsIgnoreCase("berserker")) {
+                continue;
+            }
+            
+            long currentTime = level.getGameTime();
+            
+            // Handle enhanced enraged state (Unbound Carnage)
+            if (rpgData.isEnhancedEnraged()) {
+                if (currentTime >= rpgData.getEnhancedEnragedEndTime()) {
+                    // End enhanced enraged, start exhaustion
+                    rpgData.setEnhancedEnraged(false);
+                    rpgData.setRage(0);
+                    rpgData.setExhausted(true);
+                    rpgData.setExhaustedEndTime(currentTime + 200); // 10 seconds exhaustion
+                    
+                    // Apply exhaustion debuffs
+                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 200, 0)); // -20% speed
+                    
+                    player.displayClientMessage(Component.literal("§8§lEXHAUSTED... §7Cannot generate RAGE"), true);
+                }
+                // Decay rage while enhanced enraged
+                if (currentTime % 10 == 0) { // Every 0.5 seconds
+                    rpgData.decayRage(5);
+                }
+                continue;
+            }
+            
+            // Handle exhaustion
+            if (rpgData.isExhausted()) {
+                if (currentTime >= rpgData.getExhaustedEndTime()) {
+                    rpgData.setExhausted(false);
+                    player.displayClientMessage(Component.literal("§aExhaustion ended. §6RAGE generation restored!"), true);
+                }
+                continue;
+            }
+            
+            // Handle normal enraged state
+            if (rpgData.isEnraged()) {
+                // Decay rage every 0.5 seconds
+                if (currentTime % 10 == 0) {
+                    rpgData.decayRage(PlayerRPGData.RAGE_DECAY_RATE);
+                    
+                    if (rpgData.getRage() <= 0) {
+                        // Exit enraged state
+                        rpgData.setEnraged(false);
+                        player.displayClientMessage(Component.literal("§7Enraged state ended."), true);
+                    }
+                }
+            } else {
+                // Check if rage reached 100 - enter enraged state
+                if (rpgData.getRage() >= PlayerRPGData.MAX_RAGE) {
+                    rpgData.setEnraged(true);
+                    
+                    // Apply enraged buffs: +25% speed, +30% damage
+                    player.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 600, 1)); // Speed II
+                    player.addEffect(new MobEffectInstance(MobEffects.DAMAGE_BOOST, 600, 1)); // Strength II
+                    
+                    // Visual effect
+                    spawnEnragedActivationEffect(level, player.position());
+                    
+                    player.displayClientMessage(Component.literal("§c§l💢 ENRAGED! §6+25% Speed, +30% Damage, 5% Lifesteal"), true);
+                }
+            }
+        }
+        
+        // Update axe throw projectiles
+        updateAxeThrowProjectiles();
+    }
+    
+    /**
+     * Spawn enraged activation effect
+     */
+    private static void spawnEnragedActivationEffect(ServerLevel level, Vec3 center) {
+        // Orange burst
+        spawnDustParticlesBurst(level, center.add(0, 1, 0), 2.5, 1.0f, 0.5f, 0.0f, 30);
+        
+        // Expanding rings
+        for (int ring = 0; ring < 3; ring++) {
+            double radius = 1.0 + ring * 0.5;
+            int points = 16;
+            for (int p = 0; p < points; p++) {
+                double angle = (double) p / points * 2 * Math.PI;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                
+                level.sendParticles(createDustParticle(1.0f, 0.4f, 0.0f, 1.0f),
+                        x, center.y + 0.5, z, 3, 0.05, 0.1, 0.05, 0.02);
+            }
+        }
+        
+        // Crit particles
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                center.x, center.y + 1, center.z, 20, 0.5, 0.3, 0.5, 0.2);
+    }
+    
+    /**
+     * Add RAGE from dealing damage (5% of damage dealt)
+     */
+    public static void addRageFromDamageDealt(ServerPlayer player, float damageDealt) {
+        var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+        if (rpgData.getCurrentClass() == null || !rpgData.getCurrentClass().equalsIgnoreCase("berserker")) {
+            return;
+        }
+        
+        // Don't gain RAGE while enraged or enhanced enraged
+        if (rpgData.isEnraged() || rpgData.isEnhancedEnraged() || rpgData.isExhausted()) {
+            return;
+        }
+        
+        int rageGain = (int) (damageDealt * 0.05f);
+        if (rageGain > 0) {
+            rpgData.addRage(rageGain);
+        }
+    }
+    
+    /**
+     * Add RAGE from taking damage (10 per hit, 3s cooldown)
+     */
+    public static void addRageFromDamageTaken(ServerPlayer player, ServerLevel level) {
+        var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+        if (rpgData.getCurrentClass() == null || !rpgData.getCurrentClass().equalsIgnoreCase("berserker")) {
+            return;
+        }
+        
+        // Don't gain RAGE while enraged or enhanced enraged
+        if (rpgData.isEnraged() || rpgData.isEnhancedEnraged() || rpgData.isExhausted()) {
+            return;
+        }
+        
+        long currentTime = level.getGameTime();
+        if (currentTime - rpgData.getLastRageFromDamageTaken() >= PlayerRPGData.RAGE_DAMAGE_TAKEN_COOLDOWN_TICKS) {
+            rpgData.addRage(PlayerRPGData.RAGE_DAMAGE_TAKEN_AMOUNT);
+            rpgData.setLastRageFromDamageTaken(currentTime);
+        }
+    }
+    
+    /**
+     * Apply Berserker lifesteal (5% of damage dealt while enraged)
+     */
+    public static void applyBerserkerLifesteal(ServerPlayer player, float damageDealt) {
+        var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+        if (rpgData.getCurrentClass() == null || !rpgData.getCurrentClass().equalsIgnoreCase("berserker")) {
+            return;
+        }
+        
+        // Only lifesteal while enraged (not enhanced enraged)
+        if (rpgData.isEnraged() || rpgData.isEnhancedEnraged()) {
+            float healAmount = damageDealt * 0.05f;
+            if (healAmount > 0) {
+                player.heal(healAmount);
+            }
+        }
+    }
+    
+    /**
+     * Handle Unbound Carnage immortality (prevent death, set to 1 HP)
+     */
+    public static boolean handleUnboundCarnageImmortality(ServerPlayer player) {
+        var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+        if (rpgData.getCurrentClass() == null || !rpgData.getCurrentClass().equalsIgnoreCase("berserker")) {
+            return false;
+        }
+        
+        if (rpgData.isEnhancedEnraged()) {
+            // Prevent death, set to 1 HP
+            player.setHealth(1.0f);
+            return true;
+        }
+        return false;
     }
 }
