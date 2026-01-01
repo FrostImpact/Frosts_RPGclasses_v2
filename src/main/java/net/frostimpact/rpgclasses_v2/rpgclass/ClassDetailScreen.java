@@ -23,12 +23,19 @@ public class ClassDetailScreen extends Screen {
     private static final Logger LOGGER = LoggerFactory.getLogger(ClassDetailScreen.class);
     private static final int PANEL_WIDTH = 400;
     private static final int PANEL_HEIGHT = 350;
-    private static final int ABILITY_CARD_HEIGHT = 60;
-    private static final int ABILITY_CARD_SPACING = 8;
+    private static final int ABILITY_CARD_HEIGHT = 50; // Reduced from 60
+    private static final int ABILITY_CARD_SPACING = 5; // Reduced from 8
     
     private final RPGClass rpgClass;
     private final Screen parentScreen;
     private String currentClass = "NONE";
+    
+    // Scrolling support
+    private int scrollOffset = 0;
+    private int maxScrollOffset = 0;
+    private static final int SCROLL_SPEED = 10;
+    private int abilitiesStartY = 0; // Y position where abilities start
+    private int abilitiesEndY = 0; // Y position where abilities end
     
     public ClassDetailScreen(RPGClass rpgClass, Screen parentScreen) {
         super(Component.literal(rpgClass.getName()));
@@ -138,6 +145,10 @@ public class ClassDetailScreen extends Screen {
         graphics.drawString(this.font, "§b━━━━━ Class Abilities ━━━━━", panelX + 15, contentY, 0x55AAFF, false);
         contentY += 15;
         
+        // Mark where abilities section starts
+        abilitiesStartY = contentY;
+        int abilitiesContainerHeight = panelY + PANEL_HEIGHT - 60 - contentY; // Space above Select button
+        
         // Get abilities for this class
         List<ClassAbility> abilities = getClassAbilities(rpgClass.getId());
         
@@ -145,11 +156,67 @@ public class ClassDetailScreen extends Screen {
             graphics.drawString(this.font, "§7  Abilities coming soon...", panelX + 20, contentY, 0x777777, false);
             contentY += 15;
         } else {
+            // Calculate total height needed for abilities
+            int totalAbilitiesHeight = abilities.size() * (ABILITY_CARD_HEIGHT + ABILITY_CARD_SPACING);
+            
+            // Calculate max scroll offset
+            maxScrollOffset = Math.max(0, totalAbilitiesHeight - abilitiesContainerHeight);
+            
+            // Clamp scroll offset
+            scrollOffset = Math.max(0, Math.min(scrollOffset, maxScrollOffset));
+            
+            // Enable scissor (clipping) for abilities section
+            graphics.enableScissor(
+                panelX + 15,
+                abilitiesStartY,
+                panelX + PANEL_WIDTH - 15,
+                abilitiesStartY + abilitiesContainerHeight
+            );
+            
+            // Render abilities with scroll offset
+            int abilityY = contentY - scrollOffset;
             for (ClassAbility ability : abilities) {
-                renderAbilityCard(graphics, ability, panelX + 15, contentY, PANEL_WIDTH - 30, mouseX, mouseY);
-                contentY += ABILITY_CARD_HEIGHT + ABILITY_CARD_SPACING;
+                // Only render if visible in the clipping area
+                if (abilityY + ABILITY_CARD_HEIGHT >= abilitiesStartY && 
+                    abilityY <= abilitiesStartY + abilitiesContainerHeight) {
+                    renderAbilityCard(graphics, ability, panelX + 15, abilityY, PANEL_WIDTH - 30, mouseX, mouseY);
+                }
+                abilityY += ABILITY_CARD_HEIGHT + ABILITY_CARD_SPACING;
             }
+            
+            // Disable scissor
+            graphics.disableScissor();
+            
+            // Draw scroll indicators if needed
+            if (maxScrollOffset > 0) {
+                // Scroll up arrow (if not at top)
+                if (scrollOffset > 0) {
+                    int arrowX = panelX + PANEL_WIDTH - 25;
+                    int arrowY = abilitiesStartY + 5;
+                    graphics.drawString(this.font, "▲", arrowX, arrowY, 0xFFFFDD00, false);
+                }
+                
+                // Scroll down arrow (if not at bottom)
+                if (scrollOffset < maxScrollOffset) {
+                    int arrowX = panelX + PANEL_WIDTH - 25;
+                    int arrowY = abilitiesStartY + abilitiesContainerHeight - 15;
+                    graphics.drawString(this.font, "▼", arrowX, arrowY, 0xFFFFDD00, false);
+                }
+                
+                // Scroll bar
+                float scrollPercent = (float) scrollOffset / maxScrollOffset;
+                int barHeight = Math.max(20, (int) (abilitiesContainerHeight * 
+                    ((float) abilitiesContainerHeight / totalAbilitiesHeight)));
+                int barY = abilitiesStartY + (int) (scrollPercent * (abilitiesContainerHeight - barHeight));
+                int barX = panelX + PANEL_WIDTH - 20;
+                
+                graphics.fill(barX, barY, barX + 4, barY + barHeight, 0xFFFFDD00);
+            }
+            
+            contentY = abilitiesStartY + abilitiesContainerHeight;
         }
+        
+        abilitiesEndY = contentY;
         
         // Select Class button at bottom
         int selectBtnWidth = 150;
@@ -515,6 +582,17 @@ public class ClassDetailScreen extends Screen {
         }
         
         return super.mouseClicked(mouseX, mouseY, button);
+    }
+    
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        // Only scroll if mouse is in the abilities area
+        if (mouseY >= abilitiesStartY && mouseY <= abilitiesEndY) {
+            scrollOffset -= (int) (scrollY * SCROLL_SPEED);
+            scrollOffset = Math.max(0, Math.min(scrollOffset, maxScrollOffset));
+            return true;
+        }
+        return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
     }
     
     @Override
