@@ -6423,7 +6423,7 @@ public class ModMessages {
                 long currentTime = level.getGameTime();
                 long airTime = currentTime - leapTime;
                 
-                // After 3 seconds (60 ticks) in air, crash down to targeted location
+                // After 3 seconds (60 ticks) in air, launch towards targeted location
                 if (airTime >= 60) {
                     // Calculate target position based on current look direction (max 10 blocks)
                     Vec3 lookVec = player.getLookAngle();
@@ -6435,10 +6435,18 @@ public class ModMessages {
                             (int) targetPos.x, (int) targetPos.z);
                     targetPos = new Vec3(targetPos.x, targetGroundY, targetPos.z);
                     
-                    // Teleport player to target and crash down
-                    player.teleportTo(targetPos.x, targetPos.y + 0.5, targetPos.z);
-                    player.setDeltaMovement(0, -2.0, 0); // Fast downward crash
+                    // Calculate launch velocity towards target
+                    Vec3 currentPos = player.position();
+                    Vec3 toTarget = targetPos.subtract(currentPos).normalize();
+                    
+                    // Launch player towards target with strong velocity
+                    double launchSpeed = 2.5; // Fast horizontal launch
+                    double downwardSpeed = -1.5; // Downward component
+                    player.setDeltaMovement(toTarget.x * launchSpeed, downwardSpeed, toTarget.z * launchSpeed);
                     player.hurtMarked = true;
+                    
+                    // Mark to prevent fall damage
+                    player.getPersistentData().putBoolean("warrior_leap_no_fall_damage", true);
                     
                     // Deal 200% damage and slow for 2s at impact
                     float damage = player.getPersistentData().getFloat("warrior_leap_damage");
@@ -6446,7 +6454,7 @@ public class ModMessages {
                     applyEffectToNearbyEnemies(player, MobEffects.MOVEMENT_SLOWDOWN, 40, 1, 5.0); // 2 seconds slow
                     
                     // Landing effect with lighter red
-                    spawnLeapLandingEffect(level, targetPos);
+                    spawnLeapLandingEffect(level, player.position());
                     
                     // Clear flags
                     player.getPersistentData().remove("warrior_leaping");
@@ -6454,6 +6462,7 @@ public class ModMessages {
                     player.getPersistentData().remove("warrior_leap_damage");
                     player.getPersistentData().remove("warrior_leap_yaw");
                     player.getPersistentData().remove("warrior_leap_pitch");
+                    player.getPersistentData().remove("warrior_leap_no_fall_damage");
                     
                     // Remove slow falling
                     player.removeEffect(MobEffects.SLOW_FALLING);
@@ -6472,6 +6481,7 @@ public class ModMessages {
                     player.getPersistentData().remove("warrior_leap_damage");
                     player.getPersistentData().remove("warrior_leap_yaw");
                     player.getPersistentData().remove("warrior_leap_pitch");
+                    player.getPersistentData().remove("warrior_leap_no_fall_damage");
                     player.removeEffect(MobEffects.SLOW_FALLING);
                 }
             }
@@ -6564,12 +6574,15 @@ public class ModMessages {
         Vec3 forward = new Vec3(-Math.sin(yawRad), 0, Math.cos(yawRad));
         Vec3 right = new Vec3(Math.cos(yawRad), 0, Math.sin(yawRad));
         
+        // Rectangle starts at center (1 block in front of player) and extends forward
+        // The back edge of the rectangle is at the center position
+        
         // Draw rectangle outline
         int lengthPoints = 12;
         int widthPoints = 8;
         
         for (int i = 0; i <= lengthPoints; i++) {
-            double progress = (double) i / lengthPoints - 0.5;
+            double progress = (double) i / lengthPoints; // 0 to 1 instead of -0.5 to 0.5
             Vec3 pos1 = center.add(forward.scale(progress * length)).add(right.scale(-width / 2));
             Vec3 pos2 = center.add(forward.scale(progress * length)).add(right.scale(width / 2));
             
@@ -6581,8 +6594,8 @@ public class ModMessages {
         
         for (int i = 0; i <= widthPoints; i++) {
             double progress = (double) i / widthPoints - 0.5;
-            Vec3 pos1 = center.add(forward.scale(-length / 2)).add(right.scale(progress * width));
-            Vec3 pos2 = center.add(forward.scale(length / 2)).add(right.scale(progress * width));
+            Vec3 pos1 = center.add(right.scale(progress * width)); // Back edge at center
+            Vec3 pos2 = center.add(forward.scale(length)).add(right.scale(progress * width)); // Front edge
             
             level.sendParticles(createDustParticle(0.8f, 0.0f, 0.0f, 0.6f),
                     pos1.x, pos1.y + 0.1, pos1.z, 1, 0.02, 0.01, 0.02, 0);
@@ -6614,7 +6627,8 @@ public class ModMessages {
                 double forwardDist = toEntity.dot(forward);
                 double rightDist = toEntity.dot(right);
                 
-                if (Math.abs(forwardDist) <= length / 2 && Math.abs(rightDist) <= width / 2) {
+                // Rectangle starts at center and extends forward (0 to length)
+                if (forwardDist >= 0 && forwardDist <= length && Math.abs(rightDist) <= width / 2) {
                     living.hurt(player.damageSources().playerAttack(player), damage);
                     
                     // Knockup
@@ -6650,7 +6664,8 @@ public class ModMessages {
                 double forwardDist = toEntity.dot(forward);
                 double rightDist = toEntity.dot(right);
                 
-                if (Math.abs(forwardDist) <= length / 2 && Math.abs(rightDist) <= width / 2) {
+                // Rectangle starts at center and extends forward (0 to length)
+                if (forwardDist >= 0 && forwardDist <= length && Math.abs(rightDist) <= width / 2) {
                     UUID entityId = entity.getUUID();
                     
                     // Count BLEED
@@ -6679,9 +6694,9 @@ public class ModMessages {
         Vec3 forward = new Vec3(-Math.sin(yawRad), 0, Math.cos(yawRad));
         Vec3 right = new Vec3(Math.cos(yawRad), 0, Math.sin(yawRad));
         
-        // Fill rectangle with particles
+        // Fill rectangle with particles - starts at center and extends forward
         for (int i = 0; i < 50; i++) {
-            double forwardOffset = (RANDOM.nextDouble() - 0.5) * length;
+            double forwardOffset = RANDOM.nextDouble() * length; // 0 to length
             double rightOffset = (RANDOM.nextDouble() - 0.5) * width;
             Vec3 pos = center.add(forward.scale(forwardOffset)).add(right.scale(rightOffset));
             
@@ -6691,15 +6706,16 @@ public class ModMessages {
                     pos.x, pos.y + 0.1, pos.z, 3, 0.1, 0.3, 0.1, 0.05);
         }
         
-        // Bleed particles
+        // Bleed particles - adjust center forward by half length to match new rectangle position
+        Vec3 effectCenter = center.add(forward.scale(length / 2));
         level.sendParticles(new net.minecraft.core.particles.BlockParticleOption(
                 net.minecraft.core.particles.ParticleTypes.BLOCK,
                 net.minecraft.world.level.block.Blocks.RED_CONCRETE.defaultBlockState()),
-                center.x, center.y + 1, center.z, 40, length / 4, 0.5, width / 4, 0.2);
+                effectCenter.x, effectCenter.y + 1, effectCenter.z, 40, length / 4, 0.5, width / 4, 0.2);
         
         // Explosion
         level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,
-                center.x, center.y + 0.5, center.z, 5, length / 4, 0.2, width / 4, 0);
+                effectCenter.x, effectCenter.y + 0.5, effectCenter.z, 5, length / 4, 0.2, width / 4, 0);
     }
     
     /**
