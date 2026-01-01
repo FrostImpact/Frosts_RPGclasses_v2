@@ -23,8 +23,10 @@ import net.frostimpact.rpgclasses_v2.rpgclass.ClassRegistry;
 import net.frostimpact.rpgclasses_v2.rpgclass.RPGClass;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.BossEvent;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
@@ -40,16 +42,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Map;
 import java.util.UUID;
 
 public class ModMessages {
     private static final Logger LOGGER = LoggerFactory.getLogger(ModMessages.class);
     private static final Random RANDOM = new Random();
+    private static final AtomicInteger whirlwindCounter = new AtomicInteger(0);
     
     // Ability constants
     private static final int ULTIMATE_ARROW_MULTIPLIER = 3;
@@ -83,6 +88,12 @@ public class ModMessages {
     private static final Map<UUID, HeadshotCharge> activeHeadshotCharges = new ConcurrentHashMap<>();
     // Marksman marked enemies (30% more damage)
     private static final Map<UUID, MarkedEnemy> markedEnemies = new ConcurrentHashMap<>();
+    // Warrior Whirlwind hit tracking - persists across scheduled tasks
+    private static final Map<String, Map<UUID, Integer>> whirlwindHitCounts = new ConcurrentHashMap<>();
+    // Berserker Frenzy slash tracking - persists across scheduled tasks
+    private static final Map<UUID, Integer> frenzySlashCounts = new ConcurrentHashMap<>();
+    // Ravager Heartstopper boss bars
+    private static final Map<UUID, ServerBossEvent> heartstopperBossBars = new ConcurrentHashMap<>();
     
     /**
      * Data class for Rain of Arrows timed effect
@@ -5822,11 +5833,10 @@ public class ModMessages {
      * Deal Whirlwind damage - 30% damage per hit, over 3 seconds
      */
     private static void dealWhirlwindDamage(ServerPlayer player, ServerLevel level, float damagePerHit, double range, int maxHits) {
-        AABB searchBox = player.getBoundingBox().inflate(range);
-        List<Entity> entities = player.level().getEntities(player, searchBox,
-                e -> e instanceof LivingEntity && e != player);
-        
-        Map<UUID, Integer> hitCounts = new HashMap<>();
+        // Generate unique key for this whirlwind instance using player UUID + atomic counter
+        String whirlwindKey = player.getUUID().toString() + "_" + whirlwindCounter.incrementAndGet();
+        Map<UUID, Integer> hitCounts = new ConcurrentHashMap<>();
+        whirlwindHitCounts.put(whirlwindKey, hitCounts);
         
         // Schedule hits over 3 seconds (60 ticks)
         int ticksPerHit = 60 / maxHits;
@@ -5836,18 +5846,37 @@ public class ModMessages {
             level.getServer().tell(new net.minecraft.server.TickTask(
                     level.getServer().getTickCount() + hit * ticksPerHit,
                     () -> {
+                        if (!player.isAlive()) {
+                            // Cleanup if player dies
+                            whirlwindHitCounts.remove(whirlwindKey);
+                            return;
+                        }
+                        
+                        // Refresh entity list on each tick to catch entities entering the area
+                        AABB searchBox = player.getBoundingBox().inflate(range);
+                        List<Entity> entities = player.level().getEntities(player, searchBox,
+                                e -> e instanceof LivingEntity && e != player);
+                        
+                        Map<UUID, Integer> persistentHitCounts = whirlwindHitCounts.get(whirlwindKey);
+                        if (persistentHitCounts == null) return;
+                        
                         for (Entity entity : entities) {
                             if (entity instanceof LivingEntity living && living.isAlive()) {
                                 double dist = player.position().distanceTo(entity.position());
                                 if (dist <= range) {
                                     UUID entityId = entity.getUUID();
-                                    int currentHits = hitCounts.getOrDefault(entityId, 0);
+                                    int currentHits = persistentHitCounts.getOrDefault(entityId, 0);
                                     if (currentHits < maxHits) {
                                         living.hurt(player.damageSources().playerAttack(player), damagePerHit);
-                                        hitCounts.put(entityId, currentHits + 1);
+                                        persistentHitCounts.put(entityId, currentHits + 1);
                                     }
                                 }
                             }
+                        }
+                        
+                        // Cleanup on final hit
+                        if (hitIndex == maxHits - 1) {
+                            whirlwindHitCounts.remove(whirlwindKey);
                         }
                     }
             ));
@@ -6560,10 +6589,30 @@ public class ModMessages {
      */
     public static void updateRavagerHeartstoppers(ServerLevel level) {
         for (ServerPlayer player : level.players()) {
+            UUID playerUuid = player.getUUID();
+            
             if (player.getPersistentData().getBoolean("ravager_heartstopper_charging")) {
                 long startTime = player.getPersistentData().getLong("ravager_heartstopper_start");
                 long currentTime = level.getGameTime();
                 long elapsed = currentTime - startTime;
+                
+                // Create boss bar if it doesn't exist
+                if (!heartstopperBossBars.containsKey(playerUuid)) {
+                    ServerBossEvent bossBar = new ServerBossEvent(
+                            Component.literal("§c§lHEARTSTOPPER CHARGING"),
+                            BossEvent.BossBarColor.RED,
+                            BossEvent.BossBarOverlay.PROGRESS
+                    );
+                    bossBar.addPlayer(player);
+                    heartstopperBossBars.put(playerUuid, bossBar);
+                }
+                
+                // Update boss bar progress (0% to 100% over 60 ticks)
+                ServerBossEvent bossBar = heartstopperBossBars.get(playerUuid);
+                if (bossBar != null) {
+                    float progress = Math.min(1.0f, (float) elapsed / 60.0f);
+                    bossBar.setProgress(progress);
+                }
                 
                 // Use CURRENT player position plus 1 block in front
                 Vec3 currentPos = player.position();
@@ -6596,7 +6645,20 @@ public class ModMessages {
                     player.getPersistentData().remove("ravager_heartstopper_start");
                     player.getPersistentData().remove("ravager_heartstopper_damage");
                     
+                    // Remove boss bar
+                    if (bossBar != null) {
+                        bossBar.removeAllPlayers();
+                        heartstopperBossBars.remove(playerUuid);
+                    }
+                    
                     player.displayClientMessage(Component.literal("§c§l☠ HEARTSTOPPER! §a+" + String.format("%.1f", healing) + " HP"), true);
+                }
+            } else {
+                // Player is not charging - cleanup boss bar if it exists
+                ServerBossEvent bossBar = heartstopperBossBars.get(playerUuid);
+                if (bossBar != null) {
+                    bossBar.removeAllPlayers();
+                    heartstopperBossBars.remove(playerUuid);
                 }
             }
         }
@@ -7018,12 +7080,24 @@ public class ModMessages {
         int durationTicks = 60; // 3 seconds
         int ticksPerSlash = durationTicks / totalSlashes;
         
+        // Reset slash counter for this player
+        UUID playerUuid = player.getUUID();
+        frenzySlashCounts.put(playerUuid, 0);
+        
         for (int slash = 0; slash < totalSlashes; slash++) {
             final int slashIndex = slash;
             level.getServer().tell(new net.minecraft.server.TickTask(
                     level.getServer().getTickCount() + slash * ticksPerSlash,
                     () -> {
-                        if (!player.isAlive()) return;
+                        if (!player.isAlive()) {
+                            // Cleanup if player dies
+                            frenzySlashCounts.remove(playerUuid);
+                            return;
+                        }
+                        
+                        // Increment slash counter
+                        int currentSlashes = frenzySlashCounts.getOrDefault(playerUuid, 0);
+                        frenzySlashCounts.put(playerUuid, currentSlashes + 1);
                         
                         // Calculate random slash angle
                         float baseYaw = player.getYRot();
@@ -7035,6 +7109,11 @@ public class ModMessages {
                         
                         // Spawn slash visual
                         spawnFrenzySlashEffect(level, player.position().add(0, 1, 0), slashYaw, rageSlashes && slashIndex >= 8);
+                        
+                        // Cleanup on final slash
+                        if (slashIndex == totalSlashes - 1) {
+                            frenzySlashCounts.remove(playerUuid);
+                        }
                     }
             ));
         }
