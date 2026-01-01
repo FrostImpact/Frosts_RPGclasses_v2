@@ -5844,7 +5844,7 @@ public class ModMessages {
     /**
      * Apply BLEED effect to entity
      */
-    private static void applyBleed(LivingEntity target, ServerPlayer owner, int durationTicks) {
+    public static void applyBleed(LivingEntity target, ServerPlayer owner, int durationTicks) {
         // Check if target already has GRIEVOUS WOUNDS
         if (activeGrievousWounds.containsKey(target.getUUID())) {
             return; // Cannot apply BLEED if has GRIEVOUS WOUNDS

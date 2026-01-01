@@ -320,6 +320,15 @@ public class ServerEvents {
     private void applyAttackSpeed(ServerPlayer player, double attackSpeedModifier) {
         AttributeInstance attackSpeedAttribute = player.getAttribute(Attributes.ATTACK_SPEED);
         if (attackSpeedAttribute != null) {
+            // Check if player is Ravager - they cannot gain attack speed bonuses
+            var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("ravager")) {
+                // Ravagers don't get attack speed bonus - it's converted to BLEED duration
+                double baseAttackSpeed = 4.0;
+                attackSpeedAttribute.setBaseValue(baseAttackSpeed);
+                return;
+            }
+            
             double baseAttackSpeed = 4.0; // Minecraft's base attack speed
             double newAttackSpeed = baseAttackSpeed * (1.0 + attackSpeedModifier / 100.0);
 
@@ -504,6 +513,38 @@ public class ServerEvents {
                 
                 LOGGER.debug("Suppressed death message for summoned beast: {}", 
                         mob.getType().getDescription().getString());
+            }
+        }
+    }
+    
+    /**
+     * Handle Ravager passive - Jagged Blade
+     * Applies BLEED on normal attacks
+     * Converts attack speed bonuses to BLEED duration
+     */
+    @SubscribeEvent
+    public void onPlayerAttack(net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Post event) {
+        // Check if damage source is a player
+        if (event.getSource().getEntity() instanceof ServerPlayer player) {
+            // Check if player is Ravager class
+            var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("ravager")) {
+                // Apply BLEED to target
+                if (event.getEntity() instanceof net.minecraft.world.entity.LivingEntity target) {
+                    // Calculate BLEED duration based on attack speed
+                    var stats = player.getData(ModAttachments.PLAYER_STATS);
+                    int attackSpeedBonus = stats.getIntStatValue(StatType.ATTACK_SPEED);
+                    
+                    // Base BLEED duration is 3 seconds (60 ticks)
+                    // Each point of attack speed adds 0.1 seconds (2 ticks)
+                    int bleedDuration = 60 + (attackSpeedBonus * 2);
+                    
+                    // Apply BLEED effect
+                    ModMessages.applyBleed(target, player, bleedDuration);
+                    
+                    LOGGER.debug("Ravager {} applied BLEED for {} ticks (attack speed bonus: {})", 
+                            player.getName().getString(), bleedDuration, attackSpeedBonus);
+                }
             }
         }
     }
