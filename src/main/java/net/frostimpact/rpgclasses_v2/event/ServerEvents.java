@@ -72,6 +72,12 @@ public class ServerEvents {
         
         // Update Berserker RAGE system
         ModMessages.updateBerserkerRage(serverLevel);
+        
+        // Update Fatespinner Thread system
+        ModMessages.updateFatespinnerThreads(serverLevel);
+        
+        // Update Fatespinner Manaflux channel
+        ModMessages.updateManafluxChannel(serverLevel);
 
         event.getServer().getPlayerList().getPlayers().forEach(player -> {
             // Tick cooldowns

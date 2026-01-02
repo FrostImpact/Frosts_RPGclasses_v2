@@ -17,6 +17,7 @@ import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncSkillTreeData;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketResetSkillTree;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketRequestSkillTreeData;
 import net.frostimpact.rpgclasses_v2.rpg.ModAttachments;
+import net.frostimpact.rpgclasses_v2.rpg.PlayerRPGData;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatModifier;
 import net.frostimpact.rpgclasses_v2.rpg.stats.StatType;
 import net.frostimpact.rpgclasses_v2.rpgclass.AbilityUtils;
@@ -84,6 +85,25 @@ public class ModMessages {
     private static final float COMET_MOMENTUM_SCALING = 25.0f; // Maximum bonus damage from momentum for Comet
     private static final float PIERCING_CHARGE_MOMENTUM_SCALING = 20.0f; // Maximum bonus damage from momentum for Piercing Charge
     
+    // Fatespinner ability constants
+    private static final float WEAVE_PROJECTILE_SPEED = 0.8f; // Speed of Weave projectile
+    private static final int WEAVE_MAX_FLIGHT_TICKS = 100; // 5 seconds max flight
+    private static final float WEAVE_DAMAGE_PERCENT = 0.80f; // 80% of player damage
+    private static final double THREAD_VISUAL_UPDATE_INTERVAL = 2; // Update thread visuals every 2 ticks
+    private static final float REPULSION_KNOCKBACK_STRENGTH = 2.0f; // Knockback strength for Repulsion
+    private static final float REPULSION_PULL_STRENGTH = 1.5f; // Pull strength when shifting
+    private static final double REPULSION_AOE_RADIUS = 6.0; // Medium AOE radius
+    private static final float MANASURGE_BASE_DAMAGE = 15.0f; // Base damage
+    private static final float MANASURGE_DAMAGE_PER_THREAD = 10.0f; // Bonus damage per thread
+    private static final double MANASURGE_AOE_RADIUS = 8.0; // Explosion radius
+    private static final int THREAD_GLOWING_DURATION_TICKS = 100; // 5 seconds, refreshed as needed
+    private static final double LINE_OF_SIGHT_DOT_THRESHOLD = 0.7; // About 45 degrees cone
+    private static final int MANAFLUX_STUN_EFFECT_DURATION = 40; // 2 seconds duration for stun effects
+    private static final int MANAFLUX_STUN_AMPLIFIER = 10; // Extreme amplifier to simulate stun
+    private static final double MIN_PULL_DISTANCE = 1.5; // Minimum distance to avoid overshooting
+    private static final double THREADED_PULL_MULTIPLIER = 2.0; // Stronger pull for threaded enemies
+    private static final double MIN_THREADED_PULL_DISTANCE = 2.0; // Minimum distance for threaded pull
+    
     // Active timed effects for Rain of Arrows
     private static final Map<UUID, RainOfArrowsEffect> activeRainEffects = new ConcurrentHashMap<>();
     // Active seeker projectiles (homing missiles)
@@ -100,6 +120,54 @@ public class ModMessages {
     private static final Map<UUID, Integer> frenzySlashCounts = new ConcurrentHashMap<>();
     // Ravager Heartstopper boss bars
     private static final Map<UUID, ServerBossEvent> heartstopperBossBars = new ConcurrentHashMap<>();
+    
+    // Fatespinner Thread system
+    // Map of player UUID -> Map of enemy UUID -> FateThread
+    private static final Map<UUID, Map<UUID, FateThread>> activeFateThreads = new ConcurrentHashMap<>();
+    // Active Weave projectiles
+    private static final List<WeaveProjectile> activeWeaveProjectiles = new ArrayList<>();
+    
+    /**
+     * Data class for Fatespinner Thread connection between player and enemy
+     */
+    public static class FateThread {
+        public final UUID ownerUUID;
+        public final UUID targetUUID;
+        public final long createdTime;
+        public int lastTension; // Track last known tension for visual updates
+        
+        public FateThread(UUID ownerUUID, UUID targetUUID, long createdTime) {
+            this.ownerUUID = ownerUUID;
+            this.targetUUID = targetUUID;
+            this.createdTime = createdTime;
+            this.lastTension = 0;
+        }
+    }
+    
+    /**
+     * Data class for Fatespinner Weave projectile
+     */
+    public static class WeaveProjectile {
+        public final ServerPlayer owner;
+        public final ServerLevel level;
+        public Vec3 position;
+        public final Vec3 direction;
+        public final float damage;
+        public int ticksAlive;
+        public final int maxTicks;
+        public final float speed;
+        
+        public WeaveProjectile(ServerPlayer owner, ServerLevel level, Vec3 startPos, Vec3 direction, float damage) {
+            this.owner = owner;
+            this.level = level;
+            this.position = startPos;
+            this.direction = direction.normalize();
+            this.damage = damage;
+            this.ticksAlive = 0;
+            this.maxTicks = WEAVE_MAX_FLIGHT_TICKS;
+            this.speed = WEAVE_PROJECTILE_SPEED;
+        }
+    }
     
     /**
      * Data class for Rain of Arrows timed effect
@@ -324,6 +392,17 @@ public class ModMessages {
             
             if (!updateRuptureProjectile(proj)) {
                 ruptureIterator.remove();
+            }
+        }
+        
+        // Update Fatespinner Weave projectiles
+        Iterator<WeaveProjectile> weaveIterator = activeWeaveProjectiles.iterator();
+        while (weaveIterator.hasNext()) {
+            WeaveProjectile weave = weaveIterator.next();
+            weave.ticksAlive++;
+            
+            if (!updateWeaveProjectile(weave)) {
+                weaveIterator.remove();
             }
         }
     }
@@ -1767,6 +1846,127 @@ public class ModMessages {
                         spawnDustParticlesBurst(level, playerPos, 3.0, 1.0f, 1.0f, 0.2f, 30);
                         
                         player.displayClientMessage(Component.literal("§e§lCOMET DIVE!"), true);
+                    }
+                }
+            }
+            case "fatespinner" -> {
+                var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+                boolean isSneaking = player.isCrouching();
+                switch (slot) {
+                    case 1 -> { // Weave - Fire arcane projectile that creates thread on hit, deals 80% damage
+                        // When shifting, pull towards nearest threaded enemy in line of sight
+                        if (isSneaking) {
+                            // Shift ability: Pull towards nearest threaded enemy in line of sight
+                            LivingEntity nearestThreadedEnemy = findNearestThreadedEnemyInLineOfSight(player, level);
+                            if (nearestThreadedEnemy != null) {
+                                // Pull player towards enemy
+                                Vec3 targetPos = nearestThreadedEnemy.position().add(0, nearestThreadedEnemy.getBbHeight() * 0.5, 0);
+                                Vec3 pullDir = targetPos.subtract(playerPos).normalize();
+                                double pullDistance = playerPos.distanceTo(targetPos);
+                                double pullStrength = Math.min(pullDistance - 2.0, 3.0); // Don't overshoot
+                                
+                                player.setDeltaMovement(pullDir.scale(pullStrength));
+                                player.hurtMarked = true;
+                                
+                                // Visual: Thread tightens and reels player
+                                spawnThreadPullEffect(level, playerPos, targetPos);
+                                player.displayClientMessage(Component.literal("§d§lTHREAD PULL! §7Reeling towards enemy..."), true);
+                            } else {
+                                player.displayClientMessage(Component.literal("§cNo threaded enemy in line of sight!"), true);
+                                // Refund mana since no valid target
+                                rpgData.regenMana(AbilityUtils.getAbilityManaCost("fatespinner", 1));
+                            }
+                        } else {
+                            // Normal: Fire Weave projectile
+                            Vec3 lookVec = player.getLookAngle();
+                            Vec3 startPos = playerPos.add(0, player.getEyeHeight() - 0.3, 0); // From chest level
+                            
+                            // Calculate damage (80% of player's attack damage)
+                            float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+                            float weaveDamage = (baseDamage + damageBonus) * WEAVE_DAMAGE_PERCENT;
+                            
+                            // Spawn projectile
+                            spawnWeaveProjectile(player, level, startPos, lookVec, weaveDamage);
+                            
+                            // Launch visual - needle-like projectile compression effect
+                            spawnWeaveFireEffect(level, startPos, lookVec);
+                            player.displayClientMessage(Component.literal("§d§lWEAVE! §7Arcane projectile fired!"), true);
+                        }
+                    }
+                    case 2 -> { // Manaflux - Channel to stun all threaded enemies
+                        // Toggle Manaflux channel
+                        if (rpgData.isInManafluxChannel()) {
+                            // Stop channeling
+                            rpgData.setInManafluxChannel(false);
+                            
+                            // Release all stunned enemies
+                            releaseAllManafluxStuns(player, level);
+                            
+                            // Start cooldown now
+                            String abilityId = "fatespinner_ability_2";
+                            int cooldownReduction = stats.getIntStatValue(StatType.COOLDOWN_REDUCTION);
+                            int baseCooldownTicks = AbilityUtils.getAbilityCooldownTicks("fatespinner", 2);
+                            int adjustedCooldownTicks = (int) (baseCooldownTicks * (1.0 - cooldownReduction / 100.0));
+                            rpgData.setAbilityCooldown(abilityId, Math.max(adjustedCooldownTicks, 20));
+                            
+                            // Visual: Energy flow ceases, threads relax
+                            spawnManafluxEndEffect(level, playerPos);
+                            player.displayClientMessage(Component.literal("§dManaflux §7channel ended."), true);
+                        } else {
+                            // Start channeling
+                            int threadCount = getActiveThreadCount(player);
+                            if (threadCount == 0) {
+                                player.displayClientMessage(Component.literal("§cNo active threads to channel!"), true);
+                                // Refund mana
+                                rpgData.regenMana(AbilityUtils.getAbilityManaCost("fatespinner", 2));
+                            } else {
+                                rpgData.setInManafluxChannel(true);
+                                rpgData.setManafluxStartTime(level.getGameTime());
+                                rpgData.setLastManafluxDrainTime(level.getGameTime());
+                                
+                                // Apply initial stun to all threaded enemies
+                                applyManafluxStunToThreadedEnemies(player, level);
+                                
+                                // Visual: Player surrounded by mana aura, threads straighten
+                                spawnManafluxStartEffect(level, playerPos);
+                                player.displayClientMessage(Component.literal("§d§lMANAFLUX! §7Channeling... Hold to sustain."), true);
+                            }
+                        }
+                    }
+                    case 3 -> { // Repulsion - Knockback pulse, affects all threaded enemies regardless of distance
+                        // When shifting, pull enemies towards player instead
+                        if (isSneaking) {
+                            // Pull all nearby enemies AND all threaded enemies (regardless of distance)
+                            pullNearbyAndThreadedEnemies(player, level, REPULSION_AOE_RADIUS, REPULSION_PULL_STRENGTH);
+                            
+                            // Visual: Inward pulse
+                            spawnRepulsionPullEffect(level, playerPos);
+                            player.displayClientMessage(Component.literal("§d§lREPULSION PULL! §7Enemies drawn inward!"), true);
+                        } else {
+                            // Knockback all nearby enemies AND all threaded enemies (regardless of distance)
+                            knockbackNearbyAndThreadedEnemies(player, level, REPULSION_AOE_RADIUS, REPULSION_KNOCKBACK_STRENGTH);
+                            
+                            // Visual: Outward shockwave
+                            spawnRepulsionKnockbackEffect(level, playerPos);
+                            player.displayClientMessage(Component.literal("§d§lREPULSION! §7Enemies blown back!"), true);
+                        }
+                    }
+                    case 4 -> { // Manasurge - Massive mana explosion, damage scales with thread count
+                        int threadCount = getActiveThreadCount(player);
+                        
+                        // Calculate damage: base + (threadCount * bonus per thread) + damage bonus
+                        float explosionDamage = MANASURGE_BASE_DAMAGE + (threadCount * MANASURGE_DAMAGE_PER_THREAD) + damageBonus * 2.0f;
+                        
+                        // Deal damage in AOE
+                        dealDamageToNearbyEnemies(player, explosionDamage, MANASURGE_AOE_RADIUS);
+                        
+                        // All threads flare and contribute visible surges
+                        spawnManasurgeEffect(level, playerPos, threadCount);
+                        
+                        // Break all threads (optional - you could keep them or consume them)
+                        // For maximum impact, we'll keep them active
+                        
+                        player.displayClientMessage(Component.literal("§d§lMANASURGE! §7" + threadCount + " threads amplified the explosion!"), true);
                     }
                 }
             }
@@ -7785,5 +7985,841 @@ public class ModMessages {
             return true;
         }
         return false;
+    }
+    
+    // ===== FATESPINNER THREAD SYSTEM METHODS =====
+    
+    /**
+     * Spawn a Weave projectile
+     */
+    private static void spawnWeaveProjectile(ServerPlayer player, ServerLevel level, Vec3 startPos, Vec3 direction, float damage) {
+        WeaveProjectile projectile = new WeaveProjectile(player, level, startPos, direction, damage);
+        activeWeaveProjectiles.add(projectile);
+    }
+    
+    /**
+     * Update a Weave projectile - returns false when projectile should be removed
+     */
+    private static boolean updateWeaveProjectile(WeaveProjectile proj) {
+        if (!proj.owner.isAlive() || proj.ticksAlive >= proj.maxTicks) {
+            return false;
+        }
+        
+        // Move projectile
+        Vec3 oldPos = proj.position;
+        proj.position = proj.position.add(proj.direction.scale(proj.speed));
+        
+        // Check for block collision
+        var blockHit = proj.level.clip(new net.minecraft.world.level.ClipContext(
+                oldPos,
+                proj.position,
+                net.minecraft.world.level.ClipContext.Block.COLLIDER,
+                net.minecraft.world.level.ClipContext.Fluid.NONE,
+                proj.owner));
+        
+        if (blockHit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK) {
+            // Hit a block - dissipate
+            spawnWeaveBlockImpactEffect(proj.level, blockHit.getLocation());
+            return false;
+        }
+        
+        // Check for entity collision
+        AABB hitbox = new AABB(
+                proj.position.x - 0.5, proj.position.y - 0.5, proj.position.z - 0.5,
+                proj.position.x + 0.5, proj.position.y + 0.5, proj.position.z + 0.5);
+        
+        List<Entity> entities = proj.level.getEntities(proj.owner, hitbox,
+                e -> e instanceof LivingEntity && e != proj.owner);
+        
+        if (!entities.isEmpty()) {
+            Entity hitEntity = entities.get(0);
+            if (hitEntity instanceof LivingEntity living) {
+                // Deal damage
+                living.hurt(proj.owner.damageSources().playerAttack(proj.owner), proj.damage);
+                
+                // Create thread connection
+                createFateThread(proj.owner, living);
+                
+                // Impact visual - thread snaps back to caster
+                spawnWeaveImpactEffect(proj.level, proj.position, proj.owner.position().add(0, proj.owner.getEyeHeight() - 0.3, 0));
+                
+                proj.owner.displayClientMessage(Component.literal("§d§lTHREAD CONNECTED! §7" + living.getName().getString()), true);
+            }
+            return false;
+        }
+        
+        // Spawn trail particles - spiraling trail
+        if (proj.ticksAlive % 2 == 0) {
+            double spiralAngle = (proj.ticksAlive * 0.5) % (2 * Math.PI);
+            double spiralRadius = 0.15;
+            
+            // Calculate perpendicular vectors for spiral
+            Vec3 perp1 = proj.direction.cross(new Vec3(0, 1, 0)).normalize();
+            if (perp1.length() < 0.01) {
+                perp1 = proj.direction.cross(new Vec3(1, 0, 0)).normalize();
+            }
+            Vec3 perp2 = proj.direction.cross(perp1).normalize();
+            
+            double spiralX = perp1.x * Math.cos(spiralAngle) + perp2.x * Math.sin(spiralAngle);
+            double spiralY = perp1.y * Math.cos(spiralAngle) + perp2.y * Math.sin(spiralAngle);
+            double spiralZ = perp1.z * Math.cos(spiralAngle) + perp2.z * Math.sin(spiralAngle);
+            
+            Vec3 spiralPos = proj.position.add(spiralX * spiralRadius, spiralY * spiralRadius, spiralZ * spiralRadius);
+            
+            // Violet/purple trail (muted violet)
+            proj.level.sendParticles(createDustParticle(0.6f, 0.3f, 0.8f, 0.7f),
+                    spiralPos.x, spiralPos.y, spiralPos.z, 1, 0.02, 0.02, 0.02, 0);
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Create a thread between player and target enemy
+     */
+    public static void createFateThread(ServerPlayer player, LivingEntity target) {
+        UUID playerUUID = player.getUUID();
+        UUID targetUUID = target.getUUID();
+        
+        Map<UUID, FateThread> playerThreads = activeFateThreads.computeIfAbsent(playerUUID, k -> new ConcurrentHashMap<>());
+        
+        // Check if already have a thread to this target
+        if (playerThreads.containsKey(targetUUID)) {
+            player.displayClientMessage(Component.literal("§eAlready have a thread to this enemy!"), true);
+            return;
+        }
+        
+        // Check if at max threads
+        if (playerThreads.size() >= PlayerRPGData.MAX_THREADS) {
+            // Remove the oldest thread
+            UUID oldestThreadTarget = null;
+            long oldestTime = Long.MAX_VALUE;
+            for (Map.Entry<UUID, FateThread> entry : playerThreads.entrySet()) {
+                if (entry.getValue().createdTime < oldestTime) {
+                    oldestTime = entry.getValue().createdTime;
+                    oldestThreadTarget = entry.getKey();
+                }
+            }
+            if (oldestThreadTarget != null) {
+                playerThreads.remove(oldestThreadTarget);
+            }
+        }
+        
+        // Create new thread
+        FateThread thread = new FateThread(playerUUID, targetUUID, player.level().getGameTime());
+        playerThreads.put(targetUUID, thread);
+        
+        // Mark target with glowing effect (subtle arcane highlight) - refreshed periodically
+        target.addEffect(new MobEffectInstance(MobEffects.GLOWING, THREAD_GLOWING_DURATION_TICKS, 0, false, false));
+        
+        LOGGER.debug("Fatespinner {} created thread to {} (total threads: {})",
+                player.getName().getString(), target.getName().getString(), playerThreads.size());
+    }
+    
+    /**
+     * Remove a thread from a player to a specific target
+     */
+    public static void removeFateThread(ServerPlayer player, UUID targetUUID) {
+        UUID playerUUID = player.getUUID();
+        Map<UUID, FateThread> playerThreads = activeFateThreads.get(playerUUID);
+        if (playerThreads != null) {
+            playerThreads.remove(targetUUID);
+        }
+    }
+    
+    /**
+     * Get the number of active threads for a player
+     */
+    public static int getActiveThreadCount(ServerPlayer player) {
+        Map<UUID, FateThread> playerThreads = activeFateThreads.get(player.getUUID());
+        return playerThreads == null ? 0 : playerThreads.size();
+    }
+    
+    /**
+     * Get all active threads for a player
+     */
+    public static Map<UUID, FateThread> getActiveThreads(ServerPlayer player) {
+        return activeFateThreads.getOrDefault(player.getUUID(), new ConcurrentHashMap<>());
+    }
+    
+    /**
+     * Update all Fatespinner threads (called every tick from ServerEvents)
+     */
+    public static void updateFatespinnerThreads(ServerLevel level) {
+        Iterator<Map.Entry<UUID, Map<UUID, FateThread>>> playerIterator = activeFateThreads.entrySet().iterator();
+        
+        while (playerIterator.hasNext()) {
+            Map.Entry<UUID, Map<UUID, FateThread>> playerEntry = playerIterator.next();
+            UUID playerUUID = playerEntry.getKey();
+            Map<UUID, FateThread> threads = playerEntry.getValue();
+            
+            ServerPlayer player = level.getServer().getPlayerList().getPlayer(playerUUID);
+            if (player == null || !player.isAlive()) {
+                // Clear all threads for disconnected/dead player
+                for (FateThread thread : threads.values()) {
+                    Entity targetEntity = level.getEntity(thread.targetUUID);
+                    if (targetEntity instanceof LivingEntity living) {
+                        living.removeEffect(MobEffects.GLOWING);
+                    }
+                }
+                playerIterator.remove();
+                continue;
+            }
+            
+            // Check if player is still Fatespinner
+            var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+            if (!rpgData.getCurrentClass().equalsIgnoreCase("fatespinner")) {
+                // Remove all threads
+                for (FateThread thread : threads.values()) {
+                    Entity targetEntity = level.getEntity(thread.targetUUID);
+                    if (targetEntity instanceof LivingEntity living) {
+                        living.removeEffect(MobEffects.GLOWING);
+                    }
+                }
+                playerIterator.remove();
+                continue;
+            }
+            
+            Iterator<Map.Entry<UUID, FateThread>> threadIterator = threads.entrySet().iterator();
+            while (threadIterator.hasNext()) {
+                Map.Entry<UUID, FateThread> threadEntry = threadIterator.next();
+                FateThread thread = threadEntry.getValue();
+                
+                Entity targetEntity = level.getEntity(thread.targetUUID);
+                if (targetEntity == null || !targetEntity.isAlive()) {
+                    // Target dead/gone - remove thread
+                    threadIterator.remove();
+                    continue;
+                }
+                
+                LivingEntity target = (LivingEntity) targetEntity;
+                
+                // Calculate distance (tension)
+                double distance = player.position().distanceTo(target.position());
+                int tension = (int) Math.floor(distance);
+                
+                // Check if thread should break (tension >= 11)
+                if (tension >= PlayerRPGData.THREAD_BREAK_TENSION) {
+                    // Break thread and deal damage
+                    float playerDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+                    float breakDamage = playerDamage * PlayerRPGData.THREAD_BREAK_DAMAGE_PERCENT;
+                    
+                    target.hurt(player.damageSources().magic(), breakDamage);
+                    
+                    // Remove glowing effect
+                    target.removeEffect(MobEffects.GLOWING);
+                    
+                    // Visual: Thread snaps with flash and crack
+                    spawnThreadBreakEffect(level, player.position().add(0, player.getEyeHeight() - 0.3, 0),
+                            target.position().add(0, target.getBbHeight() * 0.5, 0));
+                    
+                    player.displayClientMessage(Component.literal("§c§lTHREAD SNAPPED! §7" + String.format("%.1f", breakDamage) + " damage!"), true);
+                    
+                    threadIterator.remove();
+                    continue;
+                }
+                
+                // Update visual only when tension changes or every few ticks
+                boolean tensionChanged = tension != thread.lastTension;
+                thread.lastTension = tension;
+                
+                // Spawn thread visual every 2 ticks
+                if (level.getGameTime() % 2 == 0) {
+                    spawnThreadVisual(level, player.position().add(0, player.getEyeHeight() - 0.3, 0),
+                            target.position().add(0, target.getBbHeight() * 0.5, 0), tension);
+                }
+                
+                // Reapply glowing to ensure highlight remains
+                if (!target.hasEffect(MobEffects.GLOWING)) {
+                    target.addEffect(new MobEffectInstance(MobEffects.GLOWING, THREAD_GLOWING_DURATION_TICKS, 0, false, false));
+                }
+            }
+        }
+    }
+    
+    /**
+     * Update Manaflux channel state
+     */
+    public static void updateManafluxChannel(ServerLevel level) {
+        for (ServerPlayer player : level.players()) {
+            var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+            
+            if (!rpgData.getCurrentClass().equalsIgnoreCase("fatespinner")) {
+                continue;
+            }
+            
+            if (rpgData.isInManafluxChannel()) {
+                long currentTime = level.getGameTime();
+                long channelDuration = currentTime - rpgData.getManafluxStartTime();
+                
+                // Check max duration (8 seconds = 160 ticks)
+                if (channelDuration >= PlayerRPGData.MANAFLUX_MAX_DURATION_TICKS) {
+                    // Force end channel
+                    rpgData.setInManafluxChannel(false);
+                    releaseAllManafluxStuns(player, level);
+                    
+                    // Start cooldown
+                    String abilityId = "fatespinner_ability_2";
+                    var stats = player.getData(ModAttachments.PLAYER_STATS);
+                    int cooldownReduction = stats.getIntStatValue(StatType.COOLDOWN_REDUCTION);
+                    int baseCooldownTicks = AbilityUtils.getAbilityCooldownTicks("fatespinner", 2);
+                    int adjustedCooldownTicks = (int) (baseCooldownTicks * (1.0 - cooldownReduction / 100.0));
+                    rpgData.setAbilityCooldown(abilityId, Math.max(adjustedCooldownTicks, 20));
+                    
+                    player.displayClientMessage(Component.literal("§dManaflux §7channel expired!"), true);
+                    continue;
+                }
+                
+                // Mana drain every second
+                if (currentTime - rpgData.getLastManafluxDrainTime() >= PlayerRPGData.MANAFLUX_MANA_DRAIN_INTERVAL_TICKS) {
+                    if (rpgData.getMana() >= PlayerRPGData.MANAFLUX_MANA_DRAIN_AMOUNT) {
+                        rpgData.useMana(PlayerRPGData.MANAFLUX_MANA_DRAIN_AMOUNT);
+                        rpgData.setLastManafluxDrainTime(currentTime);
+                        
+                        // Sync mana to client
+                        sendToPlayer(new PacketSyncMana(rpgData.getMana(), rpgData.getMaxMana()), player);
+                    } else {
+                        // Out of mana - end channel
+                        rpgData.setInManafluxChannel(false);
+                        releaseAllManafluxStuns(player, level);
+                        
+                        // Start cooldown
+                        String abilityId = "fatespinner_ability_2";
+                        var stats = player.getData(ModAttachments.PLAYER_STATS);
+                        int cooldownReduction = stats.getIntStatValue(StatType.COOLDOWN_REDUCTION);
+                        int baseCooldownTicks = AbilityUtils.getAbilityCooldownTicks("fatespinner", 2);
+                        int adjustedCooldownTicks = (int) (baseCooldownTicks * (1.0 - cooldownReduction / 100.0));
+                        rpgData.setAbilityCooldown(abilityId, Math.max(adjustedCooldownTicks, 20));
+                        
+                        player.displayClientMessage(Component.literal("§cOut of mana! §dManaflux §7ended!"), true);
+                        continue;
+                    }
+                }
+                
+                // Re-apply stuns to threaded enemies (they might have worn off)
+                applyManafluxStunToThreadedEnemies(player, level);
+                
+                // Visual: Energy flowing through threads
+                spawnManafluxChannelVisual(player, level);
+                
+                // Player cannot move while channeling
+                player.setDeltaMovement(0, player.getDeltaMovement().y, 0);
+            }
+        }
+    }
+    
+    /**
+     * Apply Manaflux stun effect to all threaded enemies
+     */
+    private static void applyManafluxStunToThreadedEnemies(ServerPlayer player, ServerLevel level) {
+        Map<UUID, FateThread> threads = getActiveThreads(player);
+        
+        for (FateThread thread : threads.values()) {
+            Entity targetEntity = level.getEntity(thread.targetUUID);
+            if (targetEntity instanceof LivingEntity living && living.isAlive()) {
+                // Apply slow and weakness to simulate stun (since MC doesn't have true stun)
+                living.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, MANAFLUX_STUN_EFFECT_DURATION, MANAFLUX_STUN_AMPLIFIER, false, false)); // Extreme slow
+                living.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, MANAFLUX_STUN_EFFECT_DURATION, MANAFLUX_STUN_AMPLIFIER, false, false)); // Cannot deal damage
+                
+                // Stop the entity's movement
+                living.setDeltaMovement(0, living.getDeltaMovement().y, 0);
+            }
+        }
+    }
+    
+    /**
+     * Release all Manaflux stuns when channel ends
+     */
+    private static void releaseAllManafluxStuns(ServerPlayer player, ServerLevel level) {
+        Map<UUID, FateThread> threads = getActiveThreads(player);
+        
+        for (FateThread thread : threads.values()) {
+            Entity targetEntity = level.getEntity(thread.targetUUID);
+            if (targetEntity instanceof LivingEntity living) {
+                living.removeEffect(MobEffects.MOVEMENT_SLOWDOWN);
+                living.removeEffect(MobEffects.WEAKNESS);
+            }
+        }
+    }
+    
+    /**
+     * Find nearest threaded enemy in player's line of sight
+     */
+    private static LivingEntity findNearestThreadedEnemyInLineOfSight(ServerPlayer player, ServerLevel level) {
+        Map<UUID, FateThread> threads = getActiveThreads(player);
+        if (threads.isEmpty()) {
+            return null;
+        }
+        
+        Vec3 eyePos = player.getEyePosition();
+        Vec3 lookVec = player.getLookAngle();
+        
+        LivingEntity nearestInSight = null;
+        double nearestDistance = Double.MAX_VALUE;
+        
+        for (FateThread thread : threads.values()) {
+            Entity targetEntity = level.getEntity(thread.targetUUID);
+            if (targetEntity instanceof LivingEntity living && living.isAlive()) {
+                Vec3 targetPos = living.position().add(0, living.getBbHeight() * 0.5, 0);
+                Vec3 toTarget = targetPos.subtract(eyePos);
+                double distance = toTarget.length();
+                
+                // Check if target is roughly in front of player (within ~45 degree cone)
+                double dot = lookVec.normalize().dot(toTarget.normalize());
+                if (dot > LINE_OF_SIGHT_DOT_THRESHOLD) {
+                    // Check if closer than current nearest
+                    if (distance < nearestDistance) {
+                        nearestInSight = living;
+                        nearestDistance = distance;
+                    }
+                }
+            }
+        }
+        
+        return nearestInSight;
+    }
+    
+    /**
+     * Knockback nearby enemies and all threaded enemies
+     */
+    private static void knockbackNearbyAndThreadedEnemies(ServerPlayer player, ServerLevel level, double radius, float strength) {
+        Vec3 playerPos = player.position();
+        
+        // Track already affected entities to avoid double knockback
+        java.util.Set<UUID> affected = new java.util.HashSet<>();
+        
+        // Knockback nearby enemies in AOE
+        AABB aoeBox = player.getBoundingBox().inflate(radius);
+        List<Entity> nearbyEntities = level.getEntities(player, aoeBox,
+                e -> e instanceof LivingEntity && e != player);
+        
+        for (Entity entity : nearbyEntities) {
+            if (entity instanceof LivingEntity living) {
+                Vec3 knockbackDir = entity.position().subtract(playerPos).normalize();
+                living.setDeltaMovement(knockbackDir.scale(strength).add(0, 0.4, 0));
+                living.hurtMarked = true;
+                affected.add(entity.getUUID());
+            }
+        }
+        
+        // Knockback all threaded enemies regardless of distance
+        Map<UUID, FateThread> threads = getActiveThreads(player);
+        for (FateThread thread : threads.values()) {
+            if (!affected.contains(thread.targetUUID)) {
+                Entity targetEntity = level.getEntity(thread.targetUUID);
+                if (targetEntity instanceof LivingEntity living && living.isAlive()) {
+                    Vec3 knockbackDir = targetEntity.position().subtract(playerPos).normalize();
+                    living.setDeltaMovement(knockbackDir.scale(strength * 1.5).add(0, 0.5, 0)); // Stronger for threaded
+                    living.hurtMarked = true;
+                }
+            }
+        }
+    }
+    
+    /**
+     * Pull nearby enemies and all threaded enemies towards player
+     */
+    private static void pullNearbyAndThreadedEnemies(ServerPlayer player, ServerLevel level, double radius, float strength) {
+        Vec3 playerPos = player.position();
+        
+        // Track already affected entities
+        java.util.Set<UUID> affected = new java.util.HashSet<>();
+        
+        // Pull nearby enemies in AOE
+        AABB aoeBox = player.getBoundingBox().inflate(radius);
+        List<Entity> nearbyEntities = level.getEntities(player, aoeBox,
+                e -> e instanceof LivingEntity && e != player);
+        
+        for (Entity entity : nearbyEntities) {
+            if (entity instanceof LivingEntity living) {
+                Vec3 pullDir = playerPos.subtract(entity.position()).normalize();
+                double distance = entity.position().distanceTo(playerPos);
+                double pullStrength = Math.min(strength, distance - MIN_PULL_DISTANCE);
+                living.setDeltaMovement(pullDir.scale(pullStrength).add(0, 0.3, 0));
+                living.hurtMarked = true;
+                affected.add(entity.getUUID());
+            }
+        }
+        
+        // Pull all threaded enemies regardless of distance
+        Map<UUID, FateThread> threads = getActiveThreads(player);
+        for (FateThread thread : threads.values()) {
+            if (!affected.contains(thread.targetUUID)) {
+                Entity targetEntity = level.getEntity(thread.targetUUID);
+                if (targetEntity instanceof LivingEntity living && living.isAlive()) {
+                    Vec3 pullDir = playerPos.subtract(targetEntity.position()).normalize();
+                    double distance = targetEntity.position().distanceTo(playerPos);
+                    double pullStrength = Math.min(strength * THREADED_PULL_MULTIPLIER, distance - MIN_THREADED_PULL_DISTANCE);
+                    living.setDeltaMovement(pullDir.scale(pullStrength).add(0, 0.3, 0));
+                    living.hurtMarked = true;
+                }
+            }
+        }
+    }
+    
+    // ===== FATESPINNER VISUAL EFFECTS =====
+    
+    /**
+     * Spawn thread visual between player and target
+     * Color shifts from muted violet to pale white based on tension
+     */
+    private static void spawnThreadVisual(ServerLevel level, Vec3 start, Vec3 end, int tension) {
+        Vec3 dir = end.subtract(start);
+        double length = dir.length();
+        dir = dir.normalize();
+        
+        // Color interpolation: violet (low tension) to white (high tension)
+        float tensionRatio = Math.min(1.0f, tension / 10.0f);
+        float r = 0.6f + tensionRatio * 0.4f; // 0.6 to 1.0
+        float g = 0.3f + tensionRatio * 0.7f; // 0.3 to 1.0
+        float b = 0.8f + tensionRatio * 0.2f; // 0.8 to 1.0
+        float size = 0.3f + tensionRatio * 0.2f; // Thicker at high tension
+        
+        int points = (int) (length * 3);
+        for (int i = 0; i <= points; i++) {
+            double progress = (double) i / points;
+            Vec3 pos = start.add(dir.scale(progress * length));
+            
+            // Add gentle sway
+            double swayOffset = Math.sin(progress * Math.PI * 2 + level.getGameTime() * 0.1) * 0.1 * (1.0 - tensionRatio);
+            pos = pos.add(0, swayOffset, 0);
+            
+            level.sendParticles(createDustParticle(r, g, b, size),
+                    pos.x, pos.y, pos.z, 1, 0.02, 0.02, 0.02, 0);
+        }
+        
+        // Pulse effect traveling along thread
+        double pulsePosition = (level.getGameTime() % 20) / 20.0;
+        Vec3 pulsePos = start.add(dir.scale(pulsePosition * length));
+        level.sendParticles(createDustParticle(1.0f, 1.0f, 1.0f, size + 0.2f),
+                pulsePos.x, pulsePos.y, pulsePos.z, 1, 0.01, 0.01, 0.01, 0);
+        
+        // High tension vibration effect
+        if (tension >= 9) {
+            for (int i = 0; i <= points; i += 2) {
+                double progress = (double) i / points;
+                Vec3 pos = start.add(dir.scale(progress * length));
+                double vibration = (RANDOM.nextDouble() - 0.5) * 0.15;
+                level.sendParticles(createDustParticle(1.0f, 1.0f, 1.0f, 0.2f),
+                        pos.x + vibration, pos.y + vibration, pos.z + vibration, 1, 0, 0, 0, 0);
+            }
+        }
+    }
+    
+    /**
+     * Spawn thread break effect - sharp flash and arcane crack
+     */
+    private static void spawnThreadBreakEffect(ServerLevel level, Vec3 start, Vec3 end) {
+        Vec3 dir = end.subtract(start);
+        double length = dir.length();
+        dir = dir.normalize();
+        
+        // Bright white flash along thread path
+        int points = (int) (length * 4);
+        for (int i = 0; i <= points; i++) {
+            double progress = (double) i / points;
+            Vec3 pos = start.add(dir.scale(progress * length));
+            
+            level.sendParticles(createDustParticle(1.0f, 1.0f, 1.0f, 1.0f),
+                    pos.x, pos.y, pos.z, 3, 0.1, 0.1, 0.1, 0.05);
+        }
+        
+        // Flash at both ends
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                start.x, start.y, start.z, 1, 0, 0, 0, 0);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                end.x, end.y, end.z, 1, 0, 0, 0, 0);
+        
+        // Fading afterimage (violet particles scattering)
+        for (int i = 0; i <= points; i += 2) {
+            double progress = (double) i / points;
+            Vec3 pos = start.add(dir.scale(progress * length));
+            
+            level.sendParticles(createDustParticle(0.6f, 0.3f, 0.8f, 0.5f),
+                    pos.x, pos.y, pos.z, 2, 0.2, 0.2, 0.2, 0.1);
+        }
+    }
+    
+    /**
+     * Spawn Weave projectile fire effect
+     */
+    private static void spawnWeaveFireEffect(ServerLevel level, Vec3 pos, Vec3 direction) {
+        // Compression effect at hand
+        for (int i = 0; i < 10; i++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double radius = 0.3 + RANDOM.nextDouble() * 0.2;
+            double x = pos.x + Math.cos(angle) * radius;
+            double z = pos.z + Math.sin(angle) * radius;
+            
+            level.sendParticles(createDustParticle(0.7f, 0.4f, 0.9f, 0.5f),
+                    x, pos.y, z, 1, -direction.x * 0.1, 0, -direction.z * 0.1, 0.02);
+        }
+        
+        // Launch flash
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                pos.x, pos.y, pos.z, 5, 0.1, 0.1, 0.1, 0.05);
+    }
+    
+    /**
+     * Spawn Weave impact effect - thread snaps back to caster
+     */
+    private static void spawnWeaveImpactEffect(ServerLevel level, Vec3 impactPos, Vec3 casterPos) {
+        // Impact burst
+        level.sendParticles(createDustParticle(0.8f, 0.5f, 1.0f, 0.8f),
+                impactPos.x, impactPos.y, impactPos.z, 15, 0.3, 0.3, 0.3, 0.1);
+        
+        // Thread connection establishing visual
+        Vec3 dir = casterPos.subtract(impactPos);
+        double length = dir.length();
+        dir = dir.normalize();
+        
+        int points = (int) (length * 2);
+        for (int i = 0; i <= points; i++) {
+            double progress = (double) i / points;
+            Vec3 pos = impactPos.add(dir.scale(progress * length));
+            
+            level.sendParticles(createDustParticle(0.7f, 0.4f, 0.9f, 0.6f),
+                    pos.x, pos.y, pos.z, 1, 0.05, 0.05, 0.05, 0.02);
+        }
+    }
+    
+    /**
+     * Spawn Weave block impact effect
+     */
+    private static void spawnWeaveBlockImpactEffect(ServerLevel level, Vec3 pos) {
+        // Dissipate effect
+        level.sendParticles(createDustParticle(0.6f, 0.3f, 0.8f, 0.5f),
+                pos.x, pos.y, pos.z, 10, 0.2, 0.2, 0.2, 0.05);
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
+                pos.x, pos.y, pos.z, 5, 0.2, 0.2, 0.2, 0.1);
+    }
+    
+    /**
+     * Spawn thread pull visual effect
+     */
+    private static void spawnThreadPullEffect(ServerLevel level, Vec3 playerPos, Vec3 targetPos) {
+        Vec3 dir = targetPos.subtract(playerPos);
+        double length = dir.length();
+        dir = dir.normalize();
+        
+        // Thread tightens - bright white line
+        int points = (int) (length * 4);
+        for (int i = 0; i <= points; i++) {
+            double progress = (double) i / points;
+            Vec3 pos = playerPos.add(dir.scale(progress * length));
+            
+            level.sendParticles(createDustParticle(1.0f, 0.9f, 1.0f, 0.8f),
+                    pos.x, pos.y, pos.z, 1, 0.02, 0.02, 0.02, 0);
+        }
+        
+        // Arcane sparks scattering backward
+        for (int i = 0; i < 15; i++) {
+            double progress = RANDOM.nextDouble();
+            Vec3 sparkPos = playerPos.add(dir.scale(progress * length * 0.5));
+            
+            level.sendParticles(createDustParticle(0.9f, 0.7f, 1.0f, 0.4f),
+                    sparkPos.x, sparkPos.y, sparkPos.z, 1,
+                    -dir.x * 0.3, 0.1, -dir.z * 0.3, 0.1);
+        }
+    }
+    
+    /**
+     * Spawn Manaflux start effect
+     */
+    private static void spawnManafluxStartEffect(ServerLevel level, Vec3 center) {
+        // Aura forming around player
+        for (int ring = 0; ring < 3; ring++) {
+            double radius = 0.8 + ring * 0.3;
+            int points = 16;
+            for (int p = 0; p < points; p++) {
+                double angle = (double) p / points * 2 * Math.PI;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                
+                level.sendParticles(createDustParticle(0.7f, 0.5f, 1.0f, 0.8f),
+                        x, center.y + 0.5 + ring * 0.2, z, 2, 0.05, 0.05, 0.05, 0.02);
+            }
+        }
+        
+        // Particles drift upward
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
+                center.x, center.y + 1, center.z, 30, 0.5, 0.5, 0.5, 0.1);
+    }
+    
+    /**
+     * Spawn Manaflux end effect
+     */
+    private static void spawnManafluxEndEffect(ServerLevel level, Vec3 center) {
+        // Energy disperses
+        level.sendParticles(createDustParticle(0.5f, 0.3f, 0.7f, 0.5f),
+                center.x, center.y + 1, center.z, 20, 0.8, 0.5, 0.8, 0.1);
+    }
+    
+    /**
+     * Spawn Manaflux channel visual (during active channel)
+     */
+    private static void spawnManafluxChannelVisual(ServerPlayer player, ServerLevel level) {
+        Vec3 playerPos = player.position();
+        Map<UUID, FateThread> threads = getActiveThreads(player);
+        
+        // Aura around player
+        if (level.getGameTime() % 5 == 0) {
+            for (int i = 0; i < 5; i++) {
+                double angle = RANDOM.nextDouble() * 2 * Math.PI;
+                double radius = 0.6 + RANDOM.nextDouble() * 0.4;
+                double x = playerPos.x + Math.cos(angle) * radius;
+                double z = playerPos.z + Math.sin(angle) * radius;
+                
+                level.sendParticles(createDustParticle(0.7f, 0.5f, 1.0f, 0.6f),
+                        x, playerPos.y + 1 + RANDOM.nextDouble(), z, 1, 0, 0.02, 0, 0.01);
+            }
+        }
+        
+        // Energy flowing through threads to enemies
+        for (FateThread thread : threads.values()) {
+            Entity targetEntity = level.getEntity(thread.targetUUID);
+            if (targetEntity instanceof LivingEntity living) {
+                Vec3 start = playerPos.add(0, player.getEyeHeight() - 0.3, 0);
+                Vec3 end = living.position().add(0, living.getBbHeight() * 0.5, 0);
+                
+                // Straight, rigid thread (no sway)
+                Vec3 dir = end.subtract(start);
+                double length = dir.length();
+                dir = dir.normalize();
+                
+                // Energy pulse traveling along thread
+                double pulsePosition = ((level.getGameTime() * 2) % 30) / 30.0;
+                Vec3 pulsePos = start.add(dir.scale(pulsePosition * length));
+                
+                level.sendParticles(createDustParticle(0.9f, 0.8f, 1.0f, 0.7f),
+                        pulsePos.x, pulsePos.y, pulsePos.z, 3, 0.05, 0.05, 0.05, 0.02);
+                
+                // Arcane sigils around frozen enemy
+                if (level.getGameTime() % 10 == 0) {
+                    for (int i = 0; i < 3; i++) {
+                        double angle = (level.getGameTime() * 0.1 + i * (2 * Math.PI / 3)) % (2 * Math.PI);
+                        double sigilRadius = 0.8;
+                        double x = living.getX() + Math.cos(angle) * sigilRadius;
+                        double z = living.getZ() + Math.sin(angle) * sigilRadius;
+                        
+                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
+                                x, living.getY() + living.getBbHeight() * 0.5, z, 2, 0.1, 0.1, 0.1, 0.02);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Spawn Repulsion knockback effect
+     */
+    private static void spawnRepulsionKnockbackEffect(ServerLevel level, Vec3 center) {
+        // Expanding circular shockwave
+        for (int ring = 0; ring < 8; ring++) {
+            double radius = 1.0 + ring * 0.8;
+            int points = 24 + ring * 4;
+            for (int p = 0; p < points; p++) {
+                double angle = (double) p / points * 2 * Math.PI;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                
+                level.sendParticles(createDustParticle(0.8f, 0.6f, 1.0f, 0.6f),
+                        x, center.y + 0.5, z, 1, 0.05, 0.02, 0.05, 0.02);
+            }
+        }
+        
+        // Central burst
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.FLASH,
+                center.x, center.y + 1, center.z, 3, 0.3, 0.3, 0.3, 0);
+        level.sendParticles(createDustParticle(1.0f, 0.8f, 1.0f, 1.0f),
+                center.x, center.y + 1, center.z, 30, 0.5, 0.3, 0.5, 0.2);
+    }
+    
+    /**
+     * Spawn Repulsion pull effect
+     */
+    private static void spawnRepulsionPullEffect(ServerLevel level, Vec3 center) {
+        // Collapsing circular wave
+        for (int ring = 7; ring >= 0; ring--) {
+            double radius = 1.0 + ring * 0.8;
+            int points = 24 + ring * 4;
+            for (int p = 0; p < points; p++) {
+                double angle = (double) p / points * 2 * Math.PI;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                
+                // Particles moving inward
+                level.sendParticles(createDustParticle(0.8f, 0.6f, 1.0f, 0.6f),
+                        x, center.y + 0.5, z, 1,
+                        -Math.cos(angle) * 0.1, 0.02, -Math.sin(angle) * 0.1, 0.02);
+            }
+        }
+        
+        // Central implosion effect
+        level.sendParticles(createDustParticle(1.0f, 0.8f, 1.0f, 1.0f),
+                center.x, center.y + 1, center.z, 20, 0.3, 0.2, 0.3, 0.1);
+    }
+    
+    /**
+     * Spawn Manasurge explosion effect
+     */
+    private static void spawnManasurgeEffect(ServerLevel level, Vec3 center, int threadCount) {
+        // Base explosion
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION_EMITTER,
+                center.x, center.y + 1, center.z, 1, 0, 0, 0, 0);
+        
+        // Layered rings of light
+        for (int wave = 0; wave < 6; wave++) {
+            double radius = 1.5 + wave * 1.2;
+            int points = 32;
+            for (int p = 0; p < points; p++) {
+                double angle = (double) p / points * 2 * Math.PI;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                
+                // Near-white color
+                level.sendParticles(createDustParticle(1.0f, 0.95f, 1.0f, 1.0f),
+                        x, center.y + 0.5 + RANDOM.nextDouble() * 0.5, z, 3, 0.1, 0.2, 0.1, 0.05);
+            }
+        }
+        
+        // Thread contribution visual - surge from threads
+        if (threadCount > 0) {
+            // Bright streams converging to center
+            for (int i = 0; i < threadCount * 5; i++) {
+                double angle = RANDOM.nextDouble() * 2 * Math.PI;
+                double radius = 3.0 + RANDOM.nextDouble() * 2.0;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                
+                level.sendParticles(createDustParticle(0.9f, 0.7f, 1.0f, 0.8f),
+                        x, center.y + 1 + RANDOM.nextDouble(), z, 1,
+                        -Math.cos(angle) * 0.3, 0.1, -Math.sin(angle) * 0.3, 0.1);
+            }
+        }
+        
+        // Fragments of broken arcane filaments
+        for (int i = 0; i < 30 + threadCount * 5; i++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double upAngle = RANDOM.nextDouble() * Math.PI / 4;
+            double speed = 0.2 + RANDOM.nextDouble() * 0.3;
+            double vx = Math.cos(angle) * Math.cos(upAngle) * speed;
+            double vy = Math.sin(upAngle) * speed;
+            double vz = Math.sin(angle) * Math.cos(upAngle) * speed;
+            
+            level.sendParticles(createDustParticle(0.7f, 0.5f, 0.9f, 0.5f),
+                    center.x, center.y + 1, center.z, 1, vx, vy, vz, 0.1);
+        }
+        
+        // Reverberating hum visual - ambient particles
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.ENCHANT,
+                center.x, center.y + 0.5, center.z, 50 + threadCount * 10, 4.0, 1.0, 4.0, 0.2);
+    }
+    
+    /**
+     * Get the activeFateThreads map for external access
+     */
+    public static Map<UUID, Map<UUID, FateThread>> getActiveFateThreads() {
+        return activeFateThreads;
     }
 }
