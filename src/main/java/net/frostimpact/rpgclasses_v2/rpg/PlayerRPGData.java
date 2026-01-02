@@ -57,6 +57,18 @@ public class PlayerRPGData {
     private transient boolean inPiercingCharge = false; // Whether currently in Piercing Charge
     private transient long piercingChargeStartTime = 0; // When Piercing Charge started
     private transient float piercingChargeDamage = 0.0f; // Stored damage for Piercing Charge
+    
+    // Fatespinner Thread system - transient fields (runtime state)
+    // Map of enemy UUID -> thread data (managed by ModMessages)
+    private transient boolean inManafluxChannel = false; // Whether currently channeling Manaflux
+    private transient long manafluxStartTime = 0; // When Manaflux channel started
+    private transient long lastManafluxDrainTime = 0; // Last time mana was drained for Manaflux
+    public static final int MAX_THREADS = 5; // Maximum concurrent threads
+    public static final int THREAD_BREAK_TENSION = 11; // Tension at which thread breaks
+    public static final float THREAD_BREAK_DAMAGE_PERCENT = 0.20f; // 20% damage on thread break
+    public static final int MANAFLUX_MAX_DURATION_TICKS = 160; // 8 seconds max channel
+    public static final int MANAFLUX_MANA_DRAIN_INTERVAL_TICKS = 20; // Drain mana every second
+    public static final int MANAFLUX_MANA_DRAIN_AMOUNT = 3; // 3 MP per second
 
     public PlayerRPGData() {
         this.mana = 100;
@@ -490,5 +502,31 @@ public class PlayerRPGData {
     
     public void setPiercingChargeDamage(float piercingChargeDamage) {
         this.piercingChargeDamage = piercingChargeDamage;
+    }
+    
+    // ===== FATESPINNER THREAD SYSTEM =====
+    
+    public boolean isInManafluxChannel() {
+        return inManafluxChannel;
+    }
+    
+    public void setInManafluxChannel(boolean inManafluxChannel) {
+        this.inManafluxChannel = inManafluxChannel;
+    }
+    
+    public long getManafluxStartTime() {
+        return manafluxStartTime;
+    }
+    
+    public void setManafluxStartTime(long manafluxStartTime) {
+        this.manafluxStartTime = manafluxStartTime;
+    }
+    
+    public long getLastManafluxDrainTime() {
+        return lastManafluxDrainTime;
+    }
+    
+    public void setLastManafluxDrainTime(long lastManafluxDrainTime) {
+        this.lastManafluxDrainTime = lastManafluxDrainTime;
     }
 }

@@ -98,6 +98,13 @@ public final class AbilityUtils {
                 case 4 -> "Comet";
                 default -> "Unknown";
             };
+            case "fatespinner" -> switch (slot) {
+                case 1 -> "Weave";
+                case 2 -> "Manaflux";
+                case 3 -> "Repulsion";
+                case 4 -> "Manasurge";
+                default -> "Unknown";
+            };
             default -> "Ability " + slot;
         };
     }
@@ -189,6 +196,13 @@ public final class AbilityUtils {
                 case 2 -> 15;  // Leap - 15 MP
                 case 3 -> 15;  // Lunge - 15 MP
                 case 4 -> 50;  // Comet - 50 MP
+                default -> 0;
+            };
+            case "fatespinner" -> switch (slot) {
+                case 1 -> 15;  // Weave - 15 MP (creates thread + 80% damage projectile)
+                case 2 -> 3;   // Manaflux - 3 MP activation, 3 MP/s sustain (channeled stun)
+                case 3 -> 20;  // Repulsion - 20 MP (knockback pulse)
+                case 4 -> 40;  // Manasurge - 40 MP (explosion scales with threads)
                 default -> 0;
             };
             default -> 0;
@@ -284,6 +298,13 @@ public final class AbilityUtils {
                 case 4 -> 500;  // 25s - Comet
                 default -> 40;
             };
+            case "fatespinner" -> switch (slot) {
+                case 1 -> 60;   // 3s - Weave (arcane projectile creates thread)
+                case 2 -> 240;  // 12s - Manaflux (cooldown starts when channel ends, max 8s channel)
+                case 3 -> 160;  // 8s - Repulsion (knockback pulse)
+                case 4 -> 400;  // 20s - Manasurge (mana explosion)
+                default -> 40;
+            };
             default -> 40;
         };
     }
@@ -317,6 +338,7 @@ public final class AbilityUtils {
             case "lancer" -> "⚡";
             case "pyromancer" -> "🔥";
             case "frostmage" -> "❄";
+            case "fatespinner" -> "🕸";
             case "assassin" -> "☠";
             case "shadowdancer" -> "👤";
             case "hawkeye" -> "👁";
@@ -337,7 +359,7 @@ public final class AbilityUtils {
         if (classId == null) return 0xAAAAAA;
         return switch (classId.toLowerCase()) {
             case "warrior", "berserker", "ravager", "lancer" -> 0xFF4444;
-            case "mage", "pyromancer", "frostmage" -> 0xAA00FF;
+            case "mage", "pyromancer", "frostmage", "fatespinner" -> 0xAA00FF;
             case "rogue", "assassin", "shadowdancer" -> 0x55FF55;
             case "ranger", "hawkeye", "marksman", "beastmaster" -> 0x88DD44;
             case "tank", "guardian", "juggernaut" -> 0x55AAFF;

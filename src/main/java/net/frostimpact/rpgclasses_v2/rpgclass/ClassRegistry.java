@@ -134,6 +134,15 @@ public class ClassRegistry {
                 "rpgclasses_v2:textures/gui/icons/frostmage.png", true, "mage", 10);
         frostmage.addBaseStat(StatType.COOLDOWN_REDUCTION, new StatModifier("frost_cooldown", StatType.COOLDOWN_REDUCTION, 20.0, -1));
         register(frostmage);
+        
+        RPGClass fatespinner = new RPGClass("fatespinner", "Fatespinner",
+                "A mage who weaves arcane threads between themselves and enemies. " +
+                "Threads gain tension with distance (1 block = 1 tension). At 11 tension, threads break dealing 20% damage. " +
+                "Max 5 concurrent threads, 1 per enemy. Shifting pulls you towards the nearest threaded enemy in line of sight.", "mage",
+                "rpgclasses_v2:textures/gui/icons/fatespinner.png", true, "mage", 10);
+        fatespinner.addBaseStat(StatType.MAX_MANA, new StatModifier("fatespinner_mana", StatType.MAX_MANA, 20.0, -1));
+        fatespinner.addBaseStat(StatType.MANA_REGEN, new StatModifier("fatespinner_regen", StatType.MANA_REGEN, 1.0, -1));
+        register(fatespinner);
 
         // ===== ROGUE CLASS =====
         RPGClass rogue = new RPGClass("rogue", "Rogue",
