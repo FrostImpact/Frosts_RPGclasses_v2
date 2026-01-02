@@ -103,7 +103,7 @@ public class ClassRegistry {
                 "rpgclasses_v2:textures/gui/icons/lancer.png", true, "warrior", 10);
         lancer.addBaseStat(StatType.MOVE_SPEED, new StatModifier("lancer_speed", StatType.MOVE_SPEED, 10.0, -1));
         lancer.addBaseStat(StatType.DAMAGE, new StatModifier("lancer_damage", StatType.DAMAGE, 6.0, -1));
-        lancer.addBaseStat(StatType.CRIT_CHANCE, new StatModifier("lancer_crit", StatType.CRIT_CHANCE, 15.0, -1));
+        lancer.addBaseStat(StatType.ATTACK_SPEED, new StatModifier("lancer_attack_speed", StatType.ATTACK_SPEED, 10.0, -1));
         register(lancer);
         
         RPGClass ravager = new RPGClass("ravager", "Ravager",
