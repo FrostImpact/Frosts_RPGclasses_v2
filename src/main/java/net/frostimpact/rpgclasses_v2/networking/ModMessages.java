@@ -79,6 +79,11 @@ public class ModMessages {
     private static final float RAGE_GAIN_PERCENT = 0.05f; // 5% of damage dealt
     private static final float LIFESTEAL_PERCENT = 0.05f; // 5% of damage dealt while enraged
     
+    // Lancer ability constants
+    private static final float LUNGE_MOMENTUM_SCALING = 15.0f; // Maximum bonus damage from momentum for Lunge
+    private static final float COMET_MOMENTUM_SCALING = 25.0f; // Maximum bonus damage from momentum for Comet
+    private static final float PIERCING_CHARGE_MOMENTUM_SCALING = 20.0f; // Maximum bonus damage from momentum for Piercing Charge
+    
     // Active timed effects for Rain of Arrows
     private static final Map<UUID, RainOfArrowsEffect> activeRainEffects = new ConcurrentHashMap<>();
     // Active seeker projectiles (homing missiles)
@@ -1700,10 +1705,10 @@ public class ModMessages {
                         player.setDeltaMovement(velocity);
                         player.hurtMarked = true;
                         
-                        // Calculate damage: (momentum/100 * 15) + base damage + damage bonus
-                        // Scales from base damage at 0% momentum to base + 15 + bonus at 100% momentum
+                        // Calculate damage: (momentum/100 * LUNGE_MOMENTUM_SCALING) + base damage + damage bonus
+                        // Scales from base damage at 0% momentum to base + LUNGE_MOMENTUM_SCALING + bonus at 100% momentum
                         float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
-                        float momentumDamage = (momentum / 100.0f) * 15.0f;
+                        float momentumDamage = (momentum / 100.0f) * LUNGE_MOMENTUM_SCALING;
                         float lungeDamage = baseDamage + momentumDamage + damageBonus;
                         
                         // Deal damage to nearby enemies
@@ -1733,10 +1738,10 @@ public class ModMessages {
                         // Store comet state for impact detection
                         player.getPersistentData().putBoolean("lancer_comet_active", true);
                         
-                        // Calculate impact damage: (momentum/100 * 25) + base damage + (damage bonus * 2)
-                        // Scales from base damage at 0% to base + 25 + (bonus*2) at 100%
+                        // Calculate impact damage: (momentum/100 * COMET_MOMENTUM_SCALING) + base damage + (damage bonus * 2)
+                        // Scales from base damage at 0% to base + COMET_MOMENTUM_SCALING + (bonus*2) at 100%
                         float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
-                        float momentumDamage = (momentum / 100.0f) * 25.0f;
+                        float momentumDamage = (momentum / 100.0f) * COMET_MOMENTUM_SCALING;
                         float cometDamage = baseDamage + momentumDamage + (damageBonus * 2.0f);
                         player.getPersistentData().putFloat("lancer_comet_damage", cometDamage);
                         
@@ -6882,9 +6887,9 @@ public class ModMessages {
                         float momentum = rpgData.getMomentum();
                         float baseDamage = rpgData.getPiercingChargeDamage();
                         
-                        // Calculate current damage: base + (momentum/100 * 20)
+                        // Calculate current damage: base + (momentum/100 * PIERCING_CHARGE_MOMENTUM_SCALING)
                         // Damage ramps up as momentum increases during the charge
-                        float momentumBonus = (momentum / 100.0f) * 20.0f;
+                        float momentumBonus = (momentum / 100.0f) * PIERCING_CHARGE_MOMENTUM_SCALING;
                         float totalDamage = baseDamage + momentumBonus;
                         
                         // Deal momentum-scaled damage (50% on pass-through)
