@@ -6782,7 +6782,6 @@ public class ModMessages {
                         living.hurt(player.damageSources().playerAttack(player), pierceDamage * 0.5f);
                         
                         // Check if damage was less than 20% of target's HP
-                        float targetHealthPercent = living.getHealth() / living.getMaxHealth();
                         if (pierceDamage * 0.5f < living.getMaxHealth() * 0.2f) {
                             // Stop and deal larger damage
                             rpgData.setInPiercingCharge(false);
@@ -6804,9 +6803,9 @@ public class ModMessages {
                     }
                 }
                 
-                // Reduce turning speed by applying look direction constraint
-                Vec3 currentLook = player.getLookAngle();
-                // This is a simplified approach - in practice, rotation would be constrained more directly
+                // Note: Turning speed constraint during Piercing Charge would require
+                // client-side rotation control, which is complex to implement properly.
+                // Currently handled by forcing sprint state.
             }
             
             // Handle Comet impact

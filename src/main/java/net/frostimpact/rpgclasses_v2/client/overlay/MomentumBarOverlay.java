@@ -65,10 +65,10 @@ public class MomentumBarOverlay implements LayeredDraw.Layer {
             int b = (int) (200 + pulse * 55); // Pulse between yellow and white
             fillColor = 0xFF000000 | (r << 16) | (g << 8) | b;
         } else {
-            // Gradient from pale yellow to bright yellow
+            // Gradient from pale yellow (0xFFFFCC) to bright yellow (0xFFFF00)
             int r = 255;
-            int g = (int) (255 - momentumPercent * 51); // 255 to 204
-            int b = (int) (204 * (1.0f - momentumPercent)); // Fade out blue
+            int g = 255;
+            int b = (int) (204 * (1.0f - momentumPercent)); // 204 at 0% momentum, 0 at 100% momentum
             fillColor = 0xFF000000 | (r << 16) | (g << 8) | b;
         }
         

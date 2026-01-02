@@ -314,7 +314,7 @@ public final class AbilityUtils {
             case "tank" -> "🛡";
             case "priest" -> "❤";
             case "berserker" -> "💢";
-            case "paladin" -> "✝";
+            case "lancer" -> "⚡";
             case "pyromancer" -> "🔥";
             case "frostmage" -> "❄";
             case "assassin" -> "☠";
@@ -337,7 +337,6 @@ public final class AbilityUtils {
         if (classId == null) return 0xAAAAAA;
         return switch (classId.toLowerCase()) {
             case "warrior", "berserker", "ravager", "lancer" -> 0xFF4444;
-            case "paladin" -> 0xFFDD44;
             case "mage", "pyromancer", "frostmage" -> 0xAA00FF;
             case "rogue", "assassin", "shadowdancer" -> 0x55FF55;
             case "ranger", "hawkeye", "marksman", "beastmaster" -> 0x88DD44;
