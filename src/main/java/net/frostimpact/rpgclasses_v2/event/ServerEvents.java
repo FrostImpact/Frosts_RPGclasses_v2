@@ -60,6 +60,9 @@ public class ServerEvents {
         // Update Warrior Leaps
         ModMessages.updateWarriorLeaps(serverLevel);
         
+        // Update Lancer Piercing Charge and Comet impacts
+        ModMessages.updateLancerAbilities(serverLevel);
+        
         // Update Ravager Heartstoppers
         ModMessages.updateRavagerHeartstoppers(serverLevel);
         
@@ -164,6 +167,56 @@ public class ServerEvents {
                                     net.minecraft.world.effect.MobEffects.SLOW_FALLING, 40, 0, false, false));
                         }
                     }
+                }
+            }
+            
+            // LANCER MOMENTUM SYSTEM: Calculate momentum based on velocity and apply sprint speed boost
+            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("lancer")) {
+                // Calculate momentum from velocity (0-100 scale)
+                net.minecraft.world.phys.Vec3 velocity = player.getDeltaMovement();
+                double horizontalSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+                
+                // Max momentum at ~0.3 blocks/tick (sprinting speed)
+                float momentum = (float) Math.min(100.0, (horizontalSpeed / 0.3) * 100.0);
+                rpgData.setMomentum(momentum);
+                
+                // Track sprint time for speed boost
+                if (player.isSprinting()) {
+                    if (rpgData.getSprintStartTime() == 0) {
+                        rpgData.setSprintStartTime(player.level().getGameTime());
+                    }
+                    
+                    long sprintDuration = player.level().getGameTime() - rpgData.getSprintStartTime();
+                    // After 1.5s (30 ticks) of sprinting, apply gradual speed boost up to +50
+                    if (sprintDuration >= 30) {
+                        // Gradual increase over next 2s (40 ticks), maxing at +50
+                        long boostTicks = sprintDuration - 30;
+                        float speedBoost = Math.min(50.0f, (boostTicks / 40.0f) * 50.0f);
+                        
+                        // Remove old momentum speed modifier
+                        stats.removeModifier("lancer_momentum_speed", net.frostimpact.rpgclasses_v2.rpg.stats.StatType.MOVE_SPEED);
+                        
+                        // Apply new momentum speed modifier
+                        if (speedBoost > 0) {
+                            stats.addModifier(new net.frostimpact.rpgclasses_v2.rpg.stats.StatModifier(
+                                    "lancer_momentum_speed",
+                                    net.frostimpact.rpgclasses_v2.rpg.stats.StatType.MOVE_SPEED,
+                                    speedBoost,
+                                    -1 // Permanent until removed
+                            ));
+                        }
+                    }
+                } else {
+                    // Not sprinting - reset sprint timer and remove speed boost
+                    rpgData.setSprintStartTime(0);
+                    stats.removeModifier("lancer_momentum_speed", net.frostimpact.rpgclasses_v2.rpg.stats.StatType.MOVE_SPEED);
+                }
+                
+                // Check if momentum is at max (100) and set empowered attack flag
+                if (momentum >= 100.0f && !rpgData.isEmpoweredAttack()) {
+                    rpgData.setEmpoweredAttack(true);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                            "§e§lEMPOWERED! §7Your next melee attack is empowered!"), true);
                 }
             }
 
@@ -574,6 +627,31 @@ public class ServerEvents {
                 
                 // Apply lifesteal if enraged (5% of damage)
                 ModMessages.applyBerserkerLifesteal(player, damageDealt);
+            }
+            
+            // Lancer empowered attack
+            if (currentClass != null && currentClass.equalsIgnoreCase("lancer")) {
+                if (rpgData.isEmpoweredAttack() && event.getEntity() instanceof net.minecraft.world.entity.LivingEntity target) {
+                    // Deal bonus damage (50% more)
+                    float bonusDamage = event.getNewDamage() * 0.5f;
+                    target.hurt(player.damageSources().playerAttack(player), bonusDamage);
+                    
+                    // Reset empowered attack flag
+                    rpgData.setEmpoweredAttack(false);
+                    
+                    // Yellow crit effect
+                    if (player.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                        serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                                target.getX(), target.getY() + target.getBbHeight() * 0.5, target.getZ(),
+                                30, 0.3, 0.3, 0.3, 0.2);
+                        serverLevel.sendParticles(ModMessages.createDustParticle(1.0f, 1.0f, 0.2f, 1.0f),
+                                target.getX(), target.getY() + target.getBbHeight() * 0.5, target.getZ(),
+                                20, 0.3, 0.3, 0.3, 0.1);
+                    }
+                    
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                            "§e§l⚡ EMPOWERED STRIKE! §6+" + String.format("%.1f", bonusDamage)), true);
+                }
             }
         }
     }

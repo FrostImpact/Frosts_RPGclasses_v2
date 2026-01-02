@@ -49,6 +49,14 @@ public class PlayerRPGData {
     private transient long lastRageFromDamageTaken = 0; // Cooldown for RAGE from taking damage
     private transient int axeThrowCharges = 2; // Axe Throw charges
     private transient long lastAxeThrowTime = 0; // For 1.5s delay between uses
+    
+    // Lancer Momentum system - transient fields (runtime state)
+    private transient float momentum = 0.0f; // Current momentum (0-100, based on velocity)
+    private transient boolean empoweredAttack = false; // Whether next melee attack is empowered
+    private transient long sprintStartTime = 0; // When player started sprinting (for speed boost)
+    private transient boolean inPiercingCharge = false; // Whether currently in Piercing Charge
+    private transient long piercingChargeStartTime = 0; // When Piercing Charge started
+    private transient float piercingChargeDamage = 0.0f; // Stored damage for Piercing Charge
 
     public PlayerRPGData() {
         this.mana = 100;
@@ -433,5 +441,54 @@ public class PlayerRPGData {
     
     public void setLastAxeThrowTime(long lastAxeThrowTime) {
         this.lastAxeThrowTime = lastAxeThrowTime;
+    }
+    
+    // Lancer Momentum system getters/setters
+    public float getMomentum() {
+        return momentum;
+    }
+    
+    public void setMomentum(float momentum) {
+        this.momentum = Math.max(0.0f, Math.min(100.0f, momentum));
+    }
+    
+    public boolean isEmpoweredAttack() {
+        return empoweredAttack;
+    }
+    
+    public void setEmpoweredAttack(boolean empoweredAttack) {
+        this.empoweredAttack = empoweredAttack;
+    }
+    
+    public long getSprintStartTime() {
+        return sprintStartTime;
+    }
+    
+    public void setSprintStartTime(long sprintStartTime) {
+        this.sprintStartTime = sprintStartTime;
+    }
+    
+    public boolean isInPiercingCharge() {
+        return inPiercingCharge;
+    }
+    
+    public void setInPiercingCharge(boolean inPiercingCharge) {
+        this.inPiercingCharge = inPiercingCharge;
+    }
+    
+    public long getPiercingChargeStartTime() {
+        return piercingChargeStartTime;
+    }
+    
+    public void setPiercingChargeStartTime(long piercingChargeStartTime) {
+        this.piercingChargeStartTime = piercingChargeStartTime;
+    }
+    
+    public float getPiercingChargeDamage() {
+        return piercingChargeDamage;
+    }
+    
+    public void setPiercingChargeDamage(float piercingChargeDamage) {
+        this.piercingChargeDamage = piercingChargeDamage;
     }
 }
