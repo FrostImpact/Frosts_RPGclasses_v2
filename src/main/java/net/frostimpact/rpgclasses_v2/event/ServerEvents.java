@@ -217,6 +217,17 @@ public class ServerEvents {
                     rpgData.setEmpoweredAttack(true);
                     player.displayClientMessage(net.minecraft.network.chat.Component.literal(
                             "§e§lEMPOWERED! §7Your next melee attack is empowered!"), true);
+                    
+                    // Spawn special max momentum particle effect
+                    ModMessages.spawnMaxMomentumEffectForPlayer(serverLevel, player);
+                }
+                
+                // Sync momentum to client every tick for smooth bar updates
+                if (tickCounter % 5 == 0) { // Sync every 5 ticks (4 times per second) for performance
+                    ModMessages.sendToPlayer(new net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMomentum(
+                            rpgData.getMomentum(),
+                            rpgData.isEmpoweredAttack()
+                    ), player);
                 }
             }
 
@@ -328,6 +339,14 @@ public class ServerEvents {
                         rpgData.isEnhancedEnraged(),
                         rpgData.isExhausted(),
                         rpgData.getAxeThrowCharges()
+                ), player);
+            }
+            
+            // Sync Momentum data for Lancer class
+            if (rpgData.getCurrentClass() != null && rpgData.getCurrentClass().equalsIgnoreCase("lancer")) {
+                ModMessages.sendToPlayer(new net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMomentum(
+                        rpgData.getMomentum(),
+                        rpgData.isEmpoweredAttack()
                 ), player);
             }
             

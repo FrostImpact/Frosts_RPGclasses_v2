@@ -99,7 +99,7 @@ public class ClassRegistry {
         register(berserker);
         
         RPGClass lancer = new RPGClass("lancer", "Lancer",
-                "A momentum-based warrior who gains speed and power through movement. Momentum system tracks velocity for empowered attacks.", "warrior",
+                "A momentum-based warrior who gains speed and power through movement. Abilities scale with momentum (0-100%). Gain speed boost after sprinting for 1.5s. At max momentum, attacks are empowered!", "warrior",
                 "rpgclasses_v2:textures/gui/icons/lancer.png", true, "warrior", 10);
         lancer.addBaseStat(StatType.MOVE_SPEED, new StatModifier("lancer_speed", StatType.MOVE_SPEED, 10.0, -1));
         lancer.addBaseStat(StatType.DAMAGE, new StatModifier("lancer_damage", StatType.DAMAGE, 6.0, -1));
