@@ -1756,7 +1756,7 @@ public class ModMessages {
     /**
      * Creates dust particle options with given RGB values (0-1 range)
      */
-    private static DustParticleOptions createDustParticle(float r, float g, float b, float size) {
+    public static DustParticleOptions createDustParticle(float r, float g, float b, float size) {
         // Add slight variation to make particles more interesting
         float rVar = r + (RANDOM.nextFloat() - 0.5f) * 0.15f;
         float gVar = g + (RANDOM.nextFloat() - 0.5f) * 0.15f;

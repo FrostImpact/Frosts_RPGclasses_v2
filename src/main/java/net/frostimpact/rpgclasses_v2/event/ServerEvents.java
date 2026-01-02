@@ -628,6 +628,31 @@ public class ServerEvents {
                 // Apply lifesteal if enraged (5% of damage)
                 ModMessages.applyBerserkerLifesteal(player, damageDealt);
             }
+            
+            // Lancer empowered attack
+            if (currentClass != null && currentClass.equalsIgnoreCase("lancer")) {
+                if (rpgData.isEmpoweredAttack() && event.getEntity() instanceof net.minecraft.world.entity.LivingEntity target) {
+                    // Deal bonus damage (50% more)
+                    float bonusDamage = event.getNewDamage() * 0.5f;
+                    target.hurt(player.damageSources().playerAttack(player), bonusDamage);
+                    
+                    // Reset empowered attack flag
+                    rpgData.setEmpoweredAttack(false);
+                    
+                    // Yellow crit effect
+                    if (player.level() instanceof net.minecraft.server.level.ServerLevel serverLevel) {
+                        serverLevel.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                                target.getX(), target.getY() + target.getBbHeight() * 0.5, target.getZ(),
+                                30, 0.3, 0.3, 0.3, 0.2);
+                        serverLevel.sendParticles(ModMessages.createDustParticle(1.0f, 1.0f, 0.2f, 1.0f),
+                                target.getX(), target.getY() + target.getBbHeight() * 0.5, target.getZ(),
+                                20, 0.3, 0.3, 0.3, 0.1);
+                    }
+                    
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                            "§e§l⚡ EMPOWERED STRIKE! §6+" + String.format("%.1f", bonusDamage)), true);
+                }
+            }
         }
     }
     
