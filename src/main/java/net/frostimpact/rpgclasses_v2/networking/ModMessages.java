@@ -5,6 +5,7 @@ import net.frostimpact.rpgclasses_v2.networking.packet.PacketAllocateStatPoint;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSelectClass;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncCooldowns;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMana;
+import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncMomentum;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncRage;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncRPGData;
 import net.frostimpact.rpgclasses_v2.networking.packet.PacketSyncSeekerCharges;
@@ -77,6 +78,11 @@ public class ModMessages {
     private static final int AXE_MAX_OUT_TICKS = 40; // 2 seconds before axe returns
     private static final float RAGE_GAIN_PERCENT = 0.05f; // 5% of damage dealt
     private static final float LIFESTEAL_PERCENT = 0.05f; // 5% of damage dealt while enraged
+    
+    // Lancer ability constants
+    private static final float LUNGE_MOMENTUM_SCALING = 15.0f; // Maximum bonus damage from momentum for Lunge
+    private static final float COMET_MOMENTUM_SCALING = 25.0f; // Maximum bonus damage from momentum for Comet
+    private static final float PIERCING_CHARGE_MOMENTUM_SCALING = 20.0f; // Maximum bonus damage from momentum for Piercing Charge
     
     // Active timed effects for Rain of Arrows
     private static final Map<UUID, RainOfArrowsEffect> activeRainEffects = new ConcurrentHashMap<>();
@@ -409,6 +415,20 @@ public class ModMessages {
                             rpgData.setEnhancedEnraged(packet.enhancedEnraged());
                             rpgData.setExhausted(packet.exhausted());
                             rpgData.setAxeThrowCharges(packet.axeThrowCharges());
+                        }
+                    });
+                }
+        );
+        
+        registrar.playToClient(
+                PacketSyncMomentum.TYPE,
+                PacketSyncMomentum.STREAM_CODEC,
+                (packet, context) -> {
+                    context.enqueueWork(() -> {
+                        if (context.player() != null) {
+                            var rpgData = context.player().getData(ModAttachments.PLAYER_RPG);
+                            rpgData.setMomentum(packet.momentum());
+                            rpgData.setEmpoweredAttack(packet.empoweredAttack());
                         }
                     });
                 }
@@ -1623,28 +1643,20 @@ public class ModMessages {
             case "lancer" -> {
                 var rpgData = player.getData(ModAttachments.PLAYER_RPG);
                 switch (slot) {
-                    case 1 -> { // Piercing Charge - forward sprint with momentum damage
-                        float momentum = rpgData.getMomentum();
-                        
-                        // Check momentum requirement (> 50%)
-                        if (momentum < 50.0f) {
-                            player.displayClientMessage(Component.literal("§eNeed at least 50% momentum for Piercing Charge!"), true);
-                            return;
-                        }
-                        
-                        // Toggle Piercing Charge on/off
+                    case 1 -> { // Piercing Charge - forward sprint with momentum damage (toggleable)
+                        // Toggle Piercing Charge on/off (can activate at any time now)
                         if (rpgData.isInPiercingCharge()) {
                             // Cancel Piercing Charge
                             rpgData.setInPiercingCharge(false);
                             player.displayClientMessage(Component.literal("§ePiercing Charge §7cancelled!"), true);
                         } else {
-                            // Start Piercing Charge
+                            // Start Piercing Charge (no momentum requirement)
                             rpgData.setInPiercingCharge(true);
                             rpgData.setPiercingChargeStartTime(level.getGameTime());
                             
-                            // Store damage based on momentum
+                            // Store base damage (will scale with momentum during charge)
                             float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
-                            rpgData.setPiercingChargeDamage(momentum * 0.5f + baseDamage);
+                            rpgData.setPiercingChargeDamage(baseDamage);
                             
                             // Force player to sprint forward
                             player.setSprinting(true);
@@ -1652,16 +1664,16 @@ public class ModMessages {
                             // Yellow charging effect
                             spawnDustParticlesBurst(level, playerPos.add(0, 1, 0), 2.0, 1.0f, 1.0f, 0.4f, 20);
                             
-                            player.displayClientMessage(Component.literal("§e§lPIERCING CHARGE! §7Sprint through enemies!"), true);
+                            player.displayClientMessage(Component.literal("§e§lPIERCING CHARGE! §7Damage ramps up with momentum!"), true);
                         }
                     }
-                    case 2 -> { // Leap - forward launch with velocity
+                    case 2 -> { // Leap - forward launch with strong upward velocity
                         Vec3 lookVec = player.getLookAngle();
                         Vec3 horizontalLook = new Vec3(lookVec.x, 0, lookVec.z).normalize();
                         
-                        // Launch player forward with large velocity
-                        double forwardVelocity = 1.5;
-                        double upwardVelocity = 0.4;
+                        // Launch player forward with larger velocity and more upward motion
+                        double forwardVelocity = 2.0; // Increased from 1.5
+                        double upwardVelocity = 0.8; // Increased from 0.4
                         
                         Vec3 velocity = new Vec3(
                                 horizontalLook.x * forwardVelocity,
@@ -1682,8 +1694,8 @@ public class ModMessages {
                         Vec3 lookVec = player.getLookAngle();
                         Vec3 horizontalLook = new Vec3(lookVec.x, 0, lookVec.z).normalize();
                         
-                        // Lunge forward (no vertical velocity)
-                        double lungeVelocity = 1.2;
+                        // Lunge forward farther (no vertical velocity)
+                        double lungeVelocity = 1.8; // Increased from 1.2
                         Vec3 velocity = new Vec3(
                                 horizontalLook.x * lungeVelocity,
                                 0,
@@ -1693,16 +1705,25 @@ public class ModMessages {
                         player.setDeltaMovement(velocity);
                         player.hurtMarked = true;
                         
-                        // Calculate damage: momentum/10 + damage stat (max 20)
-                        float lungeDamage = Math.min(20.0f, (momentum / 10.0f) + damageBonus);
+                        // Calculate damage: (momentum/100 * LUNGE_MOMENTUM_SCALING) + base damage + damage bonus
+                        // Scales from base damage at 0% momentum to base + LUNGE_MOMENTUM_SCALING + bonus at 100% momentum
+                        float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+                        float momentumDamage = (momentum / 100.0f) * LUNGE_MOMENTUM_SCALING;
+                        float lungeDamage = baseDamage + momentumDamage + damageBonus;
                         
                         // Deal damage to nearby enemies
                         boolean hitEnemy = dealDamageToNearbyEnemiesWithCheck(player, lungeDamage, 3.0);
+                        
+                        // Check if at max momentum for special particle effect
+                        boolean isMaxMomentum = momentum >= 100.0f;
                         
                         // If no enemy hit, reset Leap cooldown
                         if (!hitEnemy) {
                             rpgData.setAbilityCooldown("lancer_ability_2", 0);
                             player.displayClientMessage(Component.literal("§aLeap cooldown reset!"), true);
+                        } else if (isMaxMomentum) {
+                            // Special particle effect for max momentum damage
+                            spawnMaxMomentumDamageEffect(level, playerPos.add(horizontalLook.scale(2.0)));
                         }
                         
                         // Yellow lunge effect
@@ -1717,9 +1738,15 @@ public class ModMessages {
                         // Store comet state for impact detection
                         player.getPersistentData().putBoolean("lancer_comet_active", true);
                         
-                        // Calculate impact damage: momentum/5 + damage stat * 2 (higher than lunge)
-                        float cometDamage = (momentum / 5.0f) + (damageBonus * 2.0f);
+                        // Calculate impact damage: (momentum/100 * COMET_MOMENTUM_SCALING) + base damage + (damage bonus * 2)
+                        // Scales from base damage at 0% to base + COMET_MOMENTUM_SCALING + (bonus*2) at 100%
+                        float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+                        float momentumDamage = (momentum / 100.0f) * COMET_MOMENTUM_SCALING;
+                        float cometDamage = baseDamage + momentumDamage + (damageBonus * 2.0f);
                         player.getPersistentData().putFloat("lancer_comet_damage", cometDamage);
+                        
+                        // Store momentum at cast time for max damage effect
+                        player.getPersistentData().putFloat("lancer_comet_momentum", momentum);
                         
                         // Convert all velocity to downward
                         Vec3 currentVelocity = player.getDeltaMovement();
@@ -2016,6 +2043,88 @@ public class ModMessages {
     
     private static boolean isHostile(Entity entity) {
         return entity instanceof net.minecraft.world.entity.monster.Monster;
+    }
+    
+    /**
+     * Spawn special particle effect at maximum momentum
+     * Creates a golden aura around the player
+     */
+    private static void spawnMaxMomentumEffect(ServerLevel level, Vec3 center) {
+        // Golden spiral going upward
+        spawnDustParticlesSpiral(level, center, 2.0, 1.0f, 0.85f, 0.0f);
+        
+        // Golden ring at player height
+        spawnDustParticlesRing(level, center.add(0, 1, 0), 1.5, 1.0f, 0.85f, 0.0f);
+        
+        // Sparkle effect
+        for (int i = 0; i < 15; i++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double dist = RANDOM.nextDouble() * 2.0;
+            double x = center.x + Math.cos(angle) * dist;
+            double y = center.y + RANDOM.nextDouble() * 2.5;
+            double z = center.z + Math.sin(angle) * dist;
+            
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                    x, y, z, 1, 0, 0.1, 0, 0);
+        }
+    }
+    
+    /**
+     * Public wrapper to spawn max momentum effect for a player
+     */
+    public static void spawnMaxMomentumEffectForPlayer(ServerLevel level, ServerPlayer player) {
+        spawnMaxMomentumEffect(level, player.position());
+    }
+    
+    /**
+     * Spawn special particle effect when dealing maximum damage with momentum
+     * Creates an explosive golden burst
+     */
+    private static void spawnMaxMomentumDamageEffect(ServerLevel level, Vec3 center) {
+        // Large golden burst
+        spawnDustParticlesBurst(level, center.add(0, 1, 0), 3.5, 1.0f, 0.85f, 0.0f, 40);
+        
+        // Multiple expanding rings
+        for (int ring = 0; ring < 5; ring++) {
+            double radius = 1.0 + ring * 0.6;
+            int points = 24;
+            for (int p = 0; p < points; p++) {
+                double angle = (double) p / points * 2 * Math.PI;
+                double x = center.x + Math.cos(angle) * radius;
+                double z = center.z + Math.sin(angle) * radius;
+                
+                level.sendParticles(createDustParticle(1.0f, 0.85f, 0.0f, 1.2f),
+                        x, center.y + 0.5, z, 3, 0.1, 0.3, 0.1, 0.05);
+            }
+        }
+        
+        // Star burst effect
+        for (int i = 0; i < 8; i++) {
+            double angle = i * Math.PI / 4;
+            for (int d = 0; d < 10; d++) {
+                double dist = d * 0.3;
+                double x = center.x + Math.cos(angle) * dist;
+                double z = center.z + Math.sin(angle) * dist;
+                
+                level.sendParticles(createDustParticle(1.0f, 1.0f, 0.4f, 0.8f),
+                        x, center.y + 1.0, z, 1, 0, 0, 0, 0);
+            }
+        }
+        
+        // Explosion particles at center
+        level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,
+                center.x, center.y + 1, center.z, 3, 0.5, 0.5, 0.5, 0);
+        
+        // Flash of light (end rod particles shooting upward)
+        for (int i = 0; i < 20; i++) {
+            double angle = RANDOM.nextDouble() * 2 * Math.PI;
+            double dist = RANDOM.nextDouble() * 1.5;
+            double x = center.x + Math.cos(angle) * dist;
+            double z = center.z + Math.sin(angle) * dist;
+            
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD,
+                    x, center.y + 0.5, z, 1, 0, 0.3, 0, 0.1);
+        }
     }
     
     // ===== Ranger Ability Helper Methods =====
@@ -6776,16 +6885,22 @@ public class ModMessages {
                 for (Entity entity : entities) {
                     if (entity instanceof LivingEntity living) {
                         float momentum = rpgData.getMomentum();
-                        float pierceDamage = rpgData.getPiercingChargeDamage();
+                        float baseDamage = rpgData.getPiercingChargeDamage();
                         
-                        // Deal momentum-based damage
-                        living.hurt(player.damageSources().playerAttack(player), pierceDamage * 0.5f);
+                        // Calculate current damage: base + (momentum/100 * PIERCING_CHARGE_MOMENTUM_SCALING)
+                        // Damage ramps up as momentum increases during the charge
+                        float momentumBonus = (momentum / 100.0f) * PIERCING_CHARGE_MOMENTUM_SCALING;
+                        float totalDamage = baseDamage + momentumBonus;
+                        
+                        // Deal momentum-scaled damage (50% on pass-through)
+                        float passThroughDamage = totalDamage * 0.5f;
+                        living.hurt(player.damageSources().playerAttack(player), passThroughDamage);
                         
                         // Check if damage was less than 20% of target's HP
-                        if (pierceDamage * 0.5f < living.getMaxHealth() * 0.2f) {
-                            // Stop and deal larger damage
+                        if (passThroughDamage < living.getMaxHealth() * 0.2f) {
+                            // Stop and deal full damage
                             rpgData.setInPiercingCharge(false);
-                            living.hurt(player.damageSources().playerAttack(player), pierceDamage);
+                            living.hurt(player.damageSources().playerAttack(player), totalDamage);
                             rpgData.setAbilityCooldown("lancer_ability_1", 300); // 15s cooldown
                             sendToPlayer(new PacketSyncCooldowns(rpgData.getAllCooldowns()), player);
                             
@@ -6795,6 +6910,11 @@ public class ModMessages {
                             
                             // Yellow impact effect
                             spawnDustParticlesBurst(level, living.position(), 2.0, 1.0f, 1.0f, 0.2f, 25);
+                            
+                            // Check for max momentum special effect
+                            if (momentum >= 100.0f) {
+                                spawnMaxMomentumDamageEffect(level, living.position());
+                            }
                             
                             player.displayClientMessage(net.minecraft.network.chat.Component.literal(
                                     "§e§lCRITICAL PIERCE!"), true);
@@ -6813,9 +6933,15 @@ public class ModMessages {
                 if (player.onGround()) {
                     // Impact!
                     float cometDamage = player.getPersistentData().getFloat("lancer_comet_damage");
+                    float cometMomentum = player.getPersistentData().getFloat("lancer_comet_momentum");
                     
                     // Deal shockwave damage in radius
                     dealDamageToNearbyEnemies(player, cometDamage, 6.0);
+                    
+                    // Check if at max momentum for special particle effect
+                    if (cometMomentum >= 100.0f) {
+                        spawnMaxMomentumDamageEffect(level, player.position());
+                    }
                     
                     // Yellow shockwave effect
                     for (int ring = 0; ring < 8; ring++) {

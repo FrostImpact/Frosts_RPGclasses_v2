@@ -12,13 +12,13 @@ import net.minecraft.world.entity.player.Player;
 /**
  * Overlay that displays Lancer's Momentum bar
  * Shows current momentum based on velocity
- * Positioned above health and mana bars
+ * Positioned centered above health and mana bars
  */
 public class MomentumBarOverlay implements LayeredDraw.Layer {
     private static final int BAR_WIDTH = 100;
     private static final int BAR_HEIGHT = 8;
-    private static final int SCREEN_CENTER_X_OFFSET = 10;
-    private static final int Y_POSITION = 59; // Just above health bar
+    private static final int Y_POSITION = 62; // Slightly above health and mana bars (which are at 50)
+    private static final int TEXT_Y_OFFSET = 10; // Pixels above bar for text display
     
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
@@ -38,8 +38,8 @@ public class MomentumBarOverlay implements LayeredDraw.Layer {
         int screenWidth = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
         
-        // Position centered above health bar
-        int x = screenWidth / 2 + SCREEN_CENTER_X_OFFSET;
+        // Position centered horizontally above health and mana bars
+        int x = screenWidth / 2 - BAR_WIDTH / 2;
         int y = screenHeight - Y_POSITION;
         
         float momentum = rpgData.getMomentum();
@@ -92,7 +92,7 @@ public class MomentumBarOverlay implements LayeredDraw.Layer {
             text = String.format("§eMomentum: §6%.0f", momentum);
         }
         int textX = x + BAR_WIDTH / 2 - mc.font.width(text) / 2;
-        guiGraphics.drawString(mc.font, text, textX, y - 10, 0xFFFFFF, true);
+        guiGraphics.drawString(mc.font, text, textX, y - TEXT_Y_OFFSET, 0xFFFFFF, true);
         
         RenderSystem.disableBlend();
     }
