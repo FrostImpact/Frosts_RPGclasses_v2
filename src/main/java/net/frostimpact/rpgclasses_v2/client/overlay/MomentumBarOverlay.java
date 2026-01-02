@@ -18,6 +18,7 @@ public class MomentumBarOverlay implements LayeredDraw.Layer {
     private static final int BAR_WIDTH = 100;
     private static final int BAR_HEIGHT = 8;
     private static final int Y_POSITION = 62; // Slightly above health and mana bars (which are at 50)
+    private static final int TEXT_Y_OFFSET = 10; // Pixels above bar for text display
     
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
@@ -91,7 +92,7 @@ public class MomentumBarOverlay implements LayeredDraw.Layer {
             text = String.format("§eMomentum: §6%.0f", momentum);
         }
         int textX = x + BAR_WIDTH / 2 - mc.font.width(text) / 2;
-        guiGraphics.drawString(mc.font, text, textX, y - 10, 0xFFFFFF, true);
+        guiGraphics.drawString(mc.font, text, textX, y - TEXT_Y_OFFSET, 0xFFFFFF, true);
         
         RenderSystem.disableBlend();
     }
