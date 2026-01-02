@@ -96,6 +96,13 @@ public class ModMessages {
     private static final float MANASURGE_BASE_DAMAGE = 15.0f; // Base damage
     private static final float MANASURGE_DAMAGE_PER_THREAD = 10.0f; // Bonus damage per thread
     private static final double MANASURGE_AOE_RADIUS = 8.0; // Explosion radius
+    private static final int THREAD_GLOWING_DURATION_TICKS = 100; // 5 seconds, refreshed as needed
+    private static final double LINE_OF_SIGHT_DOT_THRESHOLD = 0.7; // About 45 degrees cone
+    private static final int MANAFLUX_STUN_EFFECT_DURATION = 40; // 2 seconds duration for stun effects
+    private static final int MANAFLUX_STUN_AMPLIFIER = 10; // Extreme amplifier to simulate stun
+    private static final double MIN_PULL_DISTANCE = 1.5; // Minimum distance to avoid overshooting
+    private static final double THREADED_PULL_MULTIPLIER = 2.0; // Stronger pull for threaded enemies
+    private static final double MIN_THREADED_PULL_DISTANCE = 2.0; // Minimum distance for threaded pull
     
     // Active timed effects for Rain of Arrows
     private static final Map<UUID, RainOfArrowsEffect> activeRainEffects = new ConcurrentHashMap<>();
@@ -8102,8 +8109,8 @@ public class ModMessages {
         FateThread thread = new FateThread(playerUUID, targetUUID, player.level().getGameTime());
         playerThreads.put(targetUUID, thread);
         
-        // Mark target with glowing effect (subtle arcane highlight)
-        target.addEffect(new MobEffectInstance(MobEffects.GLOWING, Integer.MAX_VALUE, 0, false, false));
+        // Mark target with glowing effect (subtle arcane highlight) - refreshed periodically
+        target.addEffect(new MobEffectInstance(MobEffects.GLOWING, THREAD_GLOWING_DURATION_TICKS, 0, false, false));
         
         LOGGER.debug("Fatespinner {} created thread to {} (total threads: {})",
                 player.getName().getString(), target.getName().getString(), playerThreads.size());
@@ -8224,7 +8231,7 @@ public class ModMessages {
                 
                 // Reapply glowing to ensure highlight remains
                 if (!target.hasEffect(MobEffects.GLOWING)) {
-                    target.addEffect(new MobEffectInstance(MobEffects.GLOWING, Integer.MAX_VALUE, 0, false, false));
+                    target.addEffect(new MobEffectInstance(MobEffects.GLOWING, THREAD_GLOWING_DURATION_TICKS, 0, false, false));
                 }
             }
         }
@@ -8311,8 +8318,8 @@ public class ModMessages {
             Entity targetEntity = level.getEntity(thread.targetUUID);
             if (targetEntity instanceof LivingEntity living && living.isAlive()) {
                 // Apply slow and weakness to simulate stun (since MC doesn't have true stun)
-                living.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 40, 10, false, false)); // Extreme slow
-                living.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 40, 10, false, false)); // Cannot deal damage
+                living.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, MANAFLUX_STUN_EFFECT_DURATION, MANAFLUX_STUN_AMPLIFIER, false, false)); // Extreme slow
+                living.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, MANAFLUX_STUN_EFFECT_DURATION, MANAFLUX_STUN_AMPLIFIER, false, false)); // Cannot deal damage
                 
                 // Stop the entity's movement
                 living.setDeltaMovement(0, living.getDeltaMovement().y, 0);
@@ -8359,7 +8366,7 @@ public class ModMessages {
                 
                 // Check if target is roughly in front of player (within ~45 degree cone)
                 double dot = lookVec.normalize().dot(toTarget.normalize());
-                if (dot > 0.7) { // About 45 degrees
+                if (dot > LINE_OF_SIGHT_DOT_THRESHOLD) {
                     // Check if closer than current nearest
                     if (distance < nearestDistance) {
                         nearestInSight = living;
@@ -8427,7 +8434,7 @@ public class ModMessages {
             if (entity instanceof LivingEntity living) {
                 Vec3 pullDir = playerPos.subtract(entity.position()).normalize();
                 double distance = entity.position().distanceTo(playerPos);
-                double pullStrength = Math.min(strength, distance - 1.5); // Don't overshoot
+                double pullStrength = Math.min(strength, distance - MIN_PULL_DISTANCE);
                 living.setDeltaMovement(pullDir.scale(pullStrength).add(0, 0.3, 0));
                 living.hurtMarked = true;
                 affected.add(entity.getUUID());
@@ -8442,7 +8449,7 @@ public class ModMessages {
                 if (targetEntity instanceof LivingEntity living && living.isAlive()) {
                     Vec3 pullDir = playerPos.subtract(targetEntity.position()).normalize();
                     double distance = targetEntity.position().distanceTo(playerPos);
-                    double pullStrength = Math.min(strength * 2.0, distance - 2.0); // Stronger pull for threaded
+                    double pullStrength = Math.min(strength * THREADED_PULL_MULTIPLIER, distance - MIN_THREADED_PULL_DISTANCE);
                     living.setDeltaMovement(pullDir.scale(pullStrength).add(0, 0.3, 0));
                     living.hurtMarked = true;
                 }
