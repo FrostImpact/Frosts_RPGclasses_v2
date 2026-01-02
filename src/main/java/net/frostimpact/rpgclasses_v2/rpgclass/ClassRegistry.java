@@ -98,12 +98,13 @@ public class ClassRegistry {
         berserker.addBaseStat(StatType.ATTACK_SPEED, new StatModifier("berserker_speed", StatType.ATTACK_SPEED, 15.0, -1));
         register(berserker);
         
-        RPGClass paladin = new RPGClass("paladin", "Paladin",
-                "A holy warrior who protects allies and smites evil", "warrior",
-                "rpgclasses_v2:textures/gui/icons/paladin.png", true, "warrior", 10);
-        paladin.addBaseStat(StatType.MAX_HEALTH, new StatModifier("paladin_health", StatType.MAX_HEALTH, 15.0, -1));
-        paladin.addBaseStat(StatType.DEFENSE, new StatModifier("paladin_defense", StatType.DEFENSE, 5.0, -1));
-        register(paladin);
+        RPGClass lancer = new RPGClass("lancer", "Lancer",
+                "A momentum-based warrior who gains speed and power through movement. Momentum system tracks velocity for empowered attacks.", "warrior",
+                "rpgclasses_v2:textures/gui/icons/lancer.png", true, "warrior", 10);
+        lancer.addBaseStat(StatType.MOVE_SPEED, new StatModifier("lancer_speed", StatType.MOVE_SPEED, 10.0, -1));
+        lancer.addBaseStat(StatType.DAMAGE, new StatModifier("lancer_damage", StatType.DAMAGE, 6.0, -1));
+        lancer.addBaseStat(StatType.CRIT_CHANCE, new StatModifier("lancer_crit", StatType.CRIT_CHANCE, 15.0, -1));
+        register(lancer);
         
         RPGClass ravager = new RPGClass("ravager", "Ravager",
                 "A brutal warrior who inflicts bleeding wounds on enemies. Cannot gain attack speed - converts to bleed duration.", "warrior",

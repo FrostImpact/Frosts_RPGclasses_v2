@@ -91,6 +91,13 @@ public final class AbilityUtils {
                 case 4 -> "Unbound Carnage";
                 default -> "Unknown";
             };
+            case "lancer" -> switch (slot) {
+                case 1 -> "Piercing Charge";
+                case 2 -> "Leap";
+                case 3 -> "Lunge";
+                case 4 -> "Comet";
+                default -> "Unknown";
+            };
             default -> "Ability " + slot;
         };
     }
@@ -175,6 +182,13 @@ public final class AbilityUtils {
                 case 2 -> 20;  // Blood Oath - 20 MP
                 case 3 -> 3;   // Frenzy - 3 MP per slash
                 case 4 -> 40;  // Unbound Carnage - 40 MP
+                default -> 0;
+            };
+            case "lancer" -> switch (slot) {
+                case 1 -> 30;  // Piercing Charge - 30 MP
+                case 2 -> 15;  // Leap - 15 MP
+                case 3 -> 15;  // Lunge - 15 MP
+                case 4 -> 50;  // Comet - 50 MP
                 default -> 0;
             };
             default -> 0;
@@ -263,6 +277,13 @@ public final class AbilityUtils {
                 case 4 -> 500;  // 25s - Unbound Carnage
                 default -> 40;
             };
+            case "lancer" -> switch (slot) {
+                case 1 -> 300;  // 15s - Piercing Charge
+                case 2 -> 100;  // 5s - Leap
+                case 3 -> 120;  // 6s - Lunge
+                case 4 -> 500;  // 25s - Comet
+                default -> 40;
+            };
             default -> 40;
         };
     }
@@ -286,7 +307,7 @@ public final class AbilityUtils {
     public static String getClassIcon(String classId) {
         if (classId == null) return "⭐";
         return switch (classId.toLowerCase()) {
-            case "warrior", "ravager" -> "⚔";
+            case "warrior", "ravager", "lancer" -> "⚔";
             case "mage" -> "✨";
             case "rogue" -> "🗡";
             case "ranger" -> "🏹";
@@ -315,7 +336,7 @@ public final class AbilityUtils {
     public static int getClassColor(String classId) {
         if (classId == null) return 0xAAAAAA;
         return switch (classId.toLowerCase()) {
-            case "warrior", "berserker", "ravager" -> 0xFF4444;
+            case "warrior", "berserker", "ravager", "lancer" -> 0xFF4444;
             case "paladin" -> 0xFFDD44;
             case "mage", "pyromancer", "frostmage" -> 0xAA00FF;
             case "rogue", "assassin", "shadowdancer" -> 0x55FF55;

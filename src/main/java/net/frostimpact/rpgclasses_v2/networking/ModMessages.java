@@ -1620,6 +1620,129 @@ public class ModMessages {
                     }
                 }
             }
+            case "lancer" -> {
+                var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+                switch (slot) {
+                    case 1 -> { // Piercing Charge - forward sprint with momentum damage
+                        float momentum = rpgData.getMomentum();
+                        
+                        // Check momentum requirement (> 50%)
+                        if (momentum < 50.0f) {
+                            player.displayClientMessage(Component.literal("§eNeed at least 50% momentum for Piercing Charge!"), true);
+                            return;
+                        }
+                        
+                        // Toggle Piercing Charge on/off
+                        if (rpgData.isInPiercingCharge()) {
+                            // Cancel Piercing Charge
+                            rpgData.setInPiercingCharge(false);
+                            player.displayClientMessage(Component.literal("§ePiercing Charge §7cancelled!"), true);
+                        } else {
+                            // Start Piercing Charge
+                            rpgData.setInPiercingCharge(true);
+                            rpgData.setPiercingChargeStartTime(level.getGameTime());
+                            
+                            // Store damage based on momentum
+                            float baseDamage = (float) player.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ATTACK_DAMAGE);
+                            rpgData.setPiercingChargeDamage(momentum * 0.5f + baseDamage);
+                            
+                            // Force player to sprint forward
+                            player.setSprinting(true);
+                            
+                            // Yellow charging effect
+                            spawnDustParticlesBurst(level, playerPos.add(0, 1, 0), 2.0, 1.0f, 1.0f, 0.4f, 20);
+                            
+                            player.displayClientMessage(Component.literal("§e§lPIERCING CHARGE! §7Sprint through enemies!"), true);
+                        }
+                    }
+                    case 2 -> { // Leap - forward launch with velocity
+                        Vec3 lookVec = player.getLookAngle();
+                        Vec3 horizontalLook = new Vec3(lookVec.x, 0, lookVec.z).normalize();
+                        
+                        // Launch player forward with large velocity
+                        double forwardVelocity = 1.5;
+                        double upwardVelocity = 0.4;
+                        
+                        Vec3 velocity = new Vec3(
+                                horizontalLook.x * forwardVelocity,
+                                upwardVelocity,
+                                horizontalLook.z * forwardVelocity
+                        );
+                        
+                        player.setDeltaMovement(velocity);
+                        player.hurtMarked = true;
+                        
+                        // Yellow leap effect
+                        spawnDustParticlesBurst(level, playerPos, 2.0, 1.0f, 1.0f, 0.4f, 25);
+                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                                playerPos.x, playerPos.y + 0.5, playerPos.z, 15, 0.3, 0.3, 0.3, 0.1);
+                    }
+                    case 3 -> { // Lunge - horizontal lunge with momentum damage
+                        float momentum = rpgData.getMomentum();
+                        Vec3 lookVec = player.getLookAngle();
+                        Vec3 horizontalLook = new Vec3(lookVec.x, 0, lookVec.z).normalize();
+                        
+                        // Lunge forward (no vertical velocity)
+                        double lungeVelocity = 1.2;
+                        Vec3 velocity = new Vec3(
+                                horizontalLook.x * lungeVelocity,
+                                0,
+                                horizontalLook.z * lungeVelocity
+                        );
+                        
+                        player.setDeltaMovement(velocity);
+                        player.hurtMarked = true;
+                        
+                        // Calculate damage: momentum/10 + damage stat (max 20)
+                        float lungeDamage = Math.min(20.0f, (momentum / 10.0f) + damageBonus);
+                        
+                        // Deal damage to nearby enemies
+                        boolean hitEnemy = dealDamageToNearbyEnemiesWithCheck(player, lungeDamage, 3.0);
+                        
+                        // If no enemy hit, reset Leap cooldown
+                        if (!hitEnemy) {
+                            rpgData.setAbilityCooldown("lancer_ability_2", 0);
+                            player.displayClientMessage(Component.literal("§aLeap cooldown reset!"), true);
+                        }
+                        
+                        // Yellow lunge effect
+                        spawnDustParticlesLine(level, playerPos, player.getYRot(), 3.0, 1.0f, 1.0f, 0.4f);
+                        level.sendParticles(net.minecraft.core.particles.ParticleTypes.SWEEP_ATTACK,
+                                playerPos.x + horizontalLook.x * 2, playerPos.y + 1, playerPos.z + horizontalLook.z * 2,
+                                3, 0.3, 0.3, 0.3, 0);
+                    }
+                    case 4 -> { // Comet - convert velocity to downward, shockwave on impact
+                        float momentum = rpgData.getMomentum();
+                        
+                        // Store comet state for impact detection
+                        player.getPersistentData().putBoolean("lancer_comet_active", true);
+                        
+                        // Calculate impact damage: momentum/5 + damage stat * 2 (higher than lunge)
+                        float cometDamage = (momentum / 5.0f) + (damageBonus * 2.0f);
+                        player.getPersistentData().putFloat("lancer_comet_damage", cometDamage);
+                        
+                        // Convert all velocity to downward
+                        Vec3 currentVelocity = player.getDeltaMovement();
+                        double totalSpeed = Math.sqrt(
+                                currentVelocity.x * currentVelocity.x +
+                                currentVelocity.y * currentVelocity.y +
+                                currentVelocity.z * currentVelocity.z
+                        );
+                        
+                        // Apply strong downward velocity
+                        player.setDeltaMovement(0, -Math.max(2.0, totalSpeed * 1.5), 0);
+                        player.hurtMarked = true;
+                        
+                        // Remove all momentum
+                        rpgData.setMomentum(0);
+                        
+                        // Yellow diving effect
+                        spawnDustParticlesBurst(level, playerPos, 3.0, 1.0f, 1.0f, 0.2f, 30);
+                        
+                        player.displayClientMessage(Component.literal("§e§lCOMET DIVE!"), true);
+                    }
+                }
+            }
             default -> {
                 // Generic ability for unknown classes
                 player.addEffect(new MobEffectInstance(MobEffects.LUCK, 100, 0));
@@ -1832,6 +1955,24 @@ public class ModMessages {
                 living.hurt(player.damageSources().playerAttack(player), (float) damage);
             }
         }
+    }
+    
+    /**
+     * Deal damage to nearby enemies and return whether any enemies were hit
+     */
+    private static boolean dealDamageToNearbyEnemiesWithCheck(ServerPlayer player, double damage, double range) {
+        AABB searchBox = player.getBoundingBox().inflate(range);
+        List<Entity> entities = player.level().getEntities(player, searchBox, 
+                e -> e instanceof LivingEntity && e != player);
+        
+        boolean hitAny = false;
+        for (Entity entity : entities) {
+            if (entity instanceof LivingEntity living) {
+                living.hurt(player.damageSources().playerAttack(player), (float) damage);
+                hitAny = true;
+            }
+        }
+        return hitAny;
     }
     
     private static void applyEffectToNearbyEnemies(ServerPlayer player, 
@@ -6582,6 +6723,129 @@ public class ModMessages {
         // Upward burst with lighter red
         level.sendParticles(createDustParticle(1.0f, 0.2f, 0.2f, 1.2f),
                 center.x, center.y, center.z, 50, 0.5, 0.3, 0.5, 0.2);
+    }
+    
+    /**
+     * Update Lancer abilities (Piercing Charge and Comet impact)
+     */
+    public static void updateLancerAbilities(ServerLevel level) {
+        for (ServerPlayer player : level.players()) {
+            var rpgData = player.getData(ModAttachments.PLAYER_RPG);
+            
+            // Handle Piercing Charge
+            if (rpgData.isInPiercingCharge()) {
+                long chargeTime = level.getGameTime() - rpgData.getPiercingChargeStartTime();
+                
+                // Check timeout (8 seconds = 160 ticks)
+                if (chargeTime >= 160) {
+                    rpgData.setInPiercingCharge(false);
+                    rpgData.setAbilityCooldown("lancer_ability_1", 300); // 15s cooldown
+                    sendToPlayer(new PacketSyncCooldowns(rpgData.getAllCooldowns()), player);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                            "§ePiercing Charge ended!"), true);
+                    continue;
+                }
+                
+                // Check wall collision (no velocity)
+                Vec3 velocity = player.getDeltaMovement();
+                double horizontalSpeed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+                if (horizontalSpeed < 0.05) {
+                    // Hit a wall - stop charging
+                    rpgData.setInPiercingCharge(false);
+                    rpgData.setAbilityCooldown("lancer_ability_1", 300); // 15s cooldown
+                    sendToPlayer(new PacketSyncCooldowns(rpgData.getAllCooldowns()), player);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                            "§cPiercing Charge §7stopped by wall!"), true);
+                    
+                    // Yellow wall impact effect
+                    spawnDustParticlesBurst(level, player.position(), 2.0, 1.0f, 1.0f, 0.2f, 20);
+                    continue;
+                }
+                
+                // Spawn spear-like aura visual in front
+                Vec3 lookVec = player.getLookAngle();
+                Vec3 spearTip = player.position().add(0, player.getEyeHeight(), 0).add(lookVec.scale(2.0));
+                level.sendParticles(createDustParticle(1.0f, 1.0f, 0.3f, 0.8f),
+                        spearTip.x, spearTip.y, spearTip.z, 3, 0.1, 0.1, 0.1, 0);
+                
+                // Check for enemies hit
+                AABB hitBox = player.getBoundingBox().inflate(2.0);
+                List<Entity> entities = level.getEntities(player, hitBox, 
+                        e -> e instanceof LivingEntity && e != player);
+                
+                for (Entity entity : entities) {
+                    if (entity instanceof LivingEntity living) {
+                        float momentum = rpgData.getMomentum();
+                        float pierceDamage = rpgData.getPiercingChargeDamage();
+                        
+                        // Deal momentum-based damage
+                        living.hurt(player.damageSources().playerAttack(player), pierceDamage * 0.5f);
+                        
+                        // Check if damage was less than 20% of target's HP
+                        float targetHealthPercent = living.getHealth() / living.getMaxHealth();
+                        if (pierceDamage * 0.5f < living.getMaxHealth() * 0.2f) {
+                            // Stop and deal larger damage
+                            rpgData.setInPiercingCharge(false);
+                            living.hurt(player.damageSources().playerAttack(player), pierceDamage);
+                            rpgData.setAbilityCooldown("lancer_ability_1", 300); // 15s cooldown
+                            sendToPlayer(new PacketSyncCooldowns(rpgData.getAllCooldowns()), player);
+                            
+                            // Stop player
+                            player.setDeltaMovement(0, player.getDeltaMovement().y, 0);
+                            player.hurtMarked = true;
+                            
+                            // Yellow impact effect
+                            spawnDustParticlesBurst(level, living.position(), 2.0, 1.0f, 1.0f, 0.2f, 25);
+                            
+                            player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                                    "§e§lCRITICAL PIERCE!"), true);
+                            break;
+                        }
+                    }
+                }
+                
+                // Reduce turning speed by applying look direction constraint
+                Vec3 currentLook = player.getLookAngle();
+                // This is a simplified approach - in practice, rotation would be constrained more directly
+            }
+            
+            // Handle Comet impact
+            if (player.getPersistentData().getBoolean("lancer_comet_active")) {
+                if (player.onGround()) {
+                    // Impact!
+                    float cometDamage = player.getPersistentData().getFloat("lancer_comet_damage");
+                    
+                    // Deal shockwave damage in radius
+                    dealDamageToNearbyEnemies(player, cometDamage, 6.0);
+                    
+                    // Yellow shockwave effect
+                    for (int ring = 0; ring < 8; ring++) {
+                        double radius = 1.0 + ring * 0.8;
+                        int points = 32;
+                        for (int p = 0; p < points; p++) {
+                            double angle = (double) p / points * 2 * Math.PI;
+                            double x = player.getX() + Math.cos(angle) * radius;
+                            double z = player.getZ() + Math.sin(angle) * radius;
+                            
+                            level.sendParticles(createDustParticle(1.0f, 1.0f, 0.2f, 1.0f),
+                                    x, player.getY() + 0.1, z, 3, 0.05, 0.02, 0.05, 0.02);
+                            level.sendParticles(net.minecraft.core.particles.ParticleTypes.CRIT,
+                                    x, player.getY() + 0.1, z, 2, 0.05, 0.02, 0.05, 0.01);
+                        }
+                    }
+                    
+                    // Central explosion
+                    level.sendParticles(net.minecraft.core.particles.ParticleTypes.EXPLOSION,
+                            player.getX(), player.getY() + 0.5, player.getZ(), 5, 0.5, 0.2, 0.5, 0);
+                    
+                    player.getPersistentData().remove("lancer_comet_active");
+                    player.getPersistentData().remove("lancer_comet_damage");
+                    
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal(
+                            "§e§l💥 COMET IMPACT!"), true);
+                }
+            }
+        }
     }
     
     /**
