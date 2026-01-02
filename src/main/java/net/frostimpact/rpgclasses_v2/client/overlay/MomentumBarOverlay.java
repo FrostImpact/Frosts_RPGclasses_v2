@@ -12,12 +12,12 @@ import net.minecraft.world.entity.player.Player;
 /**
  * Overlay that displays Lancer's Momentum bar
  * Shows current momentum based on velocity
- * Positioned between health and mana bars
+ * Positioned centered above health and mana bars
  */
 public class MomentumBarOverlay implements LayeredDraw.Layer {
     private static final int BAR_WIDTH = 100;
     private static final int BAR_HEIGHT = 8;
-    private static final int Y_POSITION = 50; // Between health and mana bars
+    private static final int Y_POSITION = 62; // Slightly above health and mana bars (which are at 50)
     
     @Override
     public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
@@ -37,7 +37,7 @@ public class MomentumBarOverlay implements LayeredDraw.Layer {
         int screenWidth = mc.getWindow().getGuiScaledWidth();
         int screenHeight = mc.getWindow().getGuiScaledHeight();
         
-        // Position centered between health and mana bars
+        // Position centered horizontally above health and mana bars
         int x = screenWidth / 2 - BAR_WIDTH / 2;
         int y = screenHeight - Y_POSITION;
         
